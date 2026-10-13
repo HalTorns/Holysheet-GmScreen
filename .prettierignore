@@ -1,0 +1,13 @@
+node_modules
+pnpm-lock.yaml
+.output
+dist
+.tanstack
+src/routeTree.gen.ts
+convex/_generated
+convex/betterAuth/_generated
+convex/betterAuth/schema.ts
+convex/betterAuth/generatedSchema.ts
+playwright-report
+test-results
+coverage

@@ -1,0 +1,24 @@
+import { linkOptions } from '@tanstack/react-router'
+import { Building2, LayoutGrid, ShieldCheck } from 'lucide-react'
+
+// Routes are checked against the generated route tree. These links describe
+// navigation only; every private Convex function still enforces its own access.
+export const appNavigation = linkOptions([
+  {
+    to: '/app',
+    label: 'Ressources',
+    icon: LayoutGrid,
+    activeOptions: { exact: true },
+  },
+  {
+    to: '/app/security',
+    label: 'Compte',
+    icon: ShieldCheck,
+  },
+])
+
+export const organizationsNavigation = linkOptions({
+  to: '/app/organizations',
+  label: 'Organisations',
+  icon: Building2,
+})

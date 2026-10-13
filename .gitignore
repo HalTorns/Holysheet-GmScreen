@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+.env
+.env.*
+!.env.example
+.output/
+dist/
+.tanstack/
+.convex/
+coverage/
+playwright-report/
+test-results/
+.DS_Store
+*.tsbuildinfo
+*.log
+backups/

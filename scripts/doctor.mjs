@@ -1,0 +1,107 @@
+import { spawnSync } from 'node:child_process'
+import { statSync } from 'node:fs'
+import { join } from 'node:path'
+import {
+  assertLocalDeploymentSelection,
+  backendUrl,
+  composeArguments,
+  composeEnvironment,
+  prepareDockerEnvironment,
+  projectRoot,
+  readEnvironment,
+  run,
+} from './local-config.mjs'
+
+let failed = false
+function check(name, inspect) {
+  try {
+    inspect()
+    console.info(`OK — ${name}`)
+  } catch (error) {
+    failed = true
+    console.error(
+      `ÉCHEC — ${name}: ${error instanceof Error ? error.message : 'vérification impossible'}`,
+    )
+  }
+}
+
+check('Runtime Node compatible', () => {
+  const major = Number(process.versions.node.split('.')[0])
+  if (major < 24 || major >= 27)
+    throw new Error('Utiliser Node >=24 <27, recommandé 26.11.0.')
+})
+check('pnpm verrouillé', () => {
+  if (run('pnpm', ['--version'], { capture: true }) !== '11.8.0')
+    throw new Error('Utiliser pnpm 11.8.0.')
+})
+check('Sélection Convex exclusivement locale', assertLocalDeploymentSelection)
+for (const name of ['.env.local', '.env.docker']) {
+  check(`${name} privé et ignoré par Git`, () => {
+    if ((statSync(join(projectRoot, name)).mode & 0o777) !== 0o600)
+      throw new Error(
+        'Le fichier doit appartenir uniquement au propriétaire (chmod 600).',
+      )
+    const result = spawnSync('git', ['check-ignore', '-q', name], {
+      cwd: projectRoot,
+      stdio: 'ignore',
+    })
+    if (result.status !== 0)
+      throw new Error('Le fichier doit être ignoré par Git.')
+  })
+}
+check('URLs frontend et CLI locales cohérentes', () => {
+  const environment = readEnvironment('.env.local')
+  if (
+    environment.VITE_SITE_URL !== 'http://localhost:3000' ||
+    environment.VITE_CONVEX_URL !== backendUrl ||
+    environment.VITE_CONVEX_SITE_URL !== 'http://127.0.0.1:3211' ||
+    environment.CONVEX_SELF_HOSTED_URL !== backendUrl ||
+    !environment.CONVEX_SELF_HOSTED_ADMIN_KEY
+  )
+    throw new Error('Exécuter pnpm setup dans un checkout local dédié.')
+})
+check('Identité Docker du checkout et services sains', () => {
+  if (!readEnvironment('.env.docker').COMPOSE_PROJECT_NAME)
+    throw new Error(
+      'Exécuter pnpm setup pour établir une identité Docker locale.',
+    )
+  const configuration = prepareDockerEnvironment()
+  const output = run(
+    'docker',
+    composeArguments(configuration, ['ps', '--format', 'json']),
+    { capture: true, env: composeEnvironment(configuration) },
+  )
+  const containers = output.trim().startsWith('[')
+    ? JSON.parse(output)
+    : output
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+  for (const service of ['backend', 'mailpit']) {
+    if (
+      !containers.some(
+        (container) =>
+          container.Service === service &&
+          container.State === 'running' &&
+          container.Health === 'healthy',
+      )
+    )
+      throw new Error(
+        `Le service ${service} doit être démarré et sain (pnpm services:up).`,
+      )
+  }
+})
+try {
+  const response = await fetch(`${backendUrl}/version`, {
+    signal: AbortSignal.timeout(2_000),
+  })
+  if (!response.ok) throw new Error('HTTP indisponible')
+  console.info('OK — API Convex locale joignable')
+} catch {
+  failed = true
+  console.error('ÉCHEC — API Convex locale: exécuter pnpm services:up.')
+}
+console.info(
+  'Diagnostic local en lecture seule terminé. Aucune valeur de secret affichée.',
+)
+process.exitCode = failed ? 1 : 0

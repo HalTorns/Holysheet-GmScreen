@@ -1,0 +1,39 @@
+name: ${COMPOSE_PROJECT_NAME:?Run pnpm setup to configure this checkout}
+services:
+  backend:
+    image: ghcr.io/get-convex/convex-backend@sha256:d715e9ec088784407ca4ba2d3db592702cd328d02c76cdca3852c0018f2a76b4
+    restart: unless-stopped
+    stop_signal: SIGINT
+    stop_grace_period: 10s
+    ports:
+      - '127.0.0.1:3210:3210'
+      - '127.0.0.1:3211:3211'
+    env_file: .env.docker
+    environment:
+      CONVEX_CLOUD_ORIGIN: http://127.0.0.1:3210
+      CONVEX_SITE_ORIGIN: http://127.0.0.1:3211
+      DISABLE_BEACON: 'true'
+      REDACT_LOGS_TO_CLIENT: 'true'
+      RUST_LOG: warn
+    volumes:
+      - convex-data:/convex/data
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:3210/version']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  mailpit:
+    image: axllent/mailpit@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8025:8025'
+    environment:
+      MP_MAX_MESSAGES: '100'
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  convex-data:

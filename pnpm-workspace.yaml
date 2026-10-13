@@ -1,0 +1,11 @@
+packages:
+  - .
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - '@tanstack/react-query@5.104.2'
+  - '@tanstack/query-core@5.104.2'
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+patchedDependencies:
+  '@convex-dev/better-auth@0.12.5': patches/@convex-dev__better-auth@0.12.5.patch

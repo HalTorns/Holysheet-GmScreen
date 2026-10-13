@@ -1,0 +1,118 @@
+import { passkey } from '@better-auth/passkey'
+import { convex } from '@convex-dev/better-auth/plugins'
+import { emailOTP } from 'better-auth/plugins/email-otp'
+import { organization } from 'better-auth/plugins/organization'
+import { APIError } from 'better-auth/api'
+import type { DBAdapterInstance } from 'better-auth'
+import type { BetterAuthOptions } from 'better-auth/minimal'
+import { RECENT_AUTH_MAX_AGE_SECONDS } from '../shared/validation'
+import { appConfig } from '../shared/app-config'
+import authConfig from './auth.config'
+
+export type AuthSettings = {
+  siteUrl: string
+  secret: string
+  passkeyRpId: string
+}
+
+type OtpDelivery = (message: { email: string; otp: string }) => Promise<void>
+
+function requirePasskeyVerification(userVerified: boolean | undefined) {
+  if (!userVerified) {
+    throw new APIError('FORBIDDEN', {
+      code: 'PASSKEY_USER_VERIFICATION_REQUIRED',
+      message: 'Verify this passkey with a PIN or biometrics.',
+    })
+  }
+}
+
+// Used only by the schema generator and component table introspection.
+// Runtime authentication always supplies validated deployment settings.
+export const SCHEMA_AUTH_SETTINGS: AuthSettings = {
+  siteUrl: 'http://localhost:3000',
+  secret: 'schema-generation-only-not-a-runtime-secret',
+  passkeyRpId: 'localhost',
+}
+
+export function buildAuthOptions(
+  database: DBAdapterInstance,
+  settings: AuthSettings,
+  sendVerificationOTP: OtpDelivery,
+) {
+  return {
+    appName: appConfig.name,
+    baseURL: settings.siteUrl,
+    secret: settings.secret,
+    trustedOrigins: [settings.siteUrl],
+    database,
+    emailAndPassword: { enabled: false },
+    account: { accountLinking: { enabled: false } },
+    user: { deleteUser: { enabled: false }, changeEmail: { enabled: false } },
+    session: {
+      expiresIn: 60 * 60 * 24 * 7,
+      updateAge: 60 * 60 * 24,
+      freshAge: RECENT_AUTH_MAX_AGE_SECONDS,
+      cookieCache: { enabled: false },
+    },
+    rateLimit: {
+      enabled: true,
+      storage: 'database',
+      window: 60,
+      max: 120,
+      customRules: {
+        // Public verification keys are also fetched by Convex. A shared bucket
+        // here lets anonymous reads prevent every user from validating a JWT.
+        '/convex/jwks': false,
+        '/sign-in/email-otp': { window: 60, max: 60 },
+        '/passkey/verify-authentication': { window: 60, max: 60 },
+      },
+    },
+    advanced: {
+      // No trusted network perimeter is assumed, including direct Convex HTTP access.
+      // Better Auth then uses a shared per-path bucket; user/email quotas are separate.
+      ipAddress: { ipAddressHeaders: [] },
+      useSecureCookies: settings.siteUrl.startsWith('https://'),
+      defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' },
+    },
+    plugins: [
+      // Keep the optional module's schema stable in personal mode. Organization
+      // endpoints are guarded in auth.ts; writes use atomic Convex operations.
+      organization({ allowUserToCreateOrganization: false }),
+      emailOTP({
+        sendVerificationOTP,
+        otpLength: 6,
+        expiresIn: 300,
+        allowedAttempts: 3,
+        storeOTP: 'hashed',
+        resendStrategy: 'rotate',
+        rateLimit: { window: 60, max: 100 },
+        changeEmail: { enabled: false },
+      }),
+      passkey({
+        rpID: settings.passkeyRpId,
+        rpName: appConfig.name,
+        origin: settings.siteUrl,
+        authenticatorSelection: { userVerification: 'required' },
+        // Better Auth 1.6.22 does not require the signed UV flag by default.
+        // These hooks run after cryptographic verification, before persisting
+        // the credential or creating a session; client options alone cannot
+        // enforce this policy against a direct API caller.
+        registration: {
+          afterVerification: ({ verification }) => {
+            requirePasskeyVerification(
+              verification.registrationInfo?.userVerified,
+            )
+          },
+        },
+        authentication: {
+          afterVerification: ({ verification }) => {
+            requirePasskeyVerification(
+              verification.authenticationInfo.userVerified,
+            )
+          },
+        },
+      }),
+      convex({ authConfig }),
+    ],
+  } satisfies BetterAuthOptions
+}
