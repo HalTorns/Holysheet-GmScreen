@@ -4,7 +4,7 @@
 
 Après `pnpm setup`, lancer `pnpm dev` et, pendant les changements backend, `pnpm backend:dev` dans un second terminal. Les modifications de schéma Better Auth nécessitent `pnpm auth:generate` avant le déploiement des fonctions.
 
-Le frontend utilise `http://localhost:3000`. Mailpit affiche les emails sur le port 8025 et reçoit les envois via REST depuis le conteneur Convex. Le port SMTP n’est pas nécessaire au socle. Les données Convex restent dans le volume Docker lors d’un arrêt normal ; les emails Mailpit sont temporaires.
+Le frontend utilise `http://localhost:3000`. Mailpit affiche les emails sur le port 8025 et reçoit les envois via REST depuis le conteneur Convex. Le port SMTP n’est pas nécessaire au socle. Les données Convex restent dans le volume Docker lors d’un arrêt normal ; les emails Mailpit sont temporaires. Le dashboard Convex tourne sur `http://127.0.0.1:6791` : `pnpm dashboard` facilite la connexion admin locale sur Mac. Voir [le démarrage d’un nouveau projet](new-project.md) pour la connexion, l’isolation et le passage d’un projet à l’autre.
 
 Exécuter `pnpm doctor` pour diagnostiquer la sélection locale, les versions, les permissions et l’exclusion Git des fichiers privés, les URLs et la santé des services. Ce diagnostic reste en lecture seule et n’affiche aucune valeur de secret. `pnpm services:status` affiche les conteneurs du checkout ; `pnpm services:up` et `pnpm services:down` utilisent son identité Docker persistante.
 
@@ -16,6 +16,8 @@ Chaque nouveau checkout reçoit un projet Compose distinct dans `.env.docker`, l
 
 Les tests backend Convex protègent les validations, droits de propriétaire, sessions et quotas avec des cas autorisés et interdits. Les E2E protègent les risques de transport et de cycle de vie : SSR anonyme, code réellement envoyé, cookies, CRUD persistant, isolation via API directe, révocation entre navigateurs, cérémonie WebAuthn virtuelle, export privé et suppression de compte. Le test de restauration crée des données et une passkey réelles avant l’exercice sur un backend jetable.
 
+Le parcours dashboard utilise un contexte admin séparé : il lit une ressource créée dans l’application, vérifie la clé hors HTML/URL/`localStorage`, puis son effacement au logout et la connexion requise après reload. Le runner conserve les protections contre les traces et snapshots d’auth. Les tests de scripts exercent le setup et les lanceurs au vrai processus dans des checkouts jetables, notamment le refus d’un checkout copié et d’un port dashboard appartenant à un autre projet.
+
 ```sh
 pnpm check
 pnpm exec playwright install chromium
@@ -23,6 +25,8 @@ pnpm test:e2e
 ```
 
 Le lanceur E2E démarre Vite si nécessaire ; Convex et Mailpit doivent être initialisés. Chaque test utilise des adresses aléatoires et des contextes navigateur séparés. Aucun endpoint de production ne crée des comptes de test ou ne révèle un OTP.
+
+Les suites utilisent les quotas d’authentification réels. Laisser au moins une minute entre deux suites complètes sur une même instance ; des passes successives ou un autre navigateur actif peuvent cumuler leurs requêtes et déclencher un 429. La CI sépare les instances des deux modes. Attendre le renouvellement de la fenêtre avant de relancer localement, sans supprimer les compteurs ni assouplir les protections.
 
 Pour vérifier le build SSR et la CSP avec nonce, arrêter Vite, lancer `pnpm build` puis `PLAYWRIGHT_PRODUCTION=1 pnpm test:e2e`. Le lanceur démarre alors `pnpm start`. Le test de sécurité vérifie le refus d’une origine étrangère, l’hydratation sous CSP et le blocage d’un script injecté sans nonce.
 

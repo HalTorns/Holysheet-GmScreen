@@ -23,6 +23,26 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+  dashboard:
+    # Same upstream revision as the backend: 5c7cb5bc7db457290f1769f95f1d1340912f7fd7.
+    image: ghcr.io/get-convex/convex-dashboard@sha256:f85cf0d0448b9c835ae3df5c7c1c6f0145dd4c8f0f92eb0245daf304efdd9f1a
+    restart: unless-stopped
+    stop_signal: SIGINT
+    stop_grace_period: 10s
+    ports:
+      - '127.0.0.1:6791:6791'
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: http://127.0.0.1:3210
+      NEXT_PUBLIC_LOAD_MONACO_INTERNALLY: 'true'
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:6791/']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
   mailpit:
     image: axllent/mailpit@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
     restart: unless-stopped

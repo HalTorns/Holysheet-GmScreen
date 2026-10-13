@@ -22,11 +22,13 @@ Les écrans restent écrits en français. `locale` configure les dates et `langu
 
 ## Démarrage d’un nouveau produit
 
+Suivre [la procédure template privé](new-project.md) pour créer le dépôt, initialiser des secrets et données indépendants et ouvrir les services de développement dans OrbStack.
+
 Avant le premier domaine, suivre [le guide de choix du modèle d’accès](project-start.md). Le développeur ou l’agent recommande le mode à partir de la propriété individuelle ou collective des données, puis consigne le choix et ses preuves dans `docs/decisions/access-model.md` du nouveau projet. Un SaaS sans espace d’équipe conserve le mode personnel ; les organisations servent les invitations, rôles par équipe et données qui survivent au départ de leur créateur.
 
 Créer un dépôt et des environnements dédiés à partir des fichiers versionnés du socle. Les `.env.local`, `.env.docker`, volumes Docker et archives de sauvegarde appartiennent au projet d’origine ; ne pas les copier dans le nouveau produit. Exécuter `pnpm install --frozen-lockfile` et `pnpm setup` dans son checkout, puis adapter l’identité publique.
 
-Chaque checkout possède une identité Compose locale persistée dans `.env.docker` et un volume dédié. Le setup refuse une configuration copiée d’un autre emplacement et ne récupère pas les données d’un autre projet. Les ports locaux restent fixes (`3000`, `3210`, `3211`, `8025`) : un seul projet issu du socle peut les occuper à la fois. Pour passer au suivant, arrêter le frontend et utiliser `pnpm services:down` dans le projet actif, qui conserve ses données, avant le setup du nouveau checkout. Des environnements simultanés demandent une configuration explicite et cohérente de leurs ports et origines.
+Chaque checkout possède une identité Compose locale persistée dans `.env.docker` et un volume dédié. Le setup refuse une configuration copiée d’un autre emplacement et ne récupère pas les données d’un autre projet. Les ports locaux restent fixes (`3000`, `3210`, `3211`, `6791`, `8025`) : un seul projet issu du socle peut les occuper à la fois. Pour passer au suivant, arrêter le frontend et utiliser `pnpm services:down` dans le projet actif, qui conserve ses données, avant le setup du nouveau checkout. Des environnements simultanés demandent une configuration explicite et cohérente de leurs ports et origines.
 
 Avant le premier domaine partagé, décider quelles données restent personnelles et lesquelles sont rattachées à une organisation. Le module [organisations et rôles](organizations.md) est intégré et désactivé par défaut. Les ressources de référence illustrent les deux scopes ; appliquer `requireOrganizationPermission` et un index de tenant à chaque nouveau domaine partagé. Ajouter seulement un `organizationId` au formulaire ou un lien dans la navigation ne crée pas de contrôle d’accès.
 

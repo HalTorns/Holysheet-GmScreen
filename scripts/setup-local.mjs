@@ -97,7 +97,7 @@ async function setup() {
     { env, capture: true },
   )
   console.info(
-    'Local backend ready. Run pnpm dev; emails are available at http://localhost:8025. Local settings and secrets were preserved.',
+    'Services locaux prêts : Convex, dashboard et Mailpit. Configuration et secrets existants conservés.\nLancer pnpm dev et pnpm backend:dev dans deux terminaux.\nApplication : http://localhost:3000 — Emails : http://localhost:8025\nDashboard : pnpm dashboard (http://127.0.0.1:6791).',
   )
 }
 

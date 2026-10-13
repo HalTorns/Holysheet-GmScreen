@@ -16,6 +16,7 @@ export const projectRoot = realpathSync(
   dirname(dirname(fileURLToPath(import.meta.url))),
 )
 export const backendUrl = 'http://127.0.0.1:3210'
+export const dashboardUrl = 'http://127.0.0.1:6791'
 const cloudSelectors = [
   'CONVEX_DEPLOYMENT',
   'CONVEX_DEPLOY_KEY',
@@ -236,7 +237,7 @@ export function composeEnvironment(configuration) {
 }
 
 export function assertDockerPortsOwnership(configuration) {
-  for (const port of ['3210', '3211', '8025']) {
+  for (const port of ['3210', '3211', '6791', '8025']) {
     const projects = run(
       'docker',
       [

@@ -43,6 +43,8 @@ Le schéma Local Install appartient au projet mais ses champs dérivent de la co
 
 Les images Docker et actions CI sont également des dépendances. Actualiser leurs versions/digests dans une modification visible et revalider le démarrage, les E2E et une restauration. Dependabot propose des changements ; il ne les approuve pas automatiquement.
 
+Le backend et le dashboard locaux utilisent la même révision Convex `5c7cb5bc7db457290f1769f95f1d1340912f7fd7`, avec les digests multi-architecture épinglés dans `docker-compose.yml`. Mettre à jour cet ensemble conjointement. Vérifier aussi le chargement du dashboard, la lecture des tables, le logout et l’absence de clé admin dans le HTML, les URLs, les logs ou `localStorage` ; ne pas activer `NEXT_PUBLIC_ADMIN_KEY` pour automatiser sa connexion.
+
 L’intégration serveur Vite utilise `nitro@3.0.260903-beta`, verrouillé exactement. Cette ligne bêta nécessite une preuve sur le serveur construit à chaque évolution : `pnpm check` puis `PLAYWRIGHT_PRODUCTION=1 pnpm test:e2e`, avec le serveur de développement arrêté. Le build SSR actuel émet des avertissements upstream `MODULE_LEVEL_DIRECTIVE` liés aux directives `use client` de dépendances ; ils n’empêchent pas le build. Examiner les nouveaux avertissements et erreurs sans masquer globalement les sorties du bundler.
 
 Lors des navigations qui annulent une requête en cours, Nitro peut également journaliser `aborted` / `ECONNRESET` comme erreur 500. Ce bruit a été observé pendant les E2E réussis ; il ne démontre pas une panne d’auth ou du backend. Distinguer les annulations clientes des erreurs effectives dans la supervision de la cible et suivre l’évolution du runtime, sans supprimer globalement les erreurs serveur.

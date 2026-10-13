@@ -4,6 +4,8 @@ Socle TypeScript pour une application web avec SSR, données temps réel et auth
 
 ## Démarrer en local
 
+Pour un nouveau produit, créer un dépôt **privé depuis le template** : suivre [la procédure nouveau projet](docs/new-project.md), qui garde secrets, données et configuration propres à chaque application.
+
 Prérequis : Node.js 26.11.0 (versions prises en charge : `>=24 <27`), pnpm 11.8.0, Docker avec Compose et moteur Docker démarré.
 
 ```sh
@@ -21,7 +23,10 @@ Ouvrir [localhost:3000](http://localhost:3000), utiliser une adresse email de d�
 | Frontend SSR            | http://localhost:3000 |
 | API et WebSocket Convex | http://127.0.0.1:3210 |
 | Actions HTTP Convex     | http://127.0.0.1:3211 |
+| Dashboard Convex        | http://127.0.0.1:6791 |
 | Boîte email Mailpit     | http://localhost:8025 |
+
+Pendant les changements backend, lancer `pnpm backend:dev` dans un second terminal. `pnpm dashboard` ouvre l’outil admin local et, sur Mac, copie sa clé pour la connexion. Coller dans **Admin Key**, puis **Log In** ; remplacer le presse-papiers et se déconnecter après usage. Le dashboard inspecte toute l’instance, indépendamment des rôles de l’application.
 
 ## Commandes
 
@@ -30,6 +35,8 @@ Ouvrir [localhost:3000](http://localhost:3000), utiliser une adresse email de d�
 | `pnpm dev`                    | Frontend avec rechargement                         |
 | `pnpm backend:dev`            | Surveiller et déployer les modifications Convex    |
 | `pnpm backend:push`           | Déployer les fonctions locales une fois            |
+| `pnpm dashboard`              | Ouvrir le dashboard admin Convex local             |
+| `pnpm doctor`                 | Vérifier configuration et santé des services       |
 | `pnpm auth:generate`          | Régénérer le schéma Better Auth Local Install      |
 | `pnpm check`                  | Types, lint, format, tests backend et build        |
 | `pnpm test:e2e`               | Parcours réels Chromium, Convex et Mailpit         |
@@ -53,6 +60,7 @@ Pour vérifier le serveur construit et sa CSP stricte : `pnpm build`, puis `PLAY
 ## Documents de référence
 
 - [Architecture et conventions](docs/architecture.md)
+- [Créer une application depuis le template privé](docs/new-project.md)
 - [Adapter le socle à un nouveau projet](docs/adopting.md)
 - [Choisir le mode personnel ou organisations au démarrage](docs/project-start.md)
 - [Sécurité et limites du socle](docs/security.md)

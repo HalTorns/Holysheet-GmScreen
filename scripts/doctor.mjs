@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import {
   assertLocalDeploymentSelection,
   backendUrl,
+  dashboardUrl,
   composeArguments,
   composeEnvironment,
   prepareDockerEnvironment,
@@ -77,7 +78,7 @@ check('Identité Docker du checkout et services sains', () => {
         .split('\n')
         .filter(Boolean)
         .map((line) => JSON.parse(line))
-  for (const service of ['backend', 'mailpit']) {
+  for (const service of ['backend', 'dashboard', 'mailpit']) {
     if (
       !containers.some(
         (container) =>
@@ -91,15 +92,20 @@ check('Identité Docker du checkout et services sains', () => {
       )
   }
 })
-try {
-  const response = await fetch(`${backendUrl}/version`, {
-    signal: AbortSignal.timeout(2_000),
-  })
-  if (!response.ok) throw new Error('HTTP indisponible')
-  console.info('OK — API Convex locale joignable')
-} catch {
-  failed = true
-  console.error('ÉCHEC — API Convex locale: exécuter pnpm services:up.')
+for (const [name, url] of [
+  ['API Convex', `${backendUrl}/version`],
+  ['Dashboard Convex', dashboardUrl],
+]) {
+  try {
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(2_000),
+    })
+    if (!response.ok) throw new Error('HTTP indisponible')
+    console.info(`OK — ${name} local joignable`)
+  } catch {
+    failed = true
+    console.error(`ÉCHEC — ${name} local: exécuter pnpm services:up.`)
+  }
 }
 console.info(
   'Diagnostic local en lecture seule terminé. Aucune valeur de secret affichée.',

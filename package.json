@@ -14,6 +14,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 3000",
     "setup": "node scripts/setup-local.mjs",
     "doctor": "node scripts/doctor.mjs",
+    "dashboard": "node scripts/dashboard.mjs",
     "backup:verify": "node scripts/verify-restore.mjs",
     "services:up": "node scripts/services.mjs up",
     "services:down": "node scripts/services.mjs down",

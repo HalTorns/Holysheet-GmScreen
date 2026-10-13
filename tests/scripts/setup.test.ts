@@ -49,7 +49,7 @@ const args = process.argv.slice(2)
 appendFileSync(process.env.TEST_COMMAND_LOG, JSON.stringify({ program: process.argv[1].split('/').at(-1), args, cloudSelected: Boolean(process.env.CONVEX_DEPLOY_KEY || process.env.CONVEX_DEPLOYMENT_TOKEN || process.env.CONVEX_DEPLOYMENT), localUrl: process.env.CONVEX_SELF_HOSTED_URL }) + '\n')
 if (args.includes('./generate_admin_key.sh')) console.log('development-only-fake-key')
 if (args.includes('ps') && args.includes('-a') && process.env.TEST_LEGACY_OWNER) console.log('development-only-container-id')
-if (args.some((argument) => argument.startsWith('publish=')) && process.env.TEST_PORT_PROJECT) console.log(process.env.TEST_PORT_PROJECT)
+if (args.includes('publish=' + process.env.TEST_PORT_NUMBER) && process.env.TEST_PORT_PROJECT) console.log(process.env.TEST_PORT_PROJECT)
 if (args.includes('inspect')) console.log(process.env.TEST_COMPOSE_OWNER || process.cwd())
 `
   await Promise.all(
@@ -172,7 +172,7 @@ test('réexécuter le setup conserve les variables du projet et les secrets loca
   )
 })
 
-test('deux nouveaux checkouts reçoivent des identités Docker différentes', async () => {
+test('deux nouveaux checkouts reçoivent des identités et secrets différents', async () => {
   const first = await fixture()
   const second = await fixture()
   expect(setup(first).status).toBe(0)
@@ -184,6 +184,9 @@ test('deux nouveaux checkouts reçoivent des identités Docker différentes', as
     await readFile(join(second.directory, '.env.docker'), 'utf8'),
   )
   expect(before.COMPOSE_PROJECT_NAME).not.toBe(after.COMPOSE_PROJECT_NAME)
+  // Compare without including private values in a failed assertion's output.
+  expect(before.INSTANCE_SECRET !== after.INSTANCE_SECRET).toBe(true)
+  expect(before.LOCAL_AUTH_SECRET !== after.LOCAL_AUTH_SECRET).toBe(true)
 })
 
 test('une configuration Docker copiée depuis un autre checkout est refusée avant Docker', async () => {
@@ -200,37 +203,50 @@ test('une configuration Docker copiée depuis un autre checkout est refusée ava
   expect(await commands(copy.log)).toBe('')
 })
 
-test('le lanceur organisations refuse un checkout copié avant tout appel Convex', async () => {
-  const original = await fixture()
-  expect(setup(original).status).toBe(0)
-  const copy = await fixture()
-  for (const name of ['.env.docker', '.env.local'])
-    await copyFile(join(original.directory, name), join(copy.directory, name))
-  const result = spawnSync(
-    process.execPath,
-    [join(copy.directory, 'scripts/test-organizations.mjs')],
-    {
-      cwd: copy.directory,
-      env: copy.environment,
-      encoding: 'utf8',
-      timeout: 5_000,
-    },
-  )
-  expect(result.status).toBe(1)
-  expect(result.stderr).toContain('another checkout')
-  expect(await commands(copy.log)).toBe('')
-})
+test.each(['test-organizations.mjs', 'dashboard.mjs'])(
+  'le lanceur %s refuse un checkout copié avant tout accès privé',
+  async (script) => {
+    const original = await fixture()
+    expect(setup(original).status).toBe(0)
+    const copy = await fixture()
+    for (const name of ['.env.docker', '.env.local'])
+      await copyFile(join(original.directory, name), join(copy.directory, name))
+    const result = spawnSync(
+      process.execPath,
+      [join(copy.directory, 'scripts', script)],
+      {
+        cwd: copy.directory,
+        env: copy.environment,
+        encoding: 'utf8',
+        timeout: 5_000,
+      },
+    )
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('another checkout')
+    expect(await commands(copy.log)).toBe('')
+  },
+)
 
-test('un port publié par un autre projet refuse le setup avant création de services', async () => {
-  const local = await fixture()
-  const result = setup(local, { TEST_PORT_PROJECT: 'another-project' })
-  expect(result.status).toBe(1)
-  expect(result.stderr).toContain('already published by another Docker project')
-  const invocations = await commands(local.log)
-  expect(invocations).not.toContain('"up"')
-  expect(invocations).not.toContain('"exec"')
-  await expect(readFile(join(local.directory, '.env.docker'))).rejects.toThrow()
-})
+test.each(['3210', '6791'])(
+  'le port %s d’un autre projet refuse le setup avant création de services',
+  async (port) => {
+    const local = await fixture()
+    const result = setup(local, {
+      TEST_PORT_PROJECT: 'another-project',
+      TEST_PORT_NUMBER: port,
+    })
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      'already published by another Docker project',
+    )
+    const invocations = await commands(local.log)
+    expect(invocations).not.toContain('"up"')
+    expect(invocations).not.toContain('"exec"')
+    await expect(
+      readFile(join(local.directory, '.env.docker')),
+    ).rejects.toThrow()
+  },
+)
 
 test('un ancien projet Docker appartenant à un autre checkout ne peut pas être adopté', async () => {
   const local = await fixture()
