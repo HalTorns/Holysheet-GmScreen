@@ -20,7 +20,7 @@ Les changements de rôles, départs et suppressions de comptes protègent le der
 
 Le dashboard Docker est un outil admin local, séparé du navigateur de l’application. Sa clé n’est pas injectée dans son HTML ou sa configuration publique ; le développeur la saisit et l’image officielle épinglée la conserve uniquement dans la session de l’onglet. `pnpm dashboard` la transmet au presse-papiers macOS sans l’afficher, après validation du checkout et du backend. Se déconnecter et remplacer le presse-papiers après usage. Cette clé contourne les droits métier : le dashboard ne sert pas à prouver les permissions utilisateur. Tous les services restent liés à loopback. Voir [la procédure dashboard](new-project.md#utiliser-le-dashboard).
 
-- Secrets du backend dans Convex. `.env.local` n’est pas versionné. `VITE_*` ne contient que des URLs publiques.
+- Secrets du backend dans Convex. `.env.local` n’est pas versionné. `VITE_*` contient uniquement des URLs, flags, DSN Sentry publics et clés publiques de projet PostHog ; aucun secret admin, OAuth ou serveur.
 - HTTPS en production ; cookies `HttpOnly`, `Secure` et `SameSite=Lax` adaptés au même domaine.
 - Base URL et origines explicites. Protections CSRF et validation des redirections actives.
 - Pas de cache supplémentaire de session sans analyse du délai de révocation.
@@ -34,15 +34,15 @@ La CSP de production utilise un nonce distinct par réponse et conserve les scri
 
 ## Menaces à traiter pour chaque application
 
-| Frontière             | Règle à ajouter avec la fonctionnalité                                                 |
-| --------------------- | -------------------------------------------------------------------------------------- |
-| Organisation          | Vérifier l’appartenance active et le rôle à chaque accès ; index incluant le tenant    |
-| Upload                | Quota, taille, type réellement inspecté, droit sur l’objet et téléchargement contrôlé  |
-| Webhook               | Signature sur le corps brut, durée admise, identifiant traité une seule fois           |
-| URL distante          | Hôtes et schémas autorisés, blocage des adresses internes, délai et taille de réponse  |
-| Contenu utilisateur   | Échappement par défaut ; assainissement explicite du HTML riche                        |
-| Email et récupération | Quotas d’envoi/essai, réponses limitant l’énumération et alertes adaptées              |
-| IA                    | Budgets par utilisateur/tenant, droits revalidés pour les outils, secrets hors prompts |
+| Frontière | Règle à ajouter avec la fonctionnalité |
+| --- | --- |
+| Organisation | Vérifier l’appartenance active et le rôle à chaque accès ; index incluant le tenant |
+| Upload | Quota, taille, type réellement inspecté, droit sur l’objet et téléchargement contrôlé |
+| Webhook | Signature sur le corps brut, durée admise, identifiant traité une seule fois |
+| URL distante | Hôtes et schémas autorisés, blocage des adresses internes, délai et taille de réponse |
+| Contenu utilisateur | Échappement par défaut ; assainissement explicite du HTML riche |
+| Email et récupération | Quotas d’envoi/essai, réponses limitant l’énumération et alertes adaptées |
+| IA | Budgets par utilisateur/tenant, droits revalidés pour les outils, secrets hors prompts |
 
 Les gardes UI améliorent la navigation ; les tests directs d’API prouvent les règles de sécurité. Ajouter le cas interdit lors de chaque nouvelle règle d’accès.
 

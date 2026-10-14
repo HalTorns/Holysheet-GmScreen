@@ -1,7 +1,7 @@
 import { appConfig } from '@shared/app-config'
 
 export function formatAccountDate(
-  value: string | number | Date | null | undefined,
+  value: string | number | Date | null | undefined
 ): string {
   if (!value) return 'Date indisponible'
   const date = value instanceof Date ? value : new Date(value)
@@ -15,7 +15,7 @@ export function formatAccountDate(
 }
 
 export function sessionDeviceLabel(
-  userAgent: string | null | undefined,
+  userAgent: string | null | undefined
 ): string {
   if (!userAgent) return 'Appareil non identifié'
   let browser = 'Navigateur'

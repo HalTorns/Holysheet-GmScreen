@@ -20,6 +20,11 @@ export const tables = {
     image: v.optional(v.union(v.null(), v.string())),
     createdAt: v.number(),
     updatedAt: v.number(),
+    twoFactorEnabled: v.optional(v.union(v.null(), v.boolean())),
+    role: v.optional(v.union(v.null(), v.string())),
+    banned: v.optional(v.union(v.null(), v.boolean())),
+    banReason: v.optional(v.union(v.null(), v.string())),
+    banExpires: v.optional(v.union(v.null(), v.number())),
     userId: v.optional(v.union(v.null(), v.string())),
   })
     .index("email_name", ["email","name"])
@@ -34,6 +39,7 @@ export const tables = {
     userAgent: v.optional(v.union(v.null(), v.string())),
     userId: v.string(),
     activeOrganizationId: v.optional(v.union(v.null(), v.string())),
+    impersonatedBy: v.optional(v.union(v.null(), v.string())),
   })
     .index("expiresAt", ["expiresAt"])
     .index("expiresAt_userId", ["expiresAt","userId"])
@@ -98,6 +104,15 @@ export const tables = {
     .index("role", ["role"])
     .index("status", ["status"])
     .index("inviterId", ["inviterId"]),
+  twoFactor: defineTable({
+    secret: v.string(),
+    backupCodes: v.string(),
+    userId: v.string(),
+    verified: v.optional(v.union(v.null(), v.boolean())),
+    failedVerificationCount: v.optional(v.union(v.null(), v.number())),
+    lockedUntil: v.optional(v.union(v.null(), v.number())),
+  })
+    .index("userId", ["userId"]),
   passkey: defineTable({
     name: v.optional(v.union(v.null(), v.string())),
     publicKey: v.string(),

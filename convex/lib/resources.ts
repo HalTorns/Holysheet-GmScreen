@@ -1,10 +1,8 @@
-import { ConvexError } from 'convex/values'
 import type { PaginationOptions } from 'convex/server'
-import {
-  MAX_PAGE_SIZE,
-  resourceSchema,
-  type ResourceInput,
-} from '../../shared/validation'
+import { ConvexError } from 'convex/values'
+
+import { MAX_PAGE_SIZE, resourceSchema } from '../../shared/validation'
+import type { ResourceInput } from '../../shared/validation'
 import type { Doc } from '../_generated/dataModel'
 import type { QueryCtx } from '../_generated/server'
 
@@ -48,13 +46,13 @@ export function publicResource(resource: Doc<'resources'>) {
 export async function listOwnedResources(
   ctx: QueryCtx,
   ownerId: string,
-  options: PaginationOptions,
+  options: PaginationOptions
 ) {
   validatePagination(options)
   const { page, isDone, continueCursor } = await ctx.db
     .query('resources')
     .withIndex('by_owner', (index) =>
-      index.eq('ownerId', ownerId).eq('organizationId', undefined),
+      index.eq('ownerId', ownerId).eq('organizationId', undefined)
     )
     .order('desc')
     .paginate(options)
@@ -64,7 +62,7 @@ export async function listOwnedResources(
 export async function listOrganizationResources(
   ctx: QueryCtx,
   organizationId: string,
-  options: PaginationOptions,
+  options: PaginationOptions
 ) {
   validatePagination(options)
   const { page, isDone, continueCursor } = await ctx.db

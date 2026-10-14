@@ -1,17 +1,15 @@
+import { api } from '@convex/_generated/api'
+import { canWriteOrganizationResources } from '@shared/organizations'
+import type { OrganizationRole } from '@shared/organizations'
 import { usePaginatedQuery } from 'convex/react'
 import { FileText, Plus, Radio } from 'lucide-react'
 import { useState } from 'react'
 
-import { api } from '@convex/_generated/api'
 import { LoadingState } from '@/components/page-state'
 import { Button } from '@/components/ui/button'
 import { ResourceCard } from '@/features/resources/resource-card'
 import { ResourceDialog } from '@/features/resources/resource-form'
 import type { Resource } from '@/features/resources/types'
-import {
-  canWriteOrganizationResources,
-  type OrganizationRole,
-} from '@shared/organizations'
 
 const PAGE_SIZE = 12
 
@@ -25,11 +23,11 @@ export function ResourceList({
   const { results, status, loadMore } = usePaginatedQuery(
     api.resources.list,
     organization ? { organizationId: organization.id } : {},
-    { initialNumItems: PAGE_SIZE },
+    { initialNumItems: PAGE_SIZE }
   )
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [selectedResource, setSelectedResource] = useState<Resource | null>(
-    null,
+    null
   )
   function create() {
     setSelectedResource(null)

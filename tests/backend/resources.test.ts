@@ -1,5 +1,6 @@
 import { makeFunctionReference } from 'convex/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
 import { api, components } from '../../convex/_generated/api'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
@@ -16,7 +17,7 @@ describe('Owner-only resource API', () => {
         await alice.client.mutation(api.resources.create, {
           title: ` Alice ${index} `,
           description: ' private ',
-        }),
+        })
       )
     }
     const id = ids[0]
@@ -33,13 +34,13 @@ describe('Owner-only resource API', () => {
     expect(secondPage.isDone).toBe(true)
     expect(
       new Set(
-        [...firstPage.page, ...secondPage.page].map((resource) => resource._id),
-      ).size,
+        [...firstPage.page, ...secondPage.page].map((resource) => resource._id)
+      ).size
     ).toBe(3)
     expect(
       await bob.client.query(api.resources.list, {
         paginationOpts: { numItems: 2, cursor: null },
-      }),
+      })
     ).toMatchObject({ page: [], isDone: true })
     expect(await bob.client.query(api.resources.get, { id })).toBeNull()
     await expect(
@@ -47,10 +48,10 @@ describe('Owner-only resource API', () => {
         id,
         title: 'stolen',
         description: '',
-      }),
+      })
     ).rejects.toThrow('NOT_FOUND')
     await expect(
-      bob.client.mutation(api.resources.remove, { id }),
+      bob.client.mutation(api.resources.remove, { id })
     ).rejects.toThrow('NOT_FOUND')
     expect(await alice.client.query(api.resources.get, { id })).toMatchObject({
       title: 'Alice 0',
@@ -79,14 +80,14 @@ describe('Owner-only resource API', () => {
       backend.mutation(api.resources.create, {
         title: 'Anonymous',
         description: '',
-      }),
+      })
     ).rejects.toThrow()
     const mismatched = backend.withIdentity({
       ...alice.identity,
       sessionId: bob.sessionId,
     })
     await expect(
-      mismatched.query(api.resources.list, listArgs),
+      mismatched.query(api.resources.list, listArgs)
     ).rejects.toThrow('UNAUTHENTICATED')
     await backend.mutation(components.betterAuth.adapter.updateOne, {
       input: {
@@ -96,7 +97,7 @@ describe('Owner-only resource API', () => {
       },
     })
     await expect(
-      alice.client.query(api.resources.list, listArgs),
+      alice.client.query(api.resources.list, listArgs)
     ).rejects.toThrow()
     await backend.mutation(components.betterAuth.adapter.deleteOne, {
       input: {
@@ -108,7 +109,7 @@ describe('Owner-only resource API', () => {
       bob.client.mutation(api.resources.create, {
         title: 'Revoked',
         description: '',
-      }),
+      })
     ).rejects.toThrow()
   })
 
@@ -117,13 +118,13 @@ describe('Owner-only resource API', () => {
     const user = await createAuthenticatedUser(
       backend,
       'unverified@example.com',
-      { emailVerified: false },
+      { emailVerified: false }
     )
     await expect(
       user.client.mutation(api.resources.create, {
         title: 'Private',
         description: '',
-      }),
+      })
     ).rejects.toThrow('UNAUTHENTICATED')
     expect(await user.client.query(api.auth.getCurrentUser, {})).toBeNull()
   })
@@ -132,7 +133,7 @@ describe('Owner-only resource API', () => {
     const backend = createBackendTest()
     const { client } = await createAuthenticatedUser(
       backend,
-      'alice@example.com',
+      'alice@example.com'
     )
     const create = makeFunctionReference<'mutation'>('resources:create')
     for (const input of [
@@ -143,22 +144,22 @@ describe('Owner-only resource API', () => {
     for (const input of [
       { title: ' ', description: '' },
       { title: 'x'.repeat(121), description: '' },
-      { title: 'Valid', description: 'x'.repeat(4_001) },
+      { title: 'Valid', description: 'x'.repeat(4001) },
     ])
       await expect(
-        client.mutation(api.resources.create, input),
+        client.mutation(api.resources.create, input)
       ).rejects.toThrow('INVALID_INPUT')
     for (const numItems of [0, 51, 1.5]) {
       await expect(
         client.query(api.resources.list, {
           paginationOpts: { numItems, cursor: null },
-        }),
+        })
       ).rejects.toThrow('INVALID_INPUT')
     }
     expect(
       await client.query(api.resources.list, {
         paginationOpts: { numItems: 50, cursor: null },
-      }),
+      })
     ).toMatchObject({ page: [] })
   })
 
@@ -177,20 +178,20 @@ describe('Owner-only resource API', () => {
       alice.client.mutation(api.resources.create, {
         title: 'Too many',
         description: '',
-      }),
+      })
     ).rejects.toThrow('RATE_LIMITED')
     await expect(
       bob.client.mutation(api.resources.create, {
         title: 'Allowed',
         description: '',
-      }),
+      })
     ).resolves.toBeTypeOf('string')
     vi.advanceTimersByTime(60_000)
     await expect(
       alice.client.mutation(api.resources.create, {
         title: 'Refilled',
         description: '',
-      }),
+      })
     ).resolves.toBeTypeOf('string')
   })
 })

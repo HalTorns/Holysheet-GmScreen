@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto'
+
 import { expect, test } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 import { ConvexError } from 'convex/values'
+
 import { api } from '../../convex/_generated/api'
+import { verifyLocalRestore } from './backup'
 import {
   SITE_URL,
   createEmail,
@@ -12,7 +15,6 @@ import {
   getAuthenticatedClient,
   signInWithEmail,
 } from './helpers'
-import { verifyLocalRestore } from './backup'
 
 test.beforeAll(async () => {
   const expected = process.env.PLAYWRIGHT_EXPECT_ORGANIZATIONS
@@ -20,7 +22,7 @@ test.beforeAll(async () => {
   expect(['false', 'true']).toContain(expected)
   const capabilities = await getAnonymousClient().query(
     api.capabilities.get,
-    {},
+    {}
   )
   // A CI matrix leg must fail if it would silently exercise the other mode.
   expect(capabilities.organizations).toBe(expected === 'true')
@@ -39,7 +41,7 @@ async function expectErrorCode(operation: Promise<unknown>, code: string) {
       typeof details === 'object' &&
       details !== null &&
       'code' in details &&
-      details.code === code,
+      details.code === code
   ).toBe(true)
 }
 
@@ -48,19 +50,19 @@ test('le mode personnel cache les organisations et refuse leur API', async ({
 }) => {
   test.skip(
     (await getAnonymousClient().query(api.capabilities.get, {})).organizations,
-    'Ce parcours exige le mode personnel.',
+    'Ce parcours exige le mode personnel.'
   )
   await signInWithEmail(page, createEmail())
   const client = await getAuthenticatedClient(page.context())
   try {
     await expect(
-      page.getByRole('link', { name: 'Organisations', exact: true }),
+      page.getByRole('link', { name: 'Organisations', exact: true })
     ).toHaveCount(0)
     await page.goto('/app/organizations')
     await expect(page).toHaveURL(`${SITE_URL}/app`)
     await expectErrorCode(
       client.mutation(api.organizations.create, { name: 'Non activé' }),
-      'MODULE_DISABLED',
+      'MODULE_DISABLED'
     )
     const response = await page
       .context()
@@ -74,7 +76,7 @@ test('le mode personnel cache les organisations et refuse leur API', async ({
         await client.query(api.resources.list, {
           paginationOpts: { numItems: 20, cursor: null },
         })
-      ).page,
+      ).page
     ).toEqual([])
   } finally {
     await client.mutation(api.account.deleteAccount, { confirmation: 'DELETE' })
@@ -90,7 +92,7 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
   if (process.env.PLAYWRIGHT_ORGANIZATIONS) expect(enabled).toBe(true)
   test.skip(
     !enabled,
-    'Ce parcours exige le mode organisations ; utiliser pnpm test:e2e:organizations.',
+    'Ce parcours exige le mode organisations ; utiliser pnpm test:e2e:organizations.'
   )
   test.setTimeout(180_000)
   const ownerEmail = createEmail()
@@ -150,13 +152,13 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
       readerPage.getByRole('button', {
         name: 'Nouvelle ressource',
         exact: true,
-      }),
+      })
     ).toHaveCount(0)
     await expect(
       readerPage.getByRole('button', {
         name: `Modifier ${title}`,
         exact: true,
-      }),
+      })
     ).toHaveCount(0)
     const resources = await reader.query(api.resources.list, {
       organizationId,
@@ -170,14 +172,14 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
         title: 'Sans permission',
         description: '',
       }),
-      'FORBIDDEN',
+      'FORBIDDEN'
     )
     expect(
       (
         await reader.query(api.resources.list, {
           paginationOpts: { numItems: 20, cursor: null },
         })
-      ).page,
+      ).page
     ).toEqual([])
     const native = await page
       .context()
@@ -194,11 +196,11 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
       readerPage.getByRole('button', {
         name: 'Nouvelle ressource',
         exact: true,
-      }),
+      })
     ).toBeVisible()
     await createResource(readerPage, 'Créée par un membre')
     await expect(
-      page.getByText('Créée par un membre', { exact: true }),
+      page.getByText('Créée par un membre', { exact: true })
     ).toBeVisible()
     for (const width of [320, 390, 1440]) {
       await page.setViewportSize({ width, height: 900 })
@@ -208,7 +210,7 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
         overflowing: [...document.querySelectorAll('body *')]
           .filter(
             (element) =>
-              element.getBoundingClientRect().right > window.innerWidth + 1,
+              element.getBoundingClientRect().right > window.innerWidth + 1
           )
           .slice(0, 12)
           .map((element) => ({
@@ -220,15 +222,15 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
       }))
       expect(
         geometry.documentWidth <= geometry.viewport,
-        JSON.stringify(geometry),
+        JSON.stringify(geometry)
       ).toBe(true)
     }
     await readerPage.goto('/app/security')
     const exported = await exportAccountData(readerPage)
     expect(
       exported.organizations.some(
-        (item) => item.id === organizationId && item.role === 'member',
-      ),
+        (item) => item.id === organizationId && item.role === 'member'
+      )
     ).toBe(true)
     expect(exported.resources).toEqual([])
     await page
@@ -238,7 +240,7 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
       .getByRole('button', { name: 'Renommer l’organisation', exact: true })
       .click()
     await expect(
-      page.getByRole('heading', { name: `${name} renommée.`, exact: true }),
+      page.getByRole('heading', { name: `${name} renommée.`, exact: true })
     ).toBeVisible()
     await owner.mutation(api.organizations.invite, {
       organizationId,
@@ -247,11 +249,11 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
     })
     const report = await verifyLocalRestore()
     expect(
-      report.tables['_components/betterAuth/organization'],
+      report.tables['_components/betterAuth/organization']
     ).toBeGreaterThan(0)
     expect(report.tables['_components/betterAuth/member']).toBeGreaterThan(1)
     expect(report.tables['_components/betterAuth/invitation']).toBeGreaterThan(
-      0,
+      0
     )
     expect(report.tables.resources).toBeGreaterThan(0)
     await readerPage.goto(`/app/organizations/${organizationId}`)
@@ -278,7 +280,7 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
       })
       .toBe(true)
     expect(
-      (await owner.query(api.resources.get, { id: shared._id }))?.title,
+      (await owner.query(api.resources.get, { id: shared._id }))?.title
     ).toBe(title)
     await readerPage.goto(`/app/organizations/${organizationId}`)
     await expect(readerPage.getByText(title, { exact: true })).toHaveCount(0)

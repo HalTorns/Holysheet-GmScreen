@@ -1,6 +1,7 @@
 import { Button as ButtonPrimitive } from '@base-ui/react/button'
 import { useHydrated } from '@tanstack/react-router'
-import { cva, type VariantProps } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
 
@@ -27,7 +28,7 @@ const buttonVariants = cva(
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },
-  },
+  }
 )
 
 function Button({
@@ -50,4 +51,4 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+export { Button }

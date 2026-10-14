@@ -2,21 +2,21 @@
 
 ## Variables et portée
 
-| Variable                       | Emplacement                        | Exemple ou règle                                                |
-| ------------------------------ | ---------------------------------- | --------------------------------------------------------------- |
-| `VITE_SITE_URL`                | Build frontend et serveur SSR      | `https://app.example.com`                                       |
-| `VITE_CONVEX_URL`              | Build frontend et serveur SSR      | URL API/WebSocket du backend                                    |
-| `VITE_CONVEX_SITE_URL`         | Serveur SSR/config publique        | URL des actions HTTP du même backend                            |
-| `SITE_URL`                     | Variables Convex                   | Même origine exacte que le frontend                             |
-| `PASSKEY_RP_ID`                | Variables Convex                   | `app.example.com`, sans schéma ni port                          |
-| `BETTER_AUTH_SECRET`           | Variables Convex privées           | Aléatoire, au moins 32 caractères, distinct par environnement   |
-| `AUTH_EMAIL_PROVIDER`          | Variables Convex                   | `mailpit` local, `resend` production                            |
-| `AUTH_EMAIL_FROM`              | Variables Convex                   | Adresse sur un domaine expéditeur vérifié                       |
-| `RESEND_API_KEY`               | Variables Convex privées           | Clé dédiée aux emails transactionnels                           |
-| `MAILPIT_URL`                  | Variables Convex locales           | `http://mailpit:8025` dans le réseau Compose                    |
-| `CONVEX_DEPLOY_KEY`            | CI de déploiement cloud uniquement | Clé de la cible choisie                                         |
-| `CONVEX_SELF_HOSTED_URL`       | CLI auto-hébergée uniquement       | URL d’administration/API du backend                             |
-| `CONVEX_SELF_HOSTED_ADMIN_KEY` | CLI / dashboard admin privé        | Jamais dans l’application ; saisie locale réservée au dashboard |
+| Variable | Emplacement | Exemple ou règle |
+| --- | --- | --- |
+| `VITE_SITE_URL` | Build frontend et serveur SSR | `https://app.example.com` |
+| `VITE_CONVEX_URL` | Build frontend et serveur SSR | URL API/WebSocket du backend |
+| `VITE_CONVEX_SITE_URL` | Serveur SSR/config publique | URL des actions HTTP du même backend |
+| `SITE_URL` | Variables Convex | Même origine exacte que le frontend |
+| `PASSKEY_RP_ID` | Variables Convex | `app.example.com`, sans schéma ni port |
+| `BETTER_AUTH_SECRET` | Variables Convex privées | Aléatoire, au moins 32 caractères, distinct par environnement |
+| `AUTH_EMAIL_PROVIDER` | Variables Convex | `mailpit` local, `resend` production |
+| `AUTH_EMAIL_FROM` | Variables Convex | Adresse sur un domaine expéditeur vérifié |
+| `RESEND_API_KEY` | Variables Convex privées | Clé dédiée aux emails transactionnels |
+| `MAILPIT_URL` | Variables Convex locales | `http://mailpit:8025` dans le réseau Compose |
+| `CONVEX_DEPLOY_KEY` | CI de déploiement cloud uniquement | Clé de la cible choisie |
+| `CONVEX_SELF_HOSTED_URL` | CLI auto-hébergée uniquement | URL d’administration/API du backend |
+| `CONVEX_SELF_HOSTED_ADMIN_KEY` | CLI / dashboard admin privé | Jamais dans l’application ; saisie locale réservée au dashboard |
 
 La CI de validation du dépôt n’a besoin d’aucun secret externe. Configurer un pipeline de publication séparé après choix de l’hébergeur ; aucune publication automatique n’est incluse.
 

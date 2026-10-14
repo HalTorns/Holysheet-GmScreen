@@ -11,9 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as VerifyMfaRouteImport } from './routes/verify-mfa'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
+import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app/admin'
 import { Route as AuthenticatedAppSecurityRouteImport } from './routes/_authenticated/app/security'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedAppOrganizationsIndexRouteImport } from './routes/_authenticated/app/organizations/index'
@@ -28,9 +32,24 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyMfaRoute = VerifyMfaRouteImport.update({
+  id: '/verify-mfa',
+  path: '/verify-mfa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -41,6 +60,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   id: '/app/',
   path: '/app/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAppAdminRoute = AuthenticatedAppAdminRouteImport.update({
+  id: '/app/admin',
+  path: '/app/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedAppSecurityRoute =
@@ -69,8 +93,12 @@ const AuthenticatedAppOrganizationsOrganizationIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sign-in': typeof SignInRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verify-mfa': typeof VerifyMfaRoute
   '/api/health': typeof ApiHealthRoute
+  '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/': typeof AuthenticatedAppIndexRoute
@@ -79,8 +107,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sign-in': typeof SignInRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verify-mfa': typeof VerifyMfaRoute
   '/api/health': typeof ApiHealthRoute
+  '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app': typeof AuthenticatedAppIndexRoute
@@ -91,8 +123,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sign-in': typeof SignInRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verify-mfa': typeof VerifyMfaRoute
   '/api/health': typeof ApiHealthRoute
+  '/_authenticated/app/admin': typeof AuthenticatedAppAdminRoute
   '/_authenticated/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
@@ -103,8 +139,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/robots.txt'
     | '/sign-in'
+    | '/sitemap.xml'
+    | '/verify-mfa'
     | '/api/health'
+    | '/app/admin'
     | '/app/security'
     | '/api/auth/$'
     | '/app/'
@@ -113,8 +153,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/robots.txt'
     | '/sign-in'
+    | '/sitemap.xml'
+    | '/verify-mfa'
     | '/api/health'
+    | '/app/admin'
     | '/app/security'
     | '/api/auth/$'
     | '/app'
@@ -124,8 +168,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/robots.txt'
     | '/sign-in'
+    | '/sitemap.xml'
+    | '/verify-mfa'
     | '/api/health'
+    | '/_authenticated/app/admin'
     | '/_authenticated/app/security'
     | '/api/auth/$'
     | '/_authenticated/app/'
@@ -136,7 +184,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SignInRoute: typeof SignInRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  VerifyMfaRoute: typeof VerifyMfaRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -157,11 +208,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-in': {
       id: '/sign-in'
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-mfa': {
+      id: '/verify-mfa'
+      path: '/verify-mfa'
+      fullPath: '/verify-mfa'
+      preLoaderRoute: typeof VerifyMfaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -176,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app/'
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/admin': {
+      id: '/_authenticated/app/admin'
+      path: '/app/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AuthenticatedAppAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/app/security': {
@@ -210,6 +289,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAppAdminRoute: typeof AuthenticatedAppAdminRoute
   AuthenticatedAppSecurityRoute: typeof AuthenticatedAppSecurityRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppOrganizationsOrganizationIdRoute: typeof AuthenticatedAppOrganizationsOrganizationIdRoute
@@ -217,6 +297,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAppAdminRoute: AuthenticatedAppAdminRoute,
   AuthenticatedAppSecurityRoute: AuthenticatedAppSecurityRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppOrganizationsOrganizationIdRoute:
@@ -232,7 +313,10 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SignInRoute: SignInRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  VerifyMfaRoute: VerifyMfaRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

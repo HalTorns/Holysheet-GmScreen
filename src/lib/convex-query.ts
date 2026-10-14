@@ -11,8 +11,8 @@ import type {
 export function ensureConvexQuery<
   Query extends FunctionReference<'query', 'public'>,
 >(client: QueryClient, query: Query, args: FunctionArgs<Query>) {
-  return client.ensureQueryData<FunctionReturnType<Query>>({
+  return client.query<FunctionReturnType<Query>>({
     queryKey: convexQuery(query, args).queryKey,
-    staleTime: Infinity,
+    staleTime: 'static',
   })
 }

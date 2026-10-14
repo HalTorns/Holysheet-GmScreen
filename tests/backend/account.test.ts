@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
+
 import { api, components } from '../../convex/_generated/api'
 import { RECENT_AUTH_MAX_AGE_SECONDS } from '../../shared/validation'
 import {
@@ -35,24 +36,24 @@ describe('Protected account lifecycle', () => {
     expect(exported.resources.page.map((resource) => resource.title)).toEqual([
       'Alice private',
     ])
-    vi.advanceTimersByTime(RECENT_AUTH_MAX_AGE_SECONDS * 1_000)
+    vi.advanceTimersByTime(RECENT_AUTH_MAX_AGE_SECONDS * 1000)
     await expect(
       alice.client.query(api.account.exportData, {
         paginationOpts: { numItems: 50, cursor: null },
-      }),
+      })
     ).rejects.toThrow('REAUTHENTICATION_REQUIRED')
     await expect(
       alice.client.mutation(api.account.deleteAccount, {
         confirmation: 'DELETE',
-      }),
+      })
     ).rejects.toThrow('REAUTHENTICATION_REQUIRED')
     await expect(
-      alice.client.mutation(api.account.removePasskey, { id: keyId }),
+      alice.client.mutation(api.account.removePasskey, { id: keyId })
     ).rejects.toThrow('REAUTHENTICATION_REQUIRED')
     expect(
       await alice.client.query(api.resources.list, {
         paginationOpts: { numItems: 10, cursor: null },
-      }),
+      })
     ).toMatchObject({ page: [{ title: 'Alice private' }] })
   })
 
@@ -62,10 +63,10 @@ describe('Protected account lifecycle', () => {
     const bob = await createAuthenticatedUser(backend, 'bob@example.com')
     const firstKey = await createPasskey(backend, alice.userId)
     await expect(
-      bob.client.mutation(api.account.removePasskey, { id: firstKey }),
+      bob.client.mutation(api.account.removePasskey, { id: firstKey })
     ).rejects.toThrow('NOT_FOUND')
     await expect(
-      alice.client.mutation(api.account.removePasskey, { id: firstKey }),
+      alice.client.mutation(api.account.removePasskey, { id: firstKey })
     ).rejects.toThrow('LAST_PASSKEY')
     const secondKey = await createPasskey(backend, alice.userId)
     const removals = await Promise.allSettled([
@@ -73,10 +74,10 @@ describe('Protected account lifecycle', () => {
       alice.client.mutation(api.account.removePasskey, { id: secondKey }),
     ])
     expect(
-      removals.filter((result) => result.status === 'fulfilled'),
+      removals.filter((result) => result.status === 'fulfilled')
     ).toHaveLength(1)
     expect(
-      removals.filter((result) => result.status === 'rejected'),
+      removals.filter((result) => result.status === 'rejected')
     ).toHaveLength(1)
     const remainingKeys: unknown = await backend.query(
       components.betterAuth.adapter.findMany,
@@ -84,10 +85,10 @@ describe('Protected account lifecycle', () => {
         model: 'passkey',
         where: [{ field: 'userId', value: alice.userId }],
         paginationOpts: { numItems: 10, cursor: null },
-      },
+      }
     )
     expect(
-      z.object({ page: z.array(z.unknown()) }).parse(remainingKeys).page,
+      z.object({ page: z.array(z.unknown()) }).parse(remainingKeys).page
     ).toHaveLength(1)
   })
 
@@ -118,7 +119,7 @@ describe('Protected account lifecycle', () => {
     await expect(
       alice.client.query(api.resources.list, {
         paginationOpts: { numItems: 10, cursor: null },
-      }),
+      })
     ).rejects.toThrow()
     await backend.finishAllScheduledFunctions(vi.runAllTimers)
     expect(
@@ -126,8 +127,8 @@ describe('Protected account lifecycle', () => {
         ctx.db
           .query('resources')
           .withIndex('by_owner', (index) => index.eq('ownerId', alice.userId))
-          .collect(),
-      ),
+          .collect()
+      )
     ).toEqual([])
     for (const [model, id] of [
       ['session', alice.sessionId],
@@ -137,11 +138,11 @@ describe('Protected account lifecycle', () => {
         await backend.query(components.betterAuth.adapter.findOne, {
           model,
           where: [{ field: '_id', value: id }],
-        }),
+        })
       ).toBeNull()
     }
     expect(
-      await bob.client.query(api.resources.get, { id: bobResource }),
+      await bob.client.query(api.resources.get, { id: bobResource })
     ).toMatchObject({ title: 'Bob stays' })
   })
 })

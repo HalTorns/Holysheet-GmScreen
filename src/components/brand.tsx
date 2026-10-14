@@ -1,5 +1,5 @@
-import { Link } from '@tanstack/react-router'
 import { appConfig } from '@shared/app-config'
+import { Link } from '@tanstack/react-router'
 
 import { cn } from '@/lib/utils'
 

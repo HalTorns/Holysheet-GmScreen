@@ -1,8 +1,9 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
 import { api } from '@convex/_generated/api'
 import { appConfig } from '@shared/app-config'
-import { OrganizationList } from '@/features/organizations/organization-list'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+
 import { ErrorState, LoadingState } from '@/components/page-state'
+import { OrganizationList } from '@/features/organizations/organization-list'
 import { ensureConvexQuery } from '@/lib/convex-query'
 
 export const Route = createFileRoute('/_authenticated/app/organizations/')({
@@ -11,9 +12,8 @@ export const Route = createFileRoute('/_authenticated/app/organizations/')({
     const capabilities = await ensureConvexQuery(
       context.queryClient,
       api.capabilities.get,
-      {},
+      {}
     )
-    // eslint-disable-next-line @typescript-eslint/only-throw-error -- Router navigation control flow.
     if (!capabilities.organizations) throw redirect({ to: '/app' })
     await Promise.all([
       ensureConvexQuery(context.queryClient, api.organizations.list, {}),

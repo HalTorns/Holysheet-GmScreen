@@ -1,4 +1,5 @@
 import { ConvexError, v } from 'convex/values'
+
 import {
   INVITATION_DURATION_MS,
   MAX_ORGANIZATIONS_PER_USER,
@@ -16,7 +17,8 @@ import {
   organizationRoleValidator,
   organizationSummaryValidator,
 } from '../lib/organizationValidators'
-import { mutation, query, type QueryCtx } from './_generated/server'
+import { mutation, query } from './_generated/server'
+import type { QueryCtx } from './_generated/server'
 import {
   findMembership,
   getInvitation,
@@ -70,7 +72,7 @@ export const authorize = query({
       v.literal('read'),
       v.literal('write'),
       v.literal('manage'),
-      v.literal('own'),
+      v.literal('own')
     ),
   },
   returns: organizationSummaryValidator,
@@ -78,7 +80,7 @@ export const authorize = query({
     const { organization, role } = await requireMembership(
       ctx,
       organizationId,
-      actorId,
+      actorId
     )
     requirePermission(role, permission)
     return { id: organization._id, name: organization.name, role }
@@ -96,12 +98,12 @@ export const get = query({
     const { organization, role } = await requireMembership(
       ctx,
       organizationId,
-      actorId,
+      actorId
     )
     const memberships = await ctx.db
       .query('member')
       .withIndex('organizationId', (q) =>
-        q.eq('organizationId', organizationId),
+        q.eq('organizationId', organizationId)
       )
       .take(MAX_ORGANIZATION_MEMBERS)
     const members = []
@@ -122,7 +124,7 @@ export const get = query({
       ? await ctx.db
           .query('invitation')
           .withIndex('organizationId', (q) =>
-            q.eq('organizationId', organizationId),
+            q.eq('organizationId', organizationId)
           )
           .take(MAX_PENDING_INVITATIONS)
       : []
@@ -132,7 +134,7 @@ export const get = query({
       invitations: pending
         .filter(
           (invite) =>
-            invite.status === 'pending' && invite.expiresAt > Date.now(),
+            invite.status === 'pending' && invite.expiresAt > Date.now()
         )
         .map((invite) => ({
           id: invite._id,
@@ -182,7 +184,7 @@ export const rename = mutation({
     const { organization, role } = await requireMembership(
       ctx,
       organizationId,
-      actorId,
+      actorId
     )
     requirePermission(role, 'manage')
     const parsed = organizationSchema.safeParse({ name })
@@ -203,7 +205,7 @@ export const invite = mutation({
   returns: v.string(),
   handler: async (
     ctx,
-    { organizationId, actorId, email, role: invitedRole },
+    { organizationId, actorId, email, role: invitedRole }
   ) => {
     const { role } = await requireMembership(ctx, organizationId, actorId)
     requirePermission(role, 'manage')
@@ -221,32 +223,32 @@ export const invite = mutation({
     let pending = await ctx.db
       .query('invitation')
       .withIndex('organizationId', (q) =>
-        q.eq('organizationId', organizationId),
+        q.eq('organizationId', organizationId)
       )
       .take(MAX_PENDING_INVITATIONS)
     let recipientInvites = await ctx.db
       .query('invitation')
       .withIndex('email_status', (q) =>
-        q.eq('email', recipient).eq('status', 'pending'),
+        q.eq('email', recipient).eq('status', 'pending')
       )
       .take(MAX_RECIPIENT_INVITATIONS)
     const expiredIds = new Set(
       [...pending, ...recipientInvites]
         .filter((invitation) => invitation.expiresAt <= Date.now())
-        .map((invitation) => invitation._id),
+        .map((invitation) => invitation._id)
     )
     for (const id of expiredIds) await ctx.db.delete('invitation', id)
     if (expiredIds.size > 0) {
       pending = await ctx.db
         .query('invitation')
         .withIndex('organizationId', (q) =>
-          q.eq('organizationId', organizationId),
+          q.eq('organizationId', organizationId)
         )
         .take(MAX_PENDING_INVITATIONS)
       recipientInvites = await ctx.db
         .query('invitation')
         .withIndex('email_status', (q) =>
-          q.eq('email', recipient).eq('status', 'pending'),
+          q.eq('email', recipient).eq('status', 'pending')
         )
         .take(MAX_RECIPIENT_INVITATIONS)
     }
@@ -257,7 +259,7 @@ export const invite = mutation({
       throw new ConvexError({ code: 'INVITATION_LIMIT' })
     if (
       pending.some(
-        (invite) => invite.email === recipient && invite.expiresAt > Date.now(),
+        (invite) => invite.email === recipient && invite.expiresAt > Date.now()
       )
     )
       throw new ConvexError({ code: 'ALREADY_INVITED' })
@@ -280,7 +282,7 @@ export const incoming = query({
     const invitations = await ctx.db
       .query('invitation')
       .withIndex('email_status', (q) =>
-        q.eq('email', email.toLowerCase()).eq('status', 'pending'),
+        q.eq('email', email.toLowerCase()).eq('status', 'pending')
       )
       .take(MAX_RECIPIENT_INVITATIONS)
     const result = []
@@ -325,7 +327,7 @@ export const respond = mutation({
     const inviter = await requireMembership(
       ctx,
       invitation.organizationId,
-      invitation.inviterId,
+      invitation.inviterId
     )
     requirePermission(inviter.role, 'manage')
     if (inviter.role === 'admin' && invitation.role === 'admin')
@@ -338,7 +340,7 @@ export const respond = mutation({
       const members = await ctx.db
         .query('member')
         .withIndex('organizationId', (q) =>
-          q.eq('organizationId', invitation.organizationId),
+          q.eq('organizationId', invitation.organizationId)
         )
         .take(MAX_ORGANIZATION_MEMBERS)
       if (members.length >= MAX_ORGANIZATION_MEMBERS)
@@ -363,7 +365,7 @@ export const cancelInvitation = mutation({
     const { role } = await requireMembership(
       ctx,
       invitation.organizationId,
-      actorId,
+      actorId
     )
     requirePermission(role, 'manage')
     if (role === 'admin' && invitation.role === 'admin')
@@ -425,7 +427,7 @@ export const remove = mutation({
     const { organization, role } = await requireMembership(
       ctx,
       organizationId,
-      actorId,
+      actorId
     )
     requirePermission(role, 'own')
     await ctx.db.delete('organization', organization._id)
@@ -459,13 +461,13 @@ export const cleanupOrganization = mutation({
     const members = await ctx.db
       .query('member')
       .withIndex('organizationId', (q) =>
-        q.eq('organizationId', organizationId),
+        q.eq('organizationId', organizationId)
       )
       .take(BATCH_SIZE)
     const invitations = await ctx.db
       .query('invitation')
       .withIndex('organizationId', (q) =>
-        q.eq('organizationId', organizationId),
+        q.eq('organizationId', organizationId)
       )
       .take(BATCH_SIZE)
     for (const member of members) await ctx.db.delete('member', member._id)
@@ -488,7 +490,7 @@ export const cleanupUserInvitations = mutation({
       .withIndex('email', (q) => q.eq('email', email.toLowerCase()))
       .take(BATCH_SIZE)
     for (const id of new Set(
-      [...sent, ...received].map((invitation) => invitation._id),
+      [...sent, ...received].map((invitation) => invitation._id)
     ))
       await ctx.db.delete('invitation', id)
     return sent.length === BATCH_SIZE || received.length === BATCH_SIZE

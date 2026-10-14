@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto'
+
 import { expect, test } from '@playwright/test'
-import { z } from 'zod'
 import type { Page } from '@playwright/test'
+import { z } from 'zod'
+
 import { api } from '../../convex/_generated/api'
 import {
   SITE_URL,
@@ -54,10 +56,10 @@ test('un visiteur anonyme est redirigé et ne peut pas lire le backend privé', 
   await expect(page).toHaveURL(/\/sign-in(?:\?|$)/)
   await expect(page.getByLabel('Adresse e-mail', { exact: true })).toBeVisible()
   await expect(
-    getAnonymousClient().query(api.resources.list, { paginationOpts }),
+    getAnonymousClient().query(api.resources.list, { paginationOpts })
   ).rejects.toThrow()
   expect(
-    await getAnonymousClient().query(api.auth.getCurrentUser, {}),
+    await getAnonymousClient().query(api.auth.getCurrentUser, {})
   ).toBeNull()
 })
 
@@ -95,7 +97,7 @@ test('changer de compte réinitialise les brouillons et les données affichées 
       .poll(async () => {
         try {
           await page.evaluate(() =>
-            document.dispatchEvent(new Event('visibilitychange')),
+            document.dispatchEvent(new Event('visibilitychange'))
           )
           return await page.getByText(secondEmail, { exact: true }).count()
         } catch (error) {
@@ -112,13 +114,13 @@ test('changer de compte réinitialise les brouillons et les données affichées 
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.getByText(privateTitle, { exact: true })).toHaveCount(0)
     await expect(
-      page.getByRole('button', { name: 'Nouvelle ressource', exact: true }),
+      page.getByRole('button', { name: 'Nouvelle ressource', exact: true })
     ).toBeEnabled()
     expect(
-      (await second.query(api.resources.list, { paginationOpts })).page,
+      (await second.query(api.resources.list, { paginationOpts })).page
     ).toEqual([])
     expect((await first.query(api.resources.get, { id }))?.title).toBe(
-      privateTitle,
+      privateTitle
     )
   } finally {
     if (second)
@@ -167,7 +169,7 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
       await page.mouse.click(4, 4)
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(
-        page.getByRole('button', { name: 'Annuler', exact: true }),
+        page.getByRole('button', { name: 'Annuler', exact: true })
       ).toBeDisabled()
       await expect(page.getByLabel('Titre', { exact: true })).toBeDisabled()
     } finally {
@@ -189,7 +191,7 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
       paginationOpts,
     })
     const ownerResource = ownerResources.page.find(
-      (item) => item.title === ownerTitle,
+      (item) => item.title === ownerTitle
     )
     if (!ownerResource)
       throw new Error('La ressource créée est absente du backend.')
@@ -197,25 +199,25 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
     await signInWithEmail(otherPage, otherEmail)
     await createResource(otherPage, otherTitle)
     await expect(otherPage.getByText(ownerTitle, { exact: true })).toHaveCount(
-      0,
+      0
     )
     const otherClient = await getAuthenticatedClient(otherContext)
     expect(
-      await otherClient.query(api.resources.get, { id: ownerResource._id }),
+      await otherClient.query(api.resources.get, { id: ownerResource._id })
     ).toBeNull()
     await expect(
       otherClient.mutation(api.resources.update, {
         id: ownerResource._id,
         title: 'Modification interdite',
         description: '',
-      }),
+      })
     ).rejects.toThrow()
     await expect(
-      otherClient.mutation(api.resources.remove, { id: ownerResource._id }),
+      otherClient.mutation(api.resources.remove, { id: ownerResource._id })
     ).rejects.toThrow()
     expect(
       (await ownerClient.query(api.resources.get, { id: ownerResource._id }))
-        ?.title,
+        ?.title
     ).toBe(ownerTitle)
 
     await page
@@ -237,7 +239,7 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
     const revokedClient = await getAuthenticatedClient(sessionContext)
     expect(
       (await revokedClient.query(api.resources.list, { paginationOpts })).page
-        .length,
+        .length
     ).toBeGreaterThan(0)
     await page.goto('/app/security')
     await page
@@ -256,12 +258,12 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
         {
           message:
             'Le JWT déjà émis ne doit plus donner accès à la session révoquée.',
-        },
+        }
       )
       .toBe(true)
     expect(
       (await ownerClient.query(api.resources.get, { id: ownerResource._id }))
-        ?.title,
+        ?.title
     ).toBe(updatedTitle)
     await sessionPage.reload()
     await expect(sessionPage).toHaveURL(/\/sign-in(?:\?|$)/)
@@ -285,7 +287,7 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
       .getByRole('button', { name: 'Supprimer la passkey', exact: true })
       .click()
     await expect(
-      page.getByText('Passkey principale E2E', { exact: true }),
+      page.getByText('Passkey principale E2E', { exact: true })
     ).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Déconnexion', exact: true }).click()
@@ -301,7 +303,7 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
       (response) =>
         new URL(response.url()).pathname ===
           '/api/auth/passkey/verify-authentication' &&
-        response.request().method() === 'POST',
+        response.request().method() === 'POST'
     )
     await page
       .getByRole('button', {
@@ -316,14 +318,14 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
       z
         .object({ code: z.literal('PASSKEY_USER_VERIFICATION_REQUIRED') })
         .safeParse(assertionError).success,
-      'Le serveur doit exiger une vérification de l’utilisateur par la passkey.',
+      'Le serveur doit exiger une vérification de l’utilisateur par la passkey.'
     ).toBe(true)
     const unverifiedSession = await page
       .context()
       .request.get('/api/auth/get-session')
     expect(
       (await unverifiedSession.json()) === null,
-      'Une assertion sans PIN ni biométrie ne doit créer aucune session.',
+      'Une assertion sans PIN ni biométrie ne doit créer aucune session.'
     ).toBe(true)
     await expect(page).toHaveURL(`${SITE_URL}/sign-in`)
     await authenticator.cdp.send('WebAuthn.setResponseOverrideBits', {
@@ -356,26 +358,26 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
     const exported = await exportAccountData(page)
     expect(exported.profile.email).toBe(ownerEmail)
     expect(exported.resources.map((resource) => resource.title)).toContain(
-      beforeDeletionTitle,
+      beforeDeletionTitle
     )
     expect(exported.resources.map((resource) => resource.title)).not.toContain(
-      otherTitle,
+      otherTitle
     )
     const deletedClient = await getAuthenticatedClient(page.context())
     await deleteAccount(page)
     await expect(
-      deletedClient.query(api.resources.list, { paginationOpts }),
+      deletedClient.query(api.resources.list, { paginationOpts })
     ).rejects.toThrow()
     expect(
       (
         await otherClient.query(api.resources.list, { paginationOpts })
-      ).page.map((resource) => resource.title),
+      ).page.map((resource) => resource.title)
     ).toContain(otherTitle)
     await page.goto('/app')
     await expect(page).toHaveURL(/\/sign-in(?:\?|$)/)
     await deleteAccount(otherPage)
     await expect(
-      otherClient.query(api.resources.list, { paginationOpts }),
+      otherClient.query(api.resources.list, { paginationOpts })
     ).rejects.toThrow()
     expect(uncaughtErrors, 'Aucune erreur JavaScript non interceptée.').toBe(0)
   } finally {

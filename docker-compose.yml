@@ -55,5 +55,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  spotlight:
+    image: ghcr.io/getsentry/spotlight@sha256:1ded58566814b9d15aa11af5011063a42e8bc685da9a23134c3cf64939fd5fb2
+    profiles: [observability]
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8969:8969'
+
 volumes:
   convex-data:

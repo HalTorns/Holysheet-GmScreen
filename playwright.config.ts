@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const production = Boolean(process.env.CI || process.env.PLAYWRIGHT_PRODUCTION)
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
+const port = new URL(baseURL).port || '3000'
+const production =
+  !process.env.PLAYWRIGHT_DEVELOPMENT &&
+  Boolean(process.env.CI || process.env.PLAYWRIGHT_PRODUCTION)
 // Playwright's automatic failure snapshot can include live OTP input values.
 process.env.PLAYWRIGHT_NO_COPY_PROMPT = '1'
 
@@ -14,7 +18,7 @@ export default defineConfig({
   reporter: 'list',
   forbidOnly: Boolean(process.env.CI),
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
     trace: 'off',
@@ -23,9 +27,10 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: production ? 'pnpm start' : 'pnpm dev',
-    url: 'http://localhost:3000',
+    command: production ? 'pnpm start' : `pnpm dev --port ${port}`,
+    env: { PORT: port, HOST: '127.0.0.1' },
+    url: baseURL,
     timeout: 120_000,
-    reuseExistingServer: !production,
+    reuseExistingServer: false,
   },
 })

@@ -23,6 +23,76 @@ import type { FunctionReference } from "convex/server";
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
+    access: {
+      currentFactor: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        string | null,
+        Name
+      >;
+      exportAudit: FunctionReference<
+        "query",
+        "internal",
+        {
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          scope: "actor" | "target";
+          userId: string;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{ createdAt: number; event: string }>;
+        },
+        Name
+      >;
+      findUser: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        { email: string; id: string; name: string } | null,
+        Name
+      >;
+      getSession: FunctionReference<
+        "query",
+        "internal",
+        { sessionId: string; userId: string },
+        {
+          createdAt: number;
+          expiresAt: number;
+          impersonatedBy: string | null;
+          mfaRequired: boolean;
+          mfaVerified: boolean;
+        } | null,
+        Name
+      >;
+      recordImpersonation: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actorId: string;
+          actorSessionId: string;
+          sessionId: string;
+          targetId: string;
+        },
+        null,
+        Name
+      >;
+      verifySessionFactor: FunctionReference<
+        "mutation",
+        "internal",
+        { factorId: string; sessionId: string; userId: string },
+        null,
+        Name
+      >;
+    };
     adapter: {
       create: FunctionReference<
         "mutation",
@@ -31,11 +101,16 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           input:
             | {
                 data: {
+                  banExpires?: null | number;
+                  banReason?: null | string;
+                  banned?: null | boolean;
                   createdAt: number;
                   email: string;
                   emailVerified: boolean;
                   image?: null | string;
                   name: string;
+                  role?: null | string;
+                  twoFactorEnabled?: null | boolean;
                   updatedAt: number;
                   userId?: null | string;
                 };
@@ -46,6 +121,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   activeOrganizationId?: null | string;
                   createdAt: number;
                   expiresAt: number;
+                  impersonatedBy?: null | string;
                   ipAddress?: null | string;
                   token: string;
                   updatedAt: number;
@@ -114,6 +190,17 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               }
             | {
                 data: {
+                  backupCodes: string;
+                  failedVerificationCount?: null | number;
+                  lockedUntil?: null | number;
+                  secret: string;
+                  userId: string;
+                  verified?: null | boolean;
+                };
+                model: "twoFactor";
+              }
+            | {
+                data: {
                   aaguid?: null | string;
                   backedUp: boolean;
                   counter: number;
@@ -139,6 +226,35 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 data: { count: number; key: string; lastRequest: number };
                 model: "rateLimit";
+              }
+            | {
+                data: {
+                  expiresAt: number;
+                  factorId: string;
+                  sessionId: string;
+                  userId: string;
+                  verifiedAt: number;
+                };
+                model: "sessionAssurances";
+              }
+            | {
+                data: {
+                  actorId: string;
+                  actorSessionId: string;
+                  expiresAt: number;
+                  sessionId: string;
+                  targetId: string;
+                };
+                model: "impersonations";
+              }
+            | {
+                data: {
+                  actorId: string;
+                  event: "mfa.verified" | "admin.impersonated";
+                  expiresAt: number;
+                  targetId?: string;
+                };
+                model: "authAudit";
               };
           onCreateHandle?: string;
           select?: Array<string>;
@@ -162,6 +278,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "image"
                     | "createdAt"
                     | "updatedAt"
+                    | "twoFactorEnabled"
+                    | "role"
+                    | "banned"
+                    | "banReason"
+                    | "banExpires"
                     | "userId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
@@ -199,6 +320,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "activeOrganizationId"
+                    | "impersonatedBy"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -387,6 +509,40 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 }>;
               }
             | {
+                model: "twoFactor";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "secret"
+                    | "backupCodes"
+                    | "userId"
+                    | "verified"
+                    | "failedVerificationCount"
+                    | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
                 model: "passkey";
                 where?: Array<{
                   connector?: "AND" | "OR";
@@ -461,6 +617,99 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 where?: Array<{
                   connector?: "AND" | "OR";
                   field: "key" | "count" | "lastRequest" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "sessionAssurances";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "sessionId"
+                    | "userId"
+                    | "factorId"
+                    | "verifiedAt"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "impersonations";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "sessionId"
+                    | "actorSessionId"
+                    | "actorId"
+                    | "targetId"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "authAudit";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "event" | "actorId" | "targetId" | "expiresAt" | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
@@ -512,6 +761,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "image"
                     | "createdAt"
                     | "updatedAt"
+                    | "twoFactorEnabled"
+                    | "role"
+                    | "banned"
+                    | "banReason"
+                    | "banExpires"
                     | "userId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
@@ -549,6 +803,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "activeOrganizationId"
+                    | "impersonatedBy"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -737,6 +992,40 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 }>;
               }
             | {
+                model: "twoFactor";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "secret"
+                    | "backupCodes"
+                    | "userId"
+                    | "verified"
+                    | "failedVerificationCount"
+                    | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
                 model: "passkey";
                 where?: Array<{
                   connector?: "AND" | "OR";
@@ -832,6 +1121,99 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | Array<number>
                     | null;
                 }>;
+              }
+            | {
+                model: "sessionAssurances";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "sessionId"
+                    | "userId"
+                    | "factorId"
+                    | "verifiedAt"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "impersonations";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "sessionId"
+                    | "actorSessionId"
+                    | "actorId"
+                    | "targetId"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "authAudit";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "event" | "actorId" | "targetId" | "expiresAt" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
               };
           onDeleteHandle?: string;
         },
@@ -852,9 +1234,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "organization"
             | "member"
             | "invitation"
+            | "twoFactor"
             | "passkey"
             | "jwks"
-            | "rateLimit";
+            | "rateLimit"
+            | "sessionAssurances"
+            | "impersonations"
+            | "authAudit";
           offset?: number;
           paginationOpts: {
             cursor: string | null;
@@ -902,9 +1288,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "organization"
             | "member"
             | "invitation"
+            | "twoFactor"
             | "passkey"
             | "jwks"
-            | "rateLimit";
+            | "rateLimit"
+            | "sessionAssurances"
+            | "impersonations"
+            | "authAudit";
           select?: Array<string>;
           where?: Array<{
             connector?: "AND" | "OR";
@@ -937,11 +1327,16 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "user";
                 update: {
+                  banExpires?: null | number;
+                  banReason?: null | string;
+                  banned?: null | boolean;
                   createdAt?: number;
                   email?: string;
                   emailVerified?: boolean;
                   image?: null | string;
                   name?: string;
+                  role?: null | string;
+                  twoFactorEnabled?: null | boolean;
                   updatedAt?: number;
                   userId?: null | string;
                 };
@@ -954,6 +1349,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "image"
                     | "createdAt"
                     | "updatedAt"
+                    | "twoFactorEnabled"
+                    | "role"
+                    | "banned"
+                    | "banReason"
+                    | "banExpires"
                     | "userId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
@@ -984,6 +1384,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   activeOrganizationId?: null | string;
                   createdAt?: number;
                   expiresAt?: number;
+                  impersonatedBy?: null | string;
                   ipAddress?: null | string;
                   token?: string;
                   updatedAt?: number;
@@ -1001,6 +1402,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "activeOrganizationId"
+                    | "impersonatedBy"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1232,6 +1634,48 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 }>;
               }
             | {
+                model: "twoFactor";
+                update: {
+                  backupCodes?: string;
+                  failedVerificationCount?: null | number;
+                  lockedUntil?: null | number;
+                  secret?: string;
+                  userId?: string;
+                  verified?: null | boolean;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "secret"
+                    | "backupCodes"
+                    | "userId"
+                    | "verified"
+                    | "failedVerificationCount"
+                    | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
                 model: "passkey";
                 update: {
                   aaguid?: null | string;
@@ -1325,6 +1769,119 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 where?: Array<{
                   connector?: "AND" | "OR";
                   field: "key" | "count" | "lastRequest" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "sessionAssurances";
+                update: {
+                  expiresAt?: number;
+                  factorId?: string;
+                  sessionId?: string;
+                  userId?: string;
+                  verifiedAt?: number;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "sessionId"
+                    | "userId"
+                    | "factorId"
+                    | "verifiedAt"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "impersonations";
+                update: {
+                  actorId?: string;
+                  actorSessionId?: string;
+                  expiresAt?: number;
+                  sessionId?: string;
+                  targetId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "sessionId"
+                    | "actorSessionId"
+                    | "actorId"
+                    | "targetId"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "authAudit";
+                update: {
+                  actorId?: string;
+                  event?: "mfa.verified" | "admin.impersonated";
+                  expiresAt?: number;
+                  targetId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "event" | "actorId" | "targetId" | "expiresAt" | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
@@ -1368,11 +1925,16 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 model: "user";
                 update: {
+                  banExpires?: null | number;
+                  banReason?: null | string;
+                  banned?: null | boolean;
                   createdAt?: number;
                   email?: string;
                   emailVerified?: boolean;
                   image?: null | string;
                   name?: string;
+                  role?: null | string;
+                  twoFactorEnabled?: null | boolean;
                   updatedAt?: number;
                   userId?: null | string;
                 };
@@ -1385,6 +1947,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "image"
                     | "createdAt"
                     | "updatedAt"
+                    | "twoFactorEnabled"
+                    | "role"
+                    | "banned"
+                    | "banReason"
+                    | "banExpires"
                     | "userId"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
@@ -1415,6 +1982,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   activeOrganizationId?: null | string;
                   createdAt?: number;
                   expiresAt?: number;
+                  impersonatedBy?: null | string;
                   ipAddress?: null | string;
                   token?: string;
                   updatedAt?: number;
@@ -1432,6 +2000,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "userAgent"
                     | "userId"
                     | "activeOrganizationId"
+                    | "impersonatedBy"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1663,6 +2232,48 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 }>;
               }
             | {
+                model: "twoFactor";
+                update: {
+                  backupCodes?: string;
+                  failedVerificationCount?: null | number;
+                  lockedUntil?: null | number;
+                  secret?: string;
+                  userId?: string;
+                  verified?: null | boolean;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "secret"
+                    | "backupCodes"
+                    | "userId"
+                    | "verified"
+                    | "failedVerificationCount"
+                    | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
                 model: "passkey";
                 update: {
                   aaguid?: null | string;
@@ -1756,6 +2367,119 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 where?: Array<{
                   connector?: "AND" | "OR";
                   field: "key" | "count" | "lastRequest" | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "sessionAssurances";
+                update: {
+                  expiresAt?: number;
+                  factorId?: string;
+                  sessionId?: string;
+                  userId?: string;
+                  verifiedAt?: number;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "sessionId"
+                    | "userId"
+                    | "factorId"
+                    | "verifiedAt"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "impersonations";
+                update: {
+                  actorId?: string;
+                  actorSessionId?: string;
+                  expiresAt?: number;
+                  sessionId?: string;
+                  targetId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "sessionId"
+                    | "actorSessionId"
+                    | "actorId"
+                    | "targetId"
+                    | "expiresAt"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "authAudit";
+                update: {
+                  actorId?: string;
+                  event?: "mfa.verified" | "admin.impersonated";
+                  expiresAt?: number;
+                  targetId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field: "event" | "actorId" | "targetId" | "expiresAt" | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
                     | "lt"
@@ -1804,13 +2528,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         { userId: string },
         null,
-        Name
-      >;
-      getSession: FunctionReference<
-        "query",
-        "internal",
-        { sessionId: string; userId: string },
-        null | { createdAt: number; expiresAt: number },
         Name
       >;
       removePasskey: FunctionReference<

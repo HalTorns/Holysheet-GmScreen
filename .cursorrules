@@ -1,0 +1,6 @@
+Read AGENTS.md before editing. It is the shared source of project conventions.
+Read docs/agent-patterns.md for TanStack Start Server Functions, Convex authorization,
+Better Auth plugins, shadcn/ui and the quality commands.
+For a new product, read docs/project-start.md and recommend personal or organization
+ownership based on its data. Preserve the existing mode, secrets and data.
+Run the checks appropriate to the change. Never claim checks that were not executed.

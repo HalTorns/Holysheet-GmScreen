@@ -22,7 +22,7 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           'fixed top-1/2 left-1/2 z-50 grid max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-6 overflow-y-auto rounded-xl border border-border bg-popover p-6 text-popover-foreground shadow-xl outline-none sm:p-8',
-          className,
+          className
         )}
         {...props}
       >
@@ -44,15 +44,6 @@ function DialogContent({
 function DialogHeader({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div className={cn('flex flex-col gap-2 pr-5', className)} {...props} />
-  )
-}
-
-function DialogFooter({ className, ...props }: ComponentProps<'div'>) {
-  return (
-    <div
-      className={cn('flex flex-wrap justify-end gap-2', className)}
-      {...props}
-    />
   )
 }
 
@@ -82,7 +73,6 @@ export {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,

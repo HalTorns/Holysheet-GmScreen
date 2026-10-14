@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto'
+
 import { expect, test } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
+
 import { api } from '../../convex/_generated/api'
+import { verifyLocalRestore } from './backup'
 import {
   addPasskey,
   createEmail,
@@ -10,7 +13,6 @@ import {
   installAuthenticator,
   signInWithEmail,
 } from './helpers'
-import { verifyLocalRestore } from './backup'
 
 test('un export restaure réellement ressources et passkeys dans un backend isolé', async ({
   page,
@@ -37,7 +39,7 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
       paginationOpts: { numItems: 20, cursor: null },
     })
     expect(resources.page.some((resource) => resource.title === title)).toBe(
-      true,
+      true
     )
   } finally {
     if (client) {

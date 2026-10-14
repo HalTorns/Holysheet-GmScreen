@@ -1,18 +1,23 @@
 import { convexQuery } from '@convex-dev/react-query'
+import { api } from '@convex/_generated/api'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
-import { useConvexAuth } from 'convex/react'
+import { useQuery, useConvexAuth } from 'convex/react'
 import type { FunctionReturnType } from 'convex/server'
 import { LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import { api } from '@convex/_generated/api'
 import { Brand } from '@/components/brand'
 import { ErrorState, LoadingState } from '@/components/page-state'
 import { Button } from '@/components/ui/button'
+import {
+  appNavigation,
+  organizationsNavigation,
+  supportNavigation,
+} from '@/config/navigation'
+import { ImpersonationBanner } from '@/features/admin/support-panel'
 import { authErrorMessage } from '@/features/auth/errors'
 import { authClient } from '@/lib/auth-client'
-import { appNavigation, organizationsNavigation } from '@/config/navigation'
 import { ensureConvexQuery } from '@/lib/convex-query'
 
 const currentUserQuery = convexQuery(api.auth.getCurrentUser, {})
@@ -21,27 +26,34 @@ const capabilitiesQuery = convexQuery(api.capabilities.get, {})
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context }) => {
     // TanStack Router uses thrown redirect objects for navigation control flow.
-    // eslint-disable-next-line @typescript-eslint/only-throw-error
     if (!context.isAuthenticated) throw redirect({ to: '/sign-in' })
   },
   loader: async ({ context }) => {
-    const user = await context.queryClient.ensureQueryData<
+    const user = await context.queryClient.query<
       FunctionReturnType<typeof api.auth.getCurrentUser>
     >({
       queryKey: currentUserQuery.queryKey,
-      staleTime: Infinity,
+      staleTime: 'static',
     })
-    // eslint-disable-next-line @typescript-eslint/only-throw-error -- Router navigation control flow.
-    if (!user) throw redirect({ to: '/sign-in' })
+    if (!user) {
+      const access = await ensureConvexQuery(
+        context.queryClient,
+        api.auth.getAccessState,
+        {}
+      )
+      throw redirect({ to: access?.requiresMfa ? '/verify-mfa' : '/sign-in' })
+    }
     await ensureConvexQuery(context.queryClient, api.capabilities.get, {})
     return { userId: user.id }
   },
+  head: () => ({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] }),
   pendingComponent: LoadingState,
   errorComponent: ({ reset }) => <ErrorState onRetry={reset} />,
   component: AuthenticatedLayout,
 })
 
 function AuthenticatedLayout() {
+  const access = useQuery(api.auth.getAccessState, {})
   const { data: user } = useSuspenseQuery(currentUserQuery)
   const { data: capabilities } = useSuspenseQuery(capabilitiesQuery)
   const { isAuthenticated, isLoading } = useConvexAuth()
@@ -56,6 +68,7 @@ function AuthenticatedLayout() {
 
   return (
     <div className="app-layout">
+      <ImpersonationBanner />
       <header className="app-header page-container">
         <Brand />
         <nav
@@ -64,6 +77,7 @@ function AuthenticatedLayout() {
         >
           {[
             ...appNavigation,
+            ...(access?.isAdmin ? [supportNavigation] : []),
             ...(capabilities.organizations ? [organizationsNavigation] : []),
           ].map(({ label, icon: Icon, ...link }) => (
             <Link key={link.to} {...link} className="app-nav-link">
@@ -79,7 +93,13 @@ function AuthenticatedLayout() {
             while Convex confirms a refreshed token; every backend access still
             revalidates the live session and resource permissions. */}
         {isAuthenticated || isLoading ? (
-          <Outlet key={validatedUserId} />
+          <fieldset
+            className="contents"
+            disabled={Boolean(access?.isImpersonating)}
+            aria-label="Contenu de votre espace"
+          >
+            <Outlet key={validatedUserId} />
+          </fieldset>
         ) : (
           <SessionExpiredState />
         )}

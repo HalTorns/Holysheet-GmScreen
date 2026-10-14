@@ -1,20 +1,21 @@
-import rateLimiterTest from '@convex-dev/rate-limiter/test'
+import { register as registerRateLimiter } from '@convex-dev/rate-limiter/test'
 import { convexTest } from 'convex-test'
 import { z } from 'zod'
+
 import { components } from '../../convex/_generated/api'
 import authSchema from '../../convex/betterAuth/schema'
 import schema from '../../convex/schema'
 
 const modules = import.meta.glob('../../convex/**/*.ts')
 const authModules = import.meta.glob('../../convex/betterAuth/**/*.ts')
-const documentIdSchema = z.object({ _id: z.string() }).passthrough()
+const documentIdSchema = z.object({ _id: z.string() }).loose()
 
 export function createBackendTest() {
   const backend = convexTest(schema, modules)
   // The official component harness uses its packaged default schema, which
   // excludes passkeys. Register our actual local-install schema and adapter.
   backend.registerComponent('betterAuth', authSchema, authModules)
-  rateLimiterTest.register(backend)
+  registerRateLimiter(backend)
   return backend
 }
 
@@ -23,7 +24,7 @@ type Backend = ReturnType<typeof createBackendTest>
 export async function createAuthenticatedUser(
   backend: Backend,
   email: string,
-  options: { sessionCreatedAt?: number; emailVerified?: boolean } = {},
+  options: { sessionCreatedAt?: number; emailVerified?: boolean } = {}
 ) {
   const now = Date.now()
   const user: unknown = await backend.mutation(
@@ -39,7 +40,7 @@ export async function createAuthenticatedUser(
           updatedAt: now,
         },
       },
-    },
+    }
   )
   const userId = documentIdSchema.parse(user)._id
   const session: unknown = await backend.mutation(
@@ -55,7 +56,7 @@ export async function createAuthenticatedUser(
           expiresAt: now + 3_600_000,
         },
       },
-    },
+    }
   )
   const sessionId = documentIdSchema.parse(session)._id
   const identity = {
@@ -82,7 +83,7 @@ export async function createPasskey(backend: Backend, userId: string) {
           createdAt: Date.now(),
         },
       },
-    },
+    }
   )
   return documentIdSchema.parse(passkey)._id
 }

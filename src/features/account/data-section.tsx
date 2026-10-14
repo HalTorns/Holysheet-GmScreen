@@ -1,14 +1,14 @@
+import { api } from '@convex/_generated/api'
+import { appConfig } from '@shared/app-config'
+import { MAX_PAGE_SIZE } from '@shared/validation'
+import { z } from '@shared/zod'
 import { useForm } from '@tanstack/react-form'
 import { Link, useHydrated } from '@tanstack/react-router'
 import { useConvex, useMutation } from 'convex/react'
 import type { FunctionReturnType } from 'convex/server'
 import { Download, FolderLock, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { z } from '@shared/zod'
 
-import { api } from '@convex/_generated/api'
-import { appConfig } from '@shared/app-config'
-import { MAX_PAGE_SIZE } from '@shared/validation'
 import { FormError } from '@/components/form-error'
 import { Button } from '@/components/ui/button'
 import {
@@ -98,15 +98,34 @@ function ExportDataButton() {
           throw new Error('Export pagination did not progress')
         cursor = page.resources.continueCursor
       }
+      const securityAudit: { event: string; createdAt: number }[] = []
+      for (const scope of ['actor', 'target'] as const) {
+        cursor = null
+        isDone = false
+        while (!isDone) {
+          const page: FunctionReturnType<
+            typeof api.account.exportSecurityAudit
+          > = await convex.query(api.account.exportSecurityAudit, {
+            scope,
+            paginationOpts: { numItems: MAX_PAGE_SIZE, cursor },
+          })
+          securityAudit.push(...page.page)
+          isDone = page.isDone
+          if (!isDone && cursor === page.continueCursor)
+            throw new Error('Export pagination did not progress')
+          cursor = page.continueCursor
+        }
+      }
       downloadExport({
         profile,
         resources,
         organizations,
         invitations,
+        securityAudit,
         exportedAt: new Date().toISOString(),
       })
-    } catch (failure) {
-      setError(operationErrorMessage(failure))
+    } catch (error) {
+      setError(operationErrorMessage(error))
     } finally {
       setIsPending(false)
     }
@@ -136,10 +155,11 @@ function downloadExport(value: {
   resources: ExportPage['resources']['page']
   organizations: ExportPage['organizations']
   invitations: ExportPage['invitations']
+  securityAudit: { event: string; createdAt: number }[]
   exportedAt: string
 }) {
   const url = URL.createObjectURL(
-    new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }),
+    new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })
   )
   const link = document.createElement('a')
   link.href = url
@@ -208,8 +228,8 @@ function DeleteAccountForm({
       onPendingChange(true)
       try {
         await deleteAccount({ confirmation: 'DELETE' })
-      } catch (failure) {
-        setError(operationErrorMessage(failure))
+      } catch (error) {
+        setError(operationErrorMessage(error))
         onPendingChange(false)
         return
       }

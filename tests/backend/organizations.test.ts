@@ -1,4 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
+
 import { api, components } from '../../convex/_generated/api'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
@@ -22,7 +23,7 @@ async function fixture() {
 
 async function join(
   local: Awaited<ReturnType<typeof fixture>>,
-  role: 'admin' | 'member' | 'viewer' = 'member',
+  role: 'admin' | 'member' | 'viewer' = 'member'
 ) {
   const invitationId = await local.alice.client.mutation(
     api.organizations.invite,
@@ -30,7 +31,7 @@ async function join(
       organizationId: local.organizationId,
       email: 'bob@example.com',
       role,
-    },
+    }
   )
   await local.bob.client.mutation(api.organizations.respondToInvitation, {
     invitationId,
@@ -44,14 +45,14 @@ test('personal mode is the default and disabling organizations closes their API 
   const backend = createBackendTest()
   const user = await createAuthenticatedUser(backend, 'personal@example.com')
   await expect(
-    user.client.mutation(api.organizations.create, { name: 'Disabled' }),
+    user.client.mutation(api.organizations.create, { name: 'Disabled' })
   ).rejects.toThrow('MODULE_DISABLED')
   const id = await user.client.mutation(api.resources.create, {
     title: 'Personal',
     description: '',
   })
   expect((await user.client.query(api.resources.get, { id }))?.title).toBe(
-    'Personal',
+    'Personal'
   )
 
   const local = await fixture()
@@ -66,7 +67,7 @@ test('personal mode is the default and disabling organizations closes their API 
       organizationId: local.organizationId,
       email: 'bob@example.com',
       role: 'member',
-    },
+    }
   )
   vi.stubEnv('ORGANIZATIONS_ENABLED', 'false')
   const disabledOperations = [
@@ -137,14 +138,14 @@ test('personal mode is the default and disabling organizations closes their API 
   for (const operation of disabledOperations)
     await expect(operation()).rejects.toThrow('MODULE_DISABLED')
   expect(
-    await local.alice.client.query(api.resources.get, { id: shared }),
+    await local.alice.client.query(api.resources.get, { id: shared })
   ).toBeNull()
   await expect(
     local.alice.client.mutation(api.resources.update, {
       id: shared,
       title: 'Blocked',
       description: '',
-    }),
+    })
   ).rejects.toThrow('MODULE_DISABLED')
   const exported = await local.alice.client.query(api.account.exportData, {
     paginationOpts,
@@ -156,11 +157,11 @@ test('personal mode is the default and disabling organizations closes their API 
   await expect(
     local.alice.client.mutation(api.account.deleteAccount, {
       confirmation: 'DELETE',
-    }),
+    })
   ).rejects.toThrow('LAST_OWNER')
   vi.stubEnv('ORGANIZATIONS_ENABLED', 'true')
   expect(
-    (await local.alice.client.query(api.resources.get, { id: shared }))?.title,
+    (await local.alice.client.query(api.resources.get, { id: shared }))?.title
   ).toBe('Shared')
 })
 
@@ -178,10 +179,10 @@ test('tenant membership and reader permissions are enforced at every resource en
         paginationOpts,
         organizationId: local.organizationId,
       })
-    ).page,
+    ).page
   ).toMatchObject([{ title: 'Shared' }])
   expect(
-    (await local.bob.client.query(api.resources.list, { paginationOpts })).page,
+    (await local.bob.client.query(api.resources.list, { paginationOpts })).page
   ).toEqual([])
   for (const client of [local.bob.client, local.eve.client]) {
     await expect(
@@ -189,17 +190,17 @@ test('tenant membership and reader permissions are enforced at every resource en
         title: 'No rights',
         description: '',
         organizationId: local.organizationId,
-      }),
+      })
     ).rejects.toThrow()
     await expect(
       client.mutation(api.resources.update, {
         id,
         title: 'No rights',
         description: '',
-      }),
+      })
     ).rejects.toThrow()
     await expect(
-      client.mutation(api.resources.remove, { id }),
+      client.mutation(api.resources.remove, { id })
     ).rejects.toThrow()
   }
   expect(await local.eve.client.query(api.resources.get, { id })).toBeNull()
@@ -207,14 +208,14 @@ test('tenant membership and reader permissions are enforced at every resource en
     local.eve.client.query(api.resources.list, {
       paginationOpts,
       organizationId: local.organizationId,
-    }),
+    })
   ).rejects.toThrow('NOT_FOUND')
   await expect(
     local.bob.client.mutation(api.organizations.invite, {
       organizationId: local.organizationId,
       email: 'eve@example.com',
       role: 'member',
-    }),
+    })
   ).rejects.toThrow('FORBIDDEN')
   await local.alice.client.mutation(api.organizations.changeRole, {
     organizationId: local.organizationId,
@@ -227,20 +228,20 @@ test('tenant membership and reader permissions are enforced at every resource en
     description: '',
   })
   expect(
-    (await local.alice.client.query(api.resources.get, { id }))?.title,
+    (await local.alice.client.query(api.resources.get, { id }))?.title
   ).toBe('Member can edit')
   await local.alice.client.mutation(api.organizations.removeMember, {
     organizationId: local.organizationId,
     userId: local.bob.userId,
   })
   expect(
-    await local.bob.client.query(api.auth.getCurrentUser, {}),
+    await local.bob.client.query(api.auth.getCurrentUser, {})
   ).not.toBeNull()
   await expect(
     local.bob.client.query(api.resources.list, {
       paginationOpts,
       organizationId: local.organizationId,
-    }),
+    })
   ).rejects.toThrow('NOT_FOUND')
 })
 
@@ -259,7 +260,7 @@ test('two organizations keep roles, management, resources and exports isolated f
   })
   const organizationB = await local.bob.client.mutation(
     api.organizations.create,
-    { name: 'Équipe B' },
+    { name: 'Équipe B' }
   )
   const sharedB = await local.bob.client.mutation(api.resources.create, {
     title: 'Only B',
@@ -268,7 +269,7 @@ test('two organizations keep roles, management, resources and exports isolated f
   })
   const alicePersonal = await local.alice.client.mutation(
     api.resources.create,
-    { title: 'Alice private', description: '' },
+    { title: 'Alice private', description: '' }
   )
   const bobPersonal = await local.bob.client.mutation(api.resources.create, {
     title: 'Bob private',
@@ -280,14 +281,14 @@ test('two organizations keep roles, management, resources and exports isolated f
       organizationId: organizationB,
       email: 'alice@example.com',
       role: 'viewer',
-    },
+    }
   )
   await expect(
     local.bob.client.mutation(api.resources.update, {
       id: sharedA,
       title: 'Author and owner elsewhere',
       description: '',
-    }),
+    })
   ).rejects.toThrow('FORBIDDEN')
   await local.bob.client.mutation(api.resources.update, {
     id: sharedB,
@@ -295,13 +296,13 @@ test('two organizations keep roles, management, resources and exports isolated f
     description: '',
   })
   expect(
-    await local.alice.client.query(api.resources.get, { id: sharedB }),
+    await local.alice.client.query(api.resources.get, { id: sharedB })
   ).toBeNull()
   expect(
-    await local.bob.client.query(api.resources.get, { id: alicePersonal }),
+    await local.bob.client.query(api.resources.get, { id: alicePersonal })
   ).toBeNull()
   expect(
-    await local.alice.client.query(api.resources.get, { id: bobPersonal }),
+    await local.alice.client.query(api.resources.get, { id: bobPersonal })
   ).toBeNull()
   const foreignOperations = [
     () =>
@@ -369,15 +370,15 @@ test('two organizations keep roles, management, resources and exports isolated f
     local.bob.client.query(api.organizations.exportResources, {
       organizationId: local.organizationId,
       paginationOpts,
-    }),
+    })
   ).rejects.toThrow('FORBIDDEN')
   const exportA = await local.alice.client.query(
     api.organizations.exportResources,
-    { organizationId: local.organizationId, paginationOpts },
+    { organizationId: local.organizationId, paginationOpts }
   )
   const exportB = await local.bob.client.query(
     api.organizations.exportResources,
-    { organizationId: organizationB, paginationOpts },
+    { organizationId: organizationB, paginationOpts }
   )
   expect(exportA.page.map((resource) => resource._id)).toEqual([sharedA])
   expect(exportB.page.map((resource) => resource._id)).toEqual([sharedB])
@@ -388,17 +389,16 @@ test('two organizations keep roles, management, resources and exports isolated f
     alicePersonal,
   ])
   expect(exported.organizations.map((organization) => organization.id)).toEqual(
-    [local.organizationId],
+    [local.organizationId]
   )
   const viewer = await local.bob.client.query(api.organizations.get, {
     organizationId: local.organizationId,
   })
   expect(
-    viewer.members.find((member) => member.userId === local.alice.userId)
-      ?.email,
+    viewer.members.find((member) => member.userId === local.alice.userId)?.email
   ).toBe('')
   expect(
-    viewer.members.find((member) => member.userId === local.bob.userId)?.email,
+    viewer.members.find((member) => member.userId === local.bob.userId)?.email
   ).toBe('bob@example.com')
   expect(viewer.invitations).toEqual([])
 })
@@ -415,14 +415,14 @@ test('administrators cannot grant, alter or remove owner/admin privileges', asyn
       await local.alice.client.query(api.organizations.get, {
         organizationId: local.organizationId,
       })
-    ).organization.name,
+    ).organization.name
   ).toBe('Nom modifié')
   await expect(
     local.bob.client.mutation(api.organizations.invite, {
       organizationId: local.organizationId,
       email: 'eve@example.com',
       role: 'admin',
-    }),
+    })
   ).rejects.toThrow('FORBIDDEN')
   for (const role of ['owner', 'member'] as const)
     await expect(
@@ -430,20 +430,20 @@ test('administrators cannot grant, alter or remove owner/admin privileges', asyn
         organizationId: local.organizationId,
         userId: local.alice.userId,
         role,
-      }),
+      })
     ).rejects.toThrow('FORBIDDEN')
   await expect(
     local.bob.client.mutation(api.organizations.changeRole, {
       organizationId: local.organizationId,
       userId: local.bob.userId,
       role: 'owner',
-    }),
+    })
   ).rejects.toThrow('FORBIDDEN')
   await expect(
     local.bob.client.mutation(api.organizations.remove, {
       organizationId: local.organizationId,
       confirmation: 'DELETE',
-    }),
+    })
   ).rejects.toThrow('FORBIDDEN')
   const invitationId = await local.bob.client.mutation(
     api.organizations.invite,
@@ -451,7 +451,7 @@ test('administrators cannot grant, alter or remove owner/admin privileges', asyn
       organizationId: local.organizationId,
       email: 'eve@example.com',
       role: 'member',
-    },
+    }
   )
   await local.eve.client.mutation(api.organizations.respondToInvitation, {
     invitationId,
@@ -463,7 +463,7 @@ test('administrators cannot grant, alter or remove owner/admin privileges', asyn
     role: 'viewer',
   })
   expect(
-    (await local.eve.client.query(api.organizations.list, {}))[0]?.role,
+    (await local.eve.client.query(api.organizations.list, {}))[0]?.role
   ).toBe('viewer')
 })
 
@@ -475,10 +475,10 @@ test('inviting an existing member cannot create a second source of roles', async
       organizationId: local.organizationId,
       email: 'BOB@example.com',
       role: 'admin',
-    }),
+    })
   ).rejects.toThrow('ALREADY_MEMBER')
   expect(
-    (await local.bob.client.query(api.organizations.list, {}))[0]?.role,
+    (await local.bob.client.query(api.organizations.list, {}))[0]?.role
   ).toBe('viewer')
 })
 
@@ -503,7 +503,7 @@ test.each(['demotion', 'removal'] as const)(
             expiresAt: Date.now() + 60_000,
           },
         },
-      },
+      }
     )
     if (
       !legacy ||
@@ -532,10 +532,10 @@ test.each(['demotion', 'removal'] as const)(
       local.bob.client.mutation(api.organizations.respondToInvitation, {
         invitationId: legacy._id,
         accept: true,
-      }),
+      })
     ).rejects.toThrow('INVITATION_EXPIRED')
     expect(await local.bob.client.query(api.organizations.list, {})).toEqual([])
-  },
+  }
 )
 
 test('restoring an inviter role never resurrects revoked delegation', async () => {
@@ -547,7 +547,7 @@ test('restoring an inviter role never resurrects revoked delegation', async () =
       organizationId: local.organizationId,
       email: 'eve@example.com',
       role: 'member',
-    },
+    }
   )
   await local.alice.client.mutation(api.organizations.changeRole, {
     organizationId: local.organizationId,
@@ -563,7 +563,7 @@ test('restoring an inviter role never resurrects revoked delegation', async () =
     local.eve.client.mutation(api.organizations.respondToInvitation, {
       invitationId,
       accept: true,
-    }),
+    })
   ).rejects.toThrow('INVITATION_EXPIRED')
   const renewed = await local.bob.client.mutation(api.organizations.invite, {
     organizationId: local.organizationId,
@@ -575,7 +575,7 @@ test('restoring an inviter role never resurrects revoked delegation', async () =
     accept: true,
   })
   expect(
-    (await local.eve.client.query(api.organizations.list, {}))[0]?.role,
+    (await local.eve.client.query(api.organizations.list, {}))[0]?.role
   ).toBe('member')
 })
 
@@ -589,7 +589,7 @@ test('a role reduction revokes only lost delegation in the affected organization
   })
   const otherOrganization = await local.bob.client.mutation(
     api.organizations.create,
-    { name: 'Other team' },
+    { name: 'Other team' }
   )
   const revoked = await local.bob.client.mutation(api.organizations.invite, {
     organizationId: local.organizationId,
@@ -615,7 +615,7 @@ test('a role reduction revokes only lost delegation in the affected organization
     local.eve.client.mutation(api.organizations.respondToInvitation, {
       invitationId: revoked,
       accept: true,
-    }),
+    })
   ).rejects.toThrow('INVITATION_EXPIRED')
   await local.eve.client.mutation(api.organizations.respondToInvitation, {
     invitationId: elsewhere,
@@ -623,17 +623,17 @@ test('a role reduction revokes only lost delegation in the affected organization
   })
   const newcomer = await createAuthenticatedUser(
     local.backend,
-    'new@example.com',
+    'new@example.com'
   )
   await newcomer.client.mutation(api.organizations.respondToInvitation, {
     invitationId: retained,
     accept: true,
   })
   expect(
-    (await local.eve.client.query(api.organizations.list, {}))[0],
+    (await local.eve.client.query(api.organizations.list, {}))[0]
   ).toMatchObject({ id: otherOrganization, role: 'admin' })
   expect(
-    (await newcomer.client.query(api.organizations.list, {}))[0],
+    (await newcomer.client.query(api.organizations.list, {}))[0]
   ).toMatchObject({ id: local.organizationId, role: 'member' })
 })
 
@@ -645,13 +645,13 @@ test('invitations bind to verified email, expire, consume once and revalidate in
       organizationId: local.organizationId,
       email: 'BOB@example.com',
       role: 'member',
-    },
+    }
   )
   await expect(
     local.eve.client.mutation(api.organizations.respondToInvitation, {
       invitationId,
       accept: true,
-    }),
+    })
   ).rejects.toThrow('NOT_FOUND')
   const results = await Promise.allSettled([
     local.bob.client.mutation(api.organizations.respondToInvitation, {
@@ -664,20 +664,20 @@ test('invitations bind to verified email, expire, consume once and revalidate in
     }),
   ])
   expect(
-    results.filter((result) => result.status === 'fulfilled'),
+    results.filter((result) => result.status === 'fulfilled')
   ).toHaveLength(1)
   expect(
     (
       await local.alice.client.query(api.organizations.get, {
         organizationId: local.organizationId,
       })
-    ).members,
+    ).members
   ).toHaveLength(2)
   await expect(
     local.bob.client.mutation(api.organizations.respondToInvitation, {
       invitationId,
       accept: true,
-    }),
+    })
   ).rejects.toThrow('INVITATION_EXPIRED')
   const expired = await local.alice.client.mutation(api.organizations.invite, {
     organizationId: local.organizationId,
@@ -695,7 +695,7 @@ test('invitations bind to verified email, expire, consume once and revalidate in
     local.eve.client.mutation(api.organizations.respondToInvitation, {
       invitationId: expired,
       accept: true,
-    }),
+    })
   ).rejects.toThrow('INVITATION_EXPIRED')
   await local.alice.client.mutation(api.organizations.changeRole, {
     organizationId: local.organizationId,
@@ -709,7 +709,7 @@ test('invitations bind to verified email, expire, consume once and revalidate in
   })
   const other = await createAuthenticatedUser(
     local.backend,
-    'other@example.com',
+    'other@example.com'
   )
   await local.alice.client.mutation(api.organizations.removeMember, {
     organizationId: local.organizationId,
@@ -719,10 +719,10 @@ test('invitations bind to verified email, expire, consume once and revalidate in
     other.client.mutation(api.organizations.respondToInvitation, {
       invitationId: delegated,
       accept: true,
-    }),
+    })
   ).rejects.toThrow('INVITATION_EXPIRED')
   expect(await other.client.query(api.organizations.invitations, {})).toEqual(
-    [],
+    []
   )
 })
 
@@ -731,10 +731,10 @@ test('last-owner protection is atomic across demotion and account deletion', asy
   await expect(
     local.alice.client.mutation(api.account.deleteAccount, {
       confirmation: 'DELETE',
-    }),
+    })
   ).rejects.toThrow('LAST_OWNER')
   expect(
-    await local.alice.client.query(api.auth.getCurrentUser, {}),
+    await local.alice.client.query(api.auth.getCurrentUser, {})
   ).not.toBeNull()
   await join(local)
   await local.alice.client.mutation(api.organizations.changeRole, {
@@ -755,13 +755,13 @@ test('last-owner protection is atomic across demotion and account deletion', asy
     }),
   ])
   expect(
-    results.filter((result) => result.status === 'fulfilled'),
+    results.filter((result) => result.status === 'fulfilled')
   ).toHaveLength(1)
   const remaining = await local.alice.client.query(api.organizations.get, {
     organizationId: local.organizationId,
   })
   expect(
-    remaining.members.filter((member) => member.role === 'owner'),
+    remaining.members.filter((member) => member.role === 'owner')
   ).toHaveLength(1)
 })
 
@@ -788,21 +788,20 @@ test('account deletion leaves shared data available to its organization and anon
   })
   await local.backend.finishAllScheduledFunctions(vi.runAllTimers)
   expect(
-    (await local.bob.client.query(api.resources.get, { id: shared }))?.title,
+    (await local.bob.client.query(api.resources.get, { id: shared }))?.title
   ).toBe('Team keeps it')
   expect(
-    await local.backend.run((ctx) => ctx.db.get('resources', personal)),
+    await local.backend.run((ctx) => ctx.db.get('resources', personal))
   ).toBeNull()
   expect(
-    (await local.backend.run((ctx) => ctx.db.get('resources', shared)))
-      ?.ownerId,
+    (await local.backend.run((ctx) => ctx.db.get('resources', shared)))?.ownerId
   ).toBe('deleted-user')
   expect(
     (
       await local.bob.client.query(api.organizations.get, {
         organizationId: local.organizationId,
       })
-    ).members,
+    ).members
   ).toHaveLength(1)
 })
 
@@ -832,7 +831,7 @@ test('organization deletion closes access immediately and cleans shared data in 
     local.bob.client.query(api.resources.list, {
       paginationOpts,
       organizationId: local.organizationId,
-    }),
+    })
   ).rejects.toThrow('NOT_FOUND')
   await local.backend.finishAllScheduledFunctions(vi.runAllTimers)
   expect(
@@ -840,13 +839,13 @@ test('organization deletion closes access immediately and cleans shared data in 
       ctx.db
         .query('resources')
         .withIndex('by_organization', (q) =>
-          q.eq('organizationId', local.organizationId),
+          q.eq('organizationId', local.organizationId)
         )
-        .collect(),
-    ),
+        .collect()
+    )
   ).toEqual([])
   expect(
-    (await local.bob.client.query(api.resources.get, { id: personal }))?.title,
+    (await local.bob.client.query(api.resources.get, { id: personal }))?.title
   ).toBe('Personal stays')
   expect(await local.bob.client.query(api.organizations.list, {})).toEqual([])
 })

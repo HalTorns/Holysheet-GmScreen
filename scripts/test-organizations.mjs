@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+
 import {
   assertLocalDeploymentSelection,
   assertDockerPortsOwnership,
@@ -27,11 +28,11 @@ try {
     arguments_.some((argument) => argument !== '--all')
   )
     throw new Error(
-      'Use --all to run the complete browser suite in organization mode.',
+      'Use --all to run the complete browser suite in organization mode.'
     )
   if (!readEnvironment('.env.docker').COMPOSE_PROJECT_NAME)
     throw new Error(
-      'Run pnpm setup to establish this checkout’s Docker identity before organization tests.',
+      'Run pnpm setup to establish this checkout’s Docker identity before organization tests.'
     )
   const dockerEnvironment = prepareDockerEnvironment()
   assertDockerPortsOwnership(dockerEnvironment)
@@ -39,7 +40,7 @@ try {
   if (!configuration.CONVEX_SELF_HOSTED_ADMIN_KEY)
     throw new Error('Run pnpm setup before the organization browser tests.')
   const env = localDeploymentEnvironment(
-    configuration.CONVEX_SELF_HOSTED_ADMIN_KEY,
+    configuration.CONVEX_SELF_HOSTED_ADMIN_KEY
   )
   const file = join(projectRoot, '.env.local')
   const original = run(
@@ -53,7 +54,7 @@ try {
       '--env-file',
       file,
     ],
-    { capture: true, env },
+    { capture: true, env }
   )
   if (!['', 'false', 'true'].includes(original))
     throw new Error('ORGANIZATIONS_ENABLED must be true or false.')
@@ -70,7 +71,7 @@ try {
         '--env-file',
         file,
       ],
-      { capture: true, env },
+      { capture: true, env }
     )
     run(
       'pnpm',
@@ -82,7 +83,7 @@ try {
           ? []
           : ['tests/e2e/organizations.spec.ts']),
       ],
-      { env: { ...env, PLAYWRIGHT_ORGANIZATIONS: '1' } },
+      { env: { ...env, PLAYWRIGHT_ORGANIZATIONS: '1' }, timeout: 600_000 }
     )
   } finally {
     const change = original
@@ -97,7 +98,7 @@ try {
   console.error(
     error instanceof Error
       ? error.message
-      : 'Organization browser verification failed.',
+      : 'Organization browser verification failed.'
   )
   process.exitCode = 1
 }

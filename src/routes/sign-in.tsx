@@ -1,11 +1,18 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { appConfig } from '@shared/app-config'
+import { createFileRoute } from '@tanstack/react-router'
 
 import { Brand } from '@/components/brand'
 import { SignInForm } from '@/features/auth/sign-in-form'
+import { getPublicCapabilities } from '@/lib/public-capabilities'
 
 export const Route = createFileRoute('/sign-in')({
-  head: () => ({ meta: [{ title: `Connexion — ${appConfig.name}` }] }),
+  loader: () => getPublicCapabilities(),
+  head: () => ({
+    meta: [
+      { title: `Connexion — ${appConfig.name}` },
+      { name: 'robots', content: 'noindex, nofollow' },
+    ],
+  }),
   component: SignInPage,
 })
 
@@ -28,7 +35,7 @@ function SignInPage() {
       </aside>
       <section className="auth-content" aria-label="Connexion">
         <div className="auth-form-container">
-          <SignInForm />
+          <SignInForm capabilities={Route.useLoaderData()} />
         </div>
       </section>
     </main>

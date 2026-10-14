@@ -4,15 +4,15 @@ Le parcours ressources sert d’exemple complet : formulaire, pagination, accès
 
 ## Identité et configuration
 
-| Besoin                                                          | Point de modification                                     |
-| --------------------------------------------------------------- | --------------------------------------------------------- |
-| Nom, marque, description, titres, nom affiché pour les passkeys | `shared/app-config.ts`                                    |
-| Format des dates et fuseau partagé SSR/navigateur               | `shared/app-config.ts` : `locale`, `timeZone`             |
-| Navigation privée                                               | `src/config/navigation.ts`                                |
-| Pages et textes du produit                                      | `src/routes/`, `src/features/`                            |
-| Couleurs, rayons et polices                                     | Tokens de `src/styles.css`                                |
-| Logo et favicon                                                 | `src/components/brand.tsx`, `public/favicon.svg`          |
-| Origines, secrets et fournisseur email                          | Variables de l’environnement cible : `docs/deployment.md` |
+| Besoin | Point de modification |
+| --- | --- |
+| Nom, marque, description, titres, nom affiché pour les passkeys | `shared/app-config.ts` |
+| Format des dates et fuseau partagé SSR/navigateur | `shared/app-config.ts` : `locale`, `timeZone` |
+| Navigation privée | `src/config/navigation.ts` |
+| Pages et textes du produit | `src/routes/`, `src/features/` |
+| Couleurs, rayons et polices | Tokens de `src/styles.css` |
+| Logo et favicon | `src/components/brand.tsx`, `public/favicon.svg` |
+| Origines, secrets et fournisseur email | Variables de l’environnement cible : `docs/deployment.md` |
 
 `appConfig` est public, versionné et partagé entre le frontend et Convex. Il contient une identité de présentation ; ne pas y ajouter de secrets, de permissions ou de réglages permettant de désactiver les protections d’authentification. Modifier son nom nécessite de reconstruire le frontend et de déployer les fonctions backend pour garder les deux affichages cohérents.
 
@@ -49,14 +49,14 @@ Noter une décision courte lorsque le produit change une frontière : besoin, so
 
 Chaque nouveau domaine personnel doit être intégré aux opérations de compte. Les tables ne sont pas découvertes et supprimées automatiquement : un domaine partagé ou une donnée à conserver demande une règle métier explicite.
 
-| Contrat                               | Code à examiner lors de l’ajout ou du remplacement d’un domaine                                                                    |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Export de ses propres données         | `convex/account.ts`, validateurs dans `convex/lib/validators.ts`, collecte et fichier dans `src/features/account/data-section.tsx` |
-| Suppression après fermeture du compte | `convex/cleanup.ts` : index par propriétaire, lots bornés et reprise planifiée jusqu’à la fin                                      |
-| Accès refusé dès la suppression       | `convex/lib/auth.ts`, `convex/account.ts` : invalider l’utilisateur/session avant le nettoyage asynchrone                          |
-| Effets externes et objets stockés     | Actions de nettoyage du domaine, droit sur les objets, idempotence, reprise des échecs                                             |
-| Preuves d’isolation et de nettoyage   | `tests/backend/account.test.ts`, tests du domaine, parcours E2E d’export/suppression                                               |
-| Restauration du schéma et des données | `scripts/verify-restore.mjs`, `tests/e2e/restore.spec.ts`, `docs/backup-restore.md`                                                |
+| Contrat | Code à examiner lors de l’ajout ou du remplacement d’un domaine |
+| --- | --- |
+| Export de ses propres données | `convex/account.ts`, validateurs dans `convex/lib/validators.ts`, collecte et fichier dans `src/features/account/data-section.tsx` |
+| Suppression après fermeture du compte | `convex/cleanup.ts` : index par propriétaire, lots bornés et reprise planifiée jusqu’à la fin |
+| Accès refusé dès la suppression | `convex/lib/auth.ts`, `convex/account.ts` : invalider l’utilisateur/session avant le nettoyage asynchrone |
+| Effets externes et objets stockés | Actions de nettoyage du domaine, droit sur les objets, idempotence, reprise des échecs |
+| Preuves d’isolation et de nettoyage | `tests/backend/account.test.ts`, tests du domaine, parcours E2E d’export/suppression |
+| Restauration du schéma et des données | `scripts/verify-restore.mjs`, `tests/e2e/restore.spec.ts`, `docs/backup-restore.md` |
 
 L’export actuel pagine les ressources. Avec plusieurs domaines, chaque collection doit avoir sa pagination et sa progression ; ne pas charger toutes les tables dans une seule query. Pour un volume important, prévoir un export en tâche bornée avec téléchargement privé plutôt qu’une accumulation illimitée dans le navigateur.
 

@@ -1,15 +1,35 @@
 import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
+
 import { components, internal } from './_generated/api'
 import { mutation, query } from './_generated/server'
 import { requireRecentUser } from './lib/auth'
-import { limitUserOperation } from './lib/rateLimits'
-import { listOwnedResources } from './lib/resources'
-import { publicUserValidator, resourcePageValidator } from './lib/validators'
 import {
   invitationValidator,
   organizationSummaryValidator,
 } from './lib/organizationValidators'
+import { limitUserOperation } from './lib/rateLimits'
+import { listOwnedResources } from './lib/resources'
+import { publicUserValidator, resourcePageValidator } from './lib/validators'
+
+export const exportSecurityAudit = query({
+  args: {
+    scope: v.union(v.literal('actor'), v.literal('target')),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(v.object({ event: v.string(), createdAt: v.number() })),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await requireRecentUser(ctx)
+    return ctx.runQuery(components.betterAuth.access.exportAudit, {
+      userId: user._id,
+      ...args,
+    })
+  },
+})
 
 export const exportData = query({
   args: { paginationOpts: paginationOptsValidator },
@@ -32,11 +52,11 @@ export const exportData = query({
       resources: await listOwnedResources(ctx, user._id, paginationOpts),
       organizations: await ctx.runQuery(
         components.betterAuth.organizations.listMine,
-        { userId: user._id },
+        { userId: user._id }
       ),
       invitations: await ctx.runQuery(
         components.betterAuth.organizations.incoming,
-        { email: user.email },
+        { email: user.email }
       ),
       exportedAt: Date.now(),
     }

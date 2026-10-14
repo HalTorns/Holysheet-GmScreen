@@ -1,23 +1,23 @@
-import { useForm } from '@tanstack/react-form'
 import { convexQuery } from '@convex-dev/react-query'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useHydrated } from '@tanstack/react-router'
-import { useMutation } from 'convex/react'
-import type { FunctionReturnType } from 'convex/server'
 import { api } from '@convex/_generated/api'
 import {
   canManageOrganizationMembers,
   organizationRoleLabels,
   organizationRoleSchema,
   organizationRoles,
-  type OrganizationRole,
 } from '@shared/organizations'
+import type { OrganizationRole } from '@shared/organizations'
 import { emailSchema } from '@shared/validation'
 import { z } from '@shared/zod'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { useForm } from '@tanstack/react-form'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useHydrated } from '@tanstack/react-router'
+import { useMutation } from 'convex/react'
+import type { FunctionReturnType } from 'convex/server'
+import { useState } from 'react'
+
 import { FormError } from '@/components/form-error'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogClose,
@@ -26,7 +26,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { useState } from 'react'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+
 import { useOrganizationOperation } from './use-organization-operation'
 
 type OrganizationData = FunctionReturnType<typeof api.organizations.get>
@@ -98,7 +100,7 @@ function InviteForm({
           invite({
             organizationId: organization.id,
             ...invitationSchema.parse(value),
-          }),
+          })
         )
       )
         form.reset()
@@ -156,7 +158,7 @@ function InviteForm({
                 disabled={operation.pending}
                 onChange={(event) => {
                   const role = invitationSchema.shape.role.safeParse(
-                    event.target.value,
+                    event.target.value
                   )
                   if (role.success) field.handleChange(role.data)
                 }}
@@ -196,7 +198,7 @@ function MemberRow({
 }) {
   const changeRole = useMutation(api.organizations.changeRole)
   const { data: user } = useSuspenseQuery(
-    convexQuery(api.auth.getCurrentUser, {}),
+    convexQuery(api.auth.getCurrentUser, {})
   )
   const operation = useOrganizationOperation()
   const canEdit =
@@ -230,7 +232,7 @@ function MemberRow({
               disabled={operation.pending}
               onChange={(event) => {
                 const role = organizationRoleSchema.safeParse(
-                  event.target.value,
+                  event.target.value
                 )
                 if (role.success)
                   void operation.run(() =>
@@ -238,7 +240,7 @@ function MemberRow({
                       organizationId: organization.id,
                       userId: member.userId,
                       role: role.data,
-                    }),
+                    })
                   )
               }}
             >
@@ -282,7 +284,7 @@ function RemoveMemberDialog({
   async function submit() {
     if (
       await operation.run(() =>
-        remove({ organizationId, userId: member.userId }),
+        remove({ organizationId, userId: member.userId })
       )
     )
       setOpen(false)

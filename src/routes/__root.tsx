@@ -1,5 +1,6 @@
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
 import type { ConvexQueryClient } from '@convex-dev/react-query'
+import { appConfig } from '@shared/app-config'
 import type { QueryClient } from '@tanstack/react-query'
 import {
   createRootRouteWithContext,
@@ -10,10 +11,12 @@ import {
 } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { Toaster } from 'sonner'
-import { appConfig } from '@shared/app-config'
+
+import { Button } from '@/components/ui/button'
+import { OptionalAnalytics } from '@/features/observability/analytics'
 import { authClient } from '@/lib/auth-client'
 import { getToken } from '@/lib/auth-server'
-import { Button } from '@/components/ui/button'
+
 import stylesheet from '@/styles.css?url'
 
 const getAuthToken = createServerFn({ method: 'GET' }).handler(() => getToken())
@@ -71,7 +74,9 @@ function Root() {
           authClient={authClient}
           initialToken={context.token ?? null}
         >
-          <Outlet />
+          <OptionalAnalytics>
+            <Outlet />
+          </OptionalAnalytics>
           <Toaster richColors position="bottom-right" />
         </ConvexBetterAuthProvider>
         <Scripts />

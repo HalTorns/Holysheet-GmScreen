@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { parseEnv } from 'node:util'
+
 import { expect, test } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
+
 import { api } from '../../convex/_generated/api'
 import {
   createEmail,
@@ -18,7 +20,7 @@ test('le dashboard lit les données locales et ferme sa session admin sans persi
   browser,
 }) => {
   const environment = parseEnv(
-    await readFile(new URL('../../.env.local', import.meta.url), 'utf8'),
+    await readFile(new URL('../../.env.local', import.meta.url), 'utf-8')
   )
   const adminKey = environment.CONVEX_SELF_HOSTED_ADMIN_KEY
   if (!adminKey) throw new Error('La clé admin locale est absente.')
@@ -36,7 +38,7 @@ test('le dashboard lit les données locales et ferme sa session admin sans persi
     // Assert booleans: a failure must not serialize the credential or HTML.
     expect((await response.text()).includes(adminKey)).toBe(false)
     await expect(
-      dashboard.getByLabel('Admin Key', { exact: true }),
+      dashboard.getByLabel('Admin Key', { exact: true })
     ).toBeVisible()
     await dashboard.getByLabel('Admin Key', { exact: true }).fill(adminKey)
     await dashboard.getByRole('button', { name: 'Log In', exact: true }).click()
@@ -44,7 +46,7 @@ test('le dashboard lit les données locales et ferme sa session admin sans persi
       dashboard.getByRole('button', {
         name: 'Dashboard Settings',
         exact: true,
-      }),
+      })
     ).toBeVisible()
     await dashboard.getByRole('link', { name: 'Data', exact: true }).click()
     await dashboard
@@ -56,16 +58,16 @@ test('le dashboard lit les données locales et ferme sa session admin sans persi
       await dashboard.evaluate((key) => {
         const stored = sessionStorage.getItem('adminKey')
         return Boolean(stored && JSON.parse(stored) === key)
-      }, adminKey),
+      }, adminKey)
     ).toBe(true)
     expect(
       await dashboard.evaluate(
         (key) =>
           Object.values(localStorage).some((value: string) =>
-            value.includes(key),
+            value.includes(key)
           ),
-        adminKey,
-      ),
+        adminKey
+      )
     ).toBe(false)
 
     await dashboard
@@ -76,11 +78,11 @@ test('le dashboard lit les données locales et ferme sa session admin sans persi
       await dashboard.evaluate(() => {
         const stored = sessionStorage.getItem('adminKey')
         return !stored || JSON.parse(stored) === ''
-      }),
+      })
     ).toBe(true)
     await dashboard.reload()
     await expect(
-      dashboard.getByLabel('Admin Key', { exact: true }),
+      dashboard.getByLabel('Admin Key', { exact: true })
     ).toBeVisible()
   } finally {
     await adminContext.close()

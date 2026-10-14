@@ -1,9 +1,16 @@
 import { MINUTE, RateLimiter } from '@convex-dev/rate-limiter'
 import { ConvexError } from 'convex/values'
+
 import { components } from '../_generated/api'
 import type { MutationCtx } from '../_generated/server'
 
 const limiter = new RateLimiter(components.rateLimiter, {
+  mfaVerification: {
+    kind: 'token bucket',
+    rate: 5,
+    period: 5 * MINUTE,
+    capacity: 5,
+  },
   resourceWrite: {
     kind: 'token bucket',
     rate: 30,
@@ -33,8 +40,12 @@ const limiter = new RateLimiter(components.rateLimiter, {
 
 export async function limitUserOperation(
   ctx: MutationCtx,
-  operation: 'resourceWrite' | 'accountSensitive' | 'organizationWrite',
-  userId: string,
+  operation:
+    | 'resourceWrite'
+    | 'accountSensitive'
+    | 'organizationWrite'
+    | 'mfaVerification',
+  userId: string
 ) {
   const result = await limiter.limit(ctx, operation, { key: userId })
   if (!result.ok)
@@ -47,10 +58,10 @@ export async function limitUserOperation(
 export async function limitAuthEmail(ctx: MutationCtx, email: string) {
   const digest = await crypto.subtle.digest(
     'SHA-256',
-    new TextEncoder().encode(email.toLowerCase()),
+    new TextEncoder().encode(email.toLowerCase())
   )
   const key = Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0'),
+    byte.toString(16).padStart(2, '0')
   ).join('')
   for (const [operation, recipientKey] of [
     ['authEmailRecipient', key],

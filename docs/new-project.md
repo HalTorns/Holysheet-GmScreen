@@ -27,15 +27,15 @@ pnpm backend:dev
 
 Le frontend tourne sur le Mac pour le rechargement à chaud. OrbStack héberge Convex, son dashboard et Mailpit. `pnpm setup` attend leur santé, configure l’authentification locale et déploie les fonctions ; il ne crée aucun compte ni donnée de démonstration. Aucun compte Convex Cloud ou fournisseur email n’est nécessaire.
 
-| Usage                                        | Adresse ou commande                           |
-| -------------------------------------------- | --------------------------------------------- |
-| Application SSR et connexion                 | http://localhost:3000                         |
-| Codes email et invitations de développement  | http://localhost:8025                         |
-| Tables, composants, fonctions et logs Convex | `pnpm dashboard` → http://127.0.0.1:6791      |
-| API / WebSocket et actions HTTP Convex       | http://127.0.0.1:3210 / http://127.0.0.1:3211 |
-| Diagnostic sans afficher de secrets          | `pnpm doctor`                                 |
+| Usage | Adresse ou commande |
+| --- | --- |
+| Application SSR et connexion | http://localhost:3000 |
+| Codes email et invitations de développement | http://localhost:8025 |
+| Tables, composants, fonctions et logs Convex | `pnpm dashboard` → http://127.0.0.1:6791 |
+| API / WebSocket et actions HTTP Convex | http://127.0.0.1:3210 / http://127.0.0.1:3211 |
+| Diagnostic sans afficher de secrets | `pnpm doctor` |
 
-Se connecter avec une adresse fictive, lire le code dans Mailpit puis créer des données dans l’application. L’environnement exerce les vraies sessions, passkeys, règles d’accès, le SSR et les subscriptions Convex. Le serveur construit se vérifie avec `pnpm check`, puis `PLAYWRIGHT_PRODUCTION=1 pnpm test:e2e` après arrêt du frontend de développement.
+Se connecter avec une adresse fictive, lire le code dans Mailpit puis créer des données dans l’application. L’environnement exerce les vraies sessions, passkeys, règles d’accès, le SSR et les subscriptions Convex. Le serveur construit se vérifie avec `pnpm check`, puis `pnpm test:e2e:local` sur un port libre.
 
 ## Secrets et données propres au projet
 
@@ -67,10 +67,10 @@ Le dashboard reçoit uniquement l’URL publique du backend via Docker. La clé 
 
    ```sh
    pnpm backend:push
-   pnpm check
    pnpm exec playwright install chromium
-   pnpm test:e2e
-   pnpm test:e2e:organizations --all
+   pnpm check
+   pnpm test:e2e:local
+   pnpm test:e2e:local organizations
    ```
 
 La dernière commande active les organisations pour les tests puis restaure le réglage initial. Sur une même instance locale, laisser au moins une minute entre deux suites complètes : les tests utilisent les vrais quotas d’authentification et des passes rapprochées peuvent produire des 429. Ne pas désactiver ces protections pour les tests. Les deux modes sont aussi validés dans GitHub Actions à chaque push et pull request, avec une instance distincte par mode. Vérifier que les Actions sont autorisées dans le nouveau dépôt ; le template ne copie pas ses résultats de CI ni ses protections de branche.
@@ -90,3 +90,5 @@ Utiliser les wrappers du projet. Ne pas lancer `docker compose down -v`, importe
 ## Déploiement futur
 
 Ce parcours simule l’application en local. Coolify sera une étape distincte : domaines HTTPS stables, secrets dédiés, volumes persistants, email réel, proxy, sauvegardes et contrôle des accès administratifs devront être configurés sur cette cible. Ne pas réutiliser le Compose de développement tel quel sur un serveur public.
+
+Pour choisir les fonctionnalités : lire [les modules auth](auth-modules.md) et [les intégrations optionnelles](observability.md). Aucun secret, compte opérateur, clé analytics ou projet Sentry du template n’est réutilisé. Activer Spotlight avec `pnpm services:up --spotlight` si le produit a besoin de diagnostic local.

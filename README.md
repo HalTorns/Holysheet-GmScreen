@@ -6,7 +6,7 @@ Socle TypeScript pour une application web avec SSR, données temps réel et auth
 
 Pour un nouveau produit, créer un dépôt **privé depuis le template** : suivre [la procédure nouveau projet](docs/new-project.md), qui garde secrets, données et configuration propres à chaque application.
 
-Prérequis : Node.js 26.11.0 (versions prises en charge : `>=24 <27`), pnpm 11.8.0, Docker avec Compose et moteur Docker démarré.
+Prérequis : Node.js 26.11.0 (versions prises en charge : `>=24.5 <27`), pnpm 11.8.0, Docker avec Compose et moteur Docker démarré.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -30,24 +30,24 @@ Pendant les changements backend, lancer `pnpm backend:dev` dans un second termin
 
 ## Commandes
 
-| Commande                      | Usage                                              |
-| ----------------------------- | -------------------------------------------------- |
-| `pnpm dev`                    | Frontend avec rechargement                         |
-| `pnpm backend:dev`            | Surveiller et déployer les modifications Convex    |
-| `pnpm backend:push`           | Déployer les fonctions locales une fois            |
-| `pnpm dashboard`              | Ouvrir le dashboard admin Convex local             |
-| `pnpm doctor`                 | Vérifier configuration et santé des services       |
-| `pnpm auth:generate`          | Régénérer le schéma Better Auth Local Install      |
-| `pnpm check`                  | Types, lint, format, tests backend et build        |
-| `pnpm test:e2e`               | Parcours réels Chromium, Convex et Mailpit         |
+| Commande | Usage |
+| --- | --- |
+| `pnpm dev` | Frontend avec rechargement |
+| `pnpm backend:dev` | Surveiller et déployer les modifications Convex |
+| `pnpm backend:push` | Déployer les fonctions locales une fois |
+| `pnpm dashboard` | Ouvrir le dashboard admin Convex local |
+| `pnpm doctor` | Vérifier configuration et santé des services |
+| `pnpm auth:generate` | Régénérer le schéma Better Auth Local Install |
+| `pnpm check` | Types, Oxlint, Oxfmt, Knip, Vitest backend/Browser Mode et build |
+| `pnpm test:e2e` | Parcours réels Chromium, Convex et Mailpit |
 | `pnpm test:e2e:organizations` | Parcours partagé avec activation locale temporaire |
-| `pnpm backup:verify`          | Restauration locale sur un backend Docker jetable  |
-| `pnpm build` / `pnpm start`   | Build puis serveur SSR de production               |
-| `pnpm services:down`          | Arrêter les conteneurs en conservant les volumes   |
+| `pnpm backup:verify` | Restauration locale sur un backend Docker jetable |
+| `pnpm build` / `pnpm start` | Build puis serveur SSR de production |
+| `pnpm services:down` | Arrêter les conteneurs en conservant les volumes |
 
 Avant le premier E2E : `pnpm exec playwright install chromium`. Les tests requièrent un backend initialisé par `pnpm setup` et démarrent le frontend automatiquement.
 
-Pour vérifier le serveur construit et sa CSP stricte : `pnpm build`, puis `PLAYWRIGHT_PRODUCTION=1 pnpm test:e2e` après avoir arrêté le serveur de développement. La CI exécute ce mode avec le build de `pnpm check`.
+Pour vérifier le serveur construit et sa CSP stricte sans viser une autre application : `pnpm test:e2e:local` choisit un port libre, construit son serveur et restaure l’origine backend. Ajouter `organizations` ou `modules` pour ces parcours optionnels. La CI exécute les suites directement sur son propre serveur de production et le build de `pnpm check`.
 
 ## Choix structurants
 
@@ -77,3 +77,9 @@ Pour vérifier le serveur construit et sa CSP stricte : `pnpm build`, puis `PLAY
 Les organisations et rôles sont intégrés mais désactivés par défaut. Activer `ORGANIZATIONS_ENABLED=true` dans Convex pour ajouter des espaces partagés avec propriétaires, administrateurs, membres et lecteurs. L’espace personnel reste disponible. Le [guide du module](docs/organizations.md) décrit permissions, invitations et cycle de vie des données.
 
 Les paiements, stockage R2 et fonctions IA restent à brancher selon le produit.
+
+## Modules et qualité
+
+Les conventions Codex/Claude/Cursor sont centralisées dans [AGENTS.md](AGENTS.md) et [les patterns agents](docs/agent-patterns.md). Oxlint/Ultracite, Oxfmt, Knip et les hooks Lefthook/lint-staged forment la chaîne de qualité ; `.vscode` fournit extensions, réglages et tâches. Node >=24.5 <27, version conseillée 26.11.0.
+
+[Magic Links, MFA, OAuth et support admin](docs/auth-modules.md) restent optionnels. [SEO, Arcjet, Sentry/Spotlight et PostHog](docs/observability.md) possèdent leurs propres configurations ; le défaut n’exige aucun compte SaaS. `pnpm services:up --spotlight` ouvre aussi l’interface de diagnostic locale sur le port 8969. Le mode personnel reste le point de départ du template.

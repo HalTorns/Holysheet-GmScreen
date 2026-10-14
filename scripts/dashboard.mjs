@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+
 import {
   assertDockerPortsOwnership,
   assertLocalDeploymentSelection,
@@ -22,7 +23,7 @@ try {
   )
     throw new Error('La configuration locale est incomplète : pnpm setup.')
   const dashboard = await fetch(dashboardUrl, {
-    signal: AbortSignal.timeout(5_000),
+    signal: AbortSignal.timeout(5000),
   })
   if (!dashboard.ok)
     throw new Error('Le dashboard est indisponible : pnpm services:up.')
@@ -30,7 +31,7 @@ try {
     headers: {
       Authorization: `Convex ${environment.CONVEX_SELF_HOSTED_ADMIN_KEY}`,
     },
-    signal: AbortSignal.timeout(5_000),
+    signal: AbortSignal.timeout(5000),
   })
   if (!authentication.ok)
     throw new Error('La clé locale ne correspond pas au backend actif.')
@@ -39,24 +40,24 @@ try {
     const clipboard = spawnSync('pbcopy', [], {
       input: environment.CONVEX_SELF_HOSTED_ADMIN_KEY,
       stdio: ['pipe', 'ignore', 'ignore'],
-      timeout: 5_000,
+      timeout: 5000,
     })
     if (clipboard.status !== 0)
       throw new Error('Impossible de copier la clé dans le presse-papiers.')
     run('open', [dashboardUrl], { capture: true })
     console.info(
-      'Dashboard ouvert. Clé admin locale copiée : coller dans « Admin Key », puis « Log In ». Après connexion, remplacer le presse-papiers et se déconnecter après usage.',
+      'Dashboard ouvert. Clé admin locale copiée : coller dans « Admin Key », puis « Log In ». Après connexion, remplacer le presse-papiers et se déconnecter après usage.'
     )
   } else {
     console.info(
-      `Ouvrir ${dashboardUrl}. Copier manuellement CONVEX_SELF_HOSTED_ADMIN_KEY depuis .env.local dans « Admin Key ». Ne pas l’afficher dans le terminal.`,
+      `Ouvrir ${dashboardUrl}. Copier manuellement CONVEX_SELF_HOSTED_ADMIN_KEY depuis .env.local dans « Admin Key ». Ne pas l’afficher dans le terminal.`
     )
   }
 } catch (error) {
   console.error(
     error instanceof Error
       ? error.message
-      : 'Ouverture du dashboard impossible.',
+      : 'Ouverture du dashboard impossible.'
   )
   process.exitCode = 1
 }

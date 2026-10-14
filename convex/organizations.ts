@@ -1,9 +1,11 @@
 import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
+
 import { components, internal } from './_generated/api'
 import { mutation, query } from './_generated/server'
 import { requireRecentUser, requireUser } from './lib/auth'
 import { requireOrganizationsEnabled } from './lib/modules'
+import { requireOrganizationPermission } from './lib/organizations'
 import {
   invitationRoleValidator,
   invitationValidator,
@@ -11,7 +13,6 @@ import {
   organizationRoleValidator,
   organizationSummaryValidator,
 } from './lib/organizationValidators'
-import { requireOrganizationPermission } from './lib/organizations'
 import { limitUserOperation } from './lib/rateLimits'
 import { listOrganizationResources } from './lib/resources'
 import { resourcePageValidator } from './lib/validators'
@@ -66,7 +67,7 @@ export const create = mutation({
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     const organizationId = await ctx.runMutation(
       components.betterAuth.organizations.create,
-      { name, actorId: user._id },
+      { name, actorId: user._id }
     )
     await ctx.db.insert('securityEvents', {
       event: 'organization.created',
@@ -90,7 +91,7 @@ export const invite = mutation({
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     const id = await ctx.runMutation(
       components.betterAuth.organizations.invite,
-      { ...input, actorId: user._id },
+      { ...input, actorId: user._id }
     )
     await ctx.db.insert('securityEvents', {
       event: 'organization.invited',
@@ -145,7 +146,7 @@ export const cancelInvitation = mutation({
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     return await ctx.runMutation(
       components.betterAuth.organizations.cancelInvitation,
-      { ...input, actorId: user._id },
+      { ...input, actorId: user._id }
     )
   },
 })

@@ -1,3 +1,4 @@
+import { appConfig } from '@shared/app-config'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import {
   ArrowDown,
@@ -11,12 +12,20 @@ import {
 
 import { Brand } from '@/components/brand'
 import { Button } from '@/components/ui/button'
-import { appConfig } from '@shared/app-config'
+import { env } from '@/env'
+import { pageMetadata } from '@/lib/seo'
 
 export const Route = createFileRoute('/')({
-  head: () => ({
-    meta: [{ title: `${appConfig.name} — ${appConfig.tagline}` }],
-  }),
+  head: () =>
+    pageMetadata({
+      title: `${appConfig.name} — ${appConfig.tagline}`,
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: appConfig.name,
+        url: env.VITE_SITE_URL,
+      },
+    }),
   component: HomePage,
 })
 
@@ -64,7 +73,7 @@ function HomePage() {
                 Explorer l’application <ArrowRight aria-hidden="true" />
               </Button>
               <Button
-                render={<a href="#socle" />}
+                render={<a href="#socle" aria-label="Explorer le socle" />}
                 nativeButton={false}
                 size="lg"
                 variant="ghost"

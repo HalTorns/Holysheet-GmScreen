@@ -23,7 +23,7 @@ export default defineSchema({
       v.literal('organization.invited'),
       v.literal('organization.role_changed'),
       v.literal('organization.member_removed'),
-      v.literal('organization.deleted'),
+      v.literal('organization.deleted')
     ),
     actorId: v.optional(v.string()),
     resourceId: v.optional(v.id('resources')),

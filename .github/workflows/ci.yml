@@ -51,16 +51,29 @@ jobs:
         run: pnpm setup
       - name: Vérifier la configuration locale sans afficher les secrets
         run: pnpm doctor
-      - name: Vérifier types, lint, format, tests et build
-        run: pnpm check
       - name: Installer Chromium
         run: pnpm exec playwright install --with-deps chromium
+      - name: Vérifier types, Oxlint, Oxfmt, Knip, Vitest navigateur et build
+        run: pnpm check
       - name: Parcours complets en mode personnel
         if: matrix.mode == 'personal'
         run: pnpm test:e2e:ci
       - name: Parcours complets en mode organisations
         if: matrix.mode == 'organizations'
         run: pnpm test:e2e:organizations --all
+      - name: Parcours optionnels Magic Link, MFA et administration
+        if: matrix.mode == 'personal'
+        run: |
+          sleep 60
+          pnpm test:e2e:modules
+      - name: SDK analytics/erreurs avec la CSP de production
+        if: matrix.mode == 'personal'
+        run: pnpm test:e2e:local observability
+      - name: Spotlight local sans DSN Sentry
+        if: matrix.mode == 'personal'
+        run: |
+          pnpm services:up --spotlight
+          pnpm test:e2e:local spotlight
       - name: Arrêter les services
         if: always()
         run: pnpm services:down
@@ -77,11 +90,4 @@ jobs:
           persist-credentials: false
       - name: Rechercher les secrets avec sorties masquées
         run: >-
-          docker run --rm
-          --network none
-          --read-only
-          --cap-drop ALL
-          --security-opt no-new-privileges
-          -v "$PWD:/repo:ro"
-          ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
-          git --redact=100 --no-banner --log-opts="--all" /repo
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges -v "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git --redact=100 --no-banner --log-opts="--all" /repo

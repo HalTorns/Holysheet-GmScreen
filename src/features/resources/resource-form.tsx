@@ -1,15 +1,15 @@
-import { useForm } from '@tanstack/react-form'
-import { useHydrated } from '@tanstack/react-router'
-import { useMutation } from 'convex/react'
-import { useState } from 'react'
-import { toast } from 'sonner'
-
 import { api } from '@convex/_generated/api'
 import {
   RESOURCE_DESCRIPTION_MAX_LENGTH,
   RESOURCE_TITLE_MAX_LENGTH,
   resourceSchema,
 } from '@shared/validation'
+import { useForm } from '@tanstack/react-form'
+import { useHydrated } from '@tanstack/react-router'
+import { useMutation } from 'convex/react'
+import { useState } from 'react'
+import { toast } from 'sonner'
+
 import { FormError } from '@/components/form-error'
 import { Button } from '@/components/ui/button'
 import {
@@ -102,8 +102,8 @@ function ResourceForm({
           })
         toast.success(resource ? 'Ressource mise à jour.' : 'Ressource créée.')
         onSaved()
-      } catch (failure) {
-        setError(operationErrorMessage(failure))
+      } catch (error) {
+        setError(operationErrorMessage(error))
       } finally {
         onPendingChange(false)
       }

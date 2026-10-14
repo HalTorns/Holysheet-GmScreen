@@ -1,14 +1,9 @@
-import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
+import { sharedResolve } from './config/vite-shared.ts'
+
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@convex': fileURLToPath(new URL('./convex', import.meta.url)),
-      '@shared': fileURLToPath(new URL('./shared', import.meta.url)),
-    },
-  },
+  resolve: sharedResolve,
   test: {
     include: [
       'tests/backend/**/*.test.ts',

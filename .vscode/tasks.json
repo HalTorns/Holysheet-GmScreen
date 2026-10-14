@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Services : démarrer",
+      "type": "shell",
+      "command": "pnpm services:up",
+      "problemMatcher": []
+    },
+    {
+      "label": "Diagnostic local",
+      "type": "shell",
+      "command": "pnpm doctor",
+      "problemMatcher": []
+    },
+    {
+      "label": "Application : dev",
+      "type": "shell",
+      "command": "pnpm dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Convex : dev",
+      "type": "shell",
+      "command": "pnpm backend:dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Qualité complète",
+      "type": "shell",
+      "command": "pnpm check",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Tests composants",
+      "type": "shell",
+      "command": "pnpm test:browser",
+      "problemMatcher": []
+    }
+  ]
+}

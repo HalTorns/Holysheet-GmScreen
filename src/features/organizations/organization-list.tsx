@@ -1,27 +1,28 @@
 import { convexQuery } from '@convex-dev/react-query'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useForm } from '@tanstack/react-form'
-import { Link, useHydrated, useNavigate } from '@tanstack/react-router'
-import { useMutation } from 'convex/react'
-import type { FunctionReturnType } from 'convex/server'
-import { Building2, Plus } from 'lucide-react'
-import { useState } from 'react'
 import { api } from '@convex/_generated/api'
 import {
   organizationSchema,
   organizationRoleLabels,
 } from '@shared/organizations'
-import { Button } from '@/components/ui/button'
+import { useForm } from '@tanstack/react-form'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { Link, useHydrated, useNavigate } from '@tanstack/react-router'
+import { useMutation } from 'convex/react'
+import type { FunctionReturnType } from 'convex/server'
+import { Building2, Plus } from 'lucide-react'
+import { useState } from 'react'
+
 import { FormError } from '@/components/form-error'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { operationErrorMessage } from '@/features/auth/errors'
 
 export function OrganizationList() {
   const { data: organizations } = useSuspenseQuery(
-    convexQuery(api.organizations.list, {}),
+    convexQuery(api.organizations.list, {})
   )
   const { data: invitations } = useSuspenseQuery(
-    convexQuery(api.organizations.invitations, {}),
+    convexQuery(api.organizations.invitations, {})
   )
   return (
     <>
@@ -102,8 +103,8 @@ function CreateOrganizationForm() {
           to: '/app/organizations/$organizationId',
           params: { organizationId: id },
         })
-      } catch (failure) {
-        setError(operationErrorMessage(failure))
+      } catch (error) {
+        setError(operationErrorMessage(error))
       }
     },
   })
@@ -188,8 +189,8 @@ function InvitationCard({
           to: '/app/organizations/$organizationId',
           params: { organizationId: id },
         })
-    } catch (failure) {
-      setError(operationErrorMessage(failure))
+    } catch (error) {
+      setError(operationErrorMessage(error))
     } finally {
       setPending(false)
     }

@@ -12,18 +12,18 @@ import {
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { parseEnv } from 'node:util'
+
 import { afterEach, expect, test } from 'vitest'
 
-const projectRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
+const projectRoot = dirname(dirname(import.meta.dirname))
 const directories: string[] = []
 
 afterEach(async () => {
   await Promise.all(
     directories
       .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
+      .map((directory) => rm(directory, { recursive: true, force: true }))
   )
 })
 
@@ -40,7 +40,7 @@ async function fixture() {
   }
   await copyFile(
     join(projectRoot, 'docker-compose.yml'),
-    join(directory, 'docker-compose.yml'),
+    join(directory, 'docker-compose.yml')
   )
   const log = join(directory, 'commands.jsonl')
   const fakeCommand = String.raw`#!${process.execPath}
@@ -54,19 +54,19 @@ if (args.includes('inspect')) console.log(process.env.TEST_COMPOSE_OWNER || proc
 `
   await Promise.all(
     ['docker', 'pnpm'].map((name) =>
-      writeFile(join(binaries, name), fakeCommand, { mode: 0o700 }),
-    ),
+      writeFile(join(binaries, name), fakeCommand, { mode: 0o700 })
+    )
   )
   const preload = join(directory, 'network.mjs')
   // The test owns filesystem preservation and target admission, not the backend API.
   await writeFile(
     preload,
-    "globalThis.fetch = async () => new Response('{}', { status: 200 })\n",
+    "globalThis.fetch = async () => new Response('{}', { status: 200 })\n"
   )
   const environment = Object.fromEntries(
     Object.entries(process.env).filter(
-      ([name]) => !name.startsWith('CONVEX_') && !name.startsWith('COMPOSE_'),
-    ),
+      ([name]) => !name.startsWith('CONVEX_') && !name.startsWith('COMPOSE_')
+    )
   )
   return {
     directory,
@@ -82,7 +82,7 @@ if (args.includes('inspect')) console.log(process.env.TEST_COMPOSE_OWNER || proc
 
 function setup(
   local: Awaited<ReturnType<typeof fixture>>,
-  extraEnvironment: Record<string, string> = {},
+  extraEnvironment: Record<string, string> = {}
 ) {
   return spawnSync(
     process.execPath,
@@ -94,15 +94,15 @@ function setup(
     {
       cwd: local.directory,
       env: { ...local.environment, ...extraEnvironment },
-      encoding: 'utf8',
-      timeout: 5_000,
-    },
+      encoding: 'utf-8',
+      timeout: 5000,
+    }
   )
 }
 
 async function commands(path: string): Promise<string> {
   try {
-    return await readFile(path, 'utf8')
+    return await readFile(path, 'utf-8')
   } catch {
     return ''
   }
@@ -124,51 +124,51 @@ test.each([
     if (source !== 'process')
       await writeFile(
         join(local.directory, source),
-        `export ${selector}=development-only-fake-selection\n`,
+        `export ${selector}=development-only-fake-selection\n`
       )
-    const before = await readFile(join(local.directory, '.env.local'), 'utf8')
+    const before = await readFile(join(local.directory, '.env.local'), 'utf-8')
     const result = setup(
       local,
       source === 'process'
         ? { [selector]: 'development-only-fake-selection' }
-        : {},
+        : {}
     )
     expect(result.status).toBe(1)
     expect(result.stderr).toContain('remote Convex configuration')
     expect(await commands(local.log)).toBe('')
-    expect(await readFile(join(local.directory, '.env.local'), 'utf8')).toBe(
-      before,
+    expect(await readFile(join(local.directory, '.env.local'), 'utf-8')).toBe(
+      before
     )
-  },
+  }
 )
 
 test('réexécuter le setup conserve les variables du projet et les secrets locaux', async () => {
   const local = await fixture()
   await writeFile(
     join(local.directory, '.env.local'),
-    'CUSTOM_LOCAL_SETTING="a project value"\nCUSTOM_PATH=C:\\a\\b\nCUSTOM_MULTILINE="line one\nline two"\nCUSTOM_QUOTES=both "double" and single quotes\n',
+    'CUSTOM_LOCAL_SETTING="a project value"\nCUSTOM_PATH=C:\\a\\b\nCUSTOM_MULTILINE="line one\nline two"\nCUSTOM_QUOTES=both "double" and single quotes\n'
   )
   const originalCustomConfiguration = await readFile(
     join(local.directory, '.env.local'),
-    'utf8',
+    'utf-8'
   )
   const first = setup(local)
   expect(first.status, first.stderr).toBe(0)
   const privateConfiguration = await readFile(
     join(local.directory, '.env.docker'),
-    'utf8',
+    'utf-8'
   )
   const second = setup(local)
   expect(second.status, second.stderr).toBe(0)
   expect(
-    parseEnv(await readFile(join(local.directory, '.env.local'), 'utf8'))
-      .CUSTOM_LOCAL_SETTING,
+    parseEnv(await readFile(join(local.directory, '.env.local'), 'utf-8'))
+      .CUSTOM_LOCAL_SETTING
   ).toBe('a project value')
-  expect(await readFile(join(local.directory, '.env.local'), 'utf8')).toContain(
-    originalCustomConfiguration,
-  )
-  expect(await readFile(join(local.directory, '.env.docker'), 'utf8')).toBe(
-    privateConfiguration,
+  expect(
+    await readFile(join(local.directory, '.env.local'), 'utf-8')
+  ).toContain(originalCustomConfiguration)
+  expect(await readFile(join(local.directory, '.env.docker'), 'utf-8')).toBe(
+    privateConfiguration
   )
 })
 
@@ -178,10 +178,10 @@ test('deux nouveaux checkouts reçoivent des identités et secrets différents',
   expect(setup(first).status).toBe(0)
   expect(setup(second).status).toBe(0)
   const before = parseEnv(
-    await readFile(join(first.directory, '.env.docker'), 'utf8'),
+    await readFile(join(first.directory, '.env.docker'), 'utf-8')
   )
   const after = parseEnv(
-    await readFile(join(second.directory, '.env.docker'), 'utf8'),
+    await readFile(join(second.directory, '.env.docker'), 'utf-8')
   )
   expect(before.COMPOSE_PROJECT_NAME).not.toBe(after.COMPOSE_PROJECT_NAME)
   // Compare without including private values in a failed assertion's output.
@@ -195,7 +195,7 @@ test('une configuration Docker copiée depuis un autre checkout est refusée ava
   const copy = await fixture()
   await copyFile(
     join(original.directory, '.env.docker'),
-    join(copy.directory, '.env.docker'),
+    join(copy.directory, '.env.docker')
   )
   const result = setup(copy)
   expect(result.status).toBe(1)
@@ -217,14 +217,14 @@ test.each(['test-organizations.mjs', 'dashboard.mjs'])(
       {
         cwd: copy.directory,
         env: copy.environment,
-        encoding: 'utf8',
-        timeout: 5_000,
-      },
+        encoding: 'utf-8',
+        timeout: 5000,
+      }
     )
     expect(result.status).toBe(1)
     expect(result.stderr).toContain('another checkout')
     expect(await commands(copy.log)).toBe('')
-  },
+  }
 )
 
 test.each(['3210', '6791'])(
@@ -237,22 +237,22 @@ test.each(['3210', '6791'])(
     })
     expect(result.status).toBe(1)
     expect(result.stderr).toContain(
-      'already published by another Docker project',
+      'already published by another Docker project'
     )
     const invocations = await commands(local.log)
     expect(invocations).not.toContain('"up"')
     expect(invocations).not.toContain('"exec"')
     await expect(
-      readFile(join(local.directory, '.env.docker')),
+      readFile(join(local.directory, '.env.docker'))
     ).rejects.toThrow()
-  },
+  }
 )
 
 test('un ancien projet Docker appartenant à un autre checkout ne peut pas être adopté', async () => {
   const local = await fixture()
   await writeFile(
     join(local.directory, '.env.docker'),
-    `INSTANCE_NAME=boilerplate-v2\nINSTANCE_SECRET=${'a'.repeat(64)}\nLOCAL_AUTH_SECRET=${'b'.repeat(64)}\n`,
+    `INSTANCE_NAME=boilerplate-v2\nINSTANCE_SECRET=${'a'.repeat(64)}\nLOCAL_AUTH_SECRET=${'b'.repeat(64)}\n`
   )
   const result = setup(local, {
     TEST_LEGACY_OWNER: 'present',

@@ -1,7 +1,10 @@
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v } from 'convex/values'
+
 import { mutation, query } from './_generated/server'
 import { requireUser } from './lib/auth'
+import { organizationsEnabled } from './lib/modules'
+import { requireOrganizationPermission } from './lib/organizations'
 import { limitUserOperation } from './lib/rateLimits'
 import {
   listOwnedResources,
@@ -13,8 +16,6 @@ import {
   publicResourceValidator,
   resourcePageValidator,
 } from './lib/validators'
-import { requireOrganizationPermission } from './lib/organizations'
-import { organizationsEnabled } from './lib/modules'
 
 const resourceArgs = { title: v.string(), description: v.string() }
 
@@ -31,7 +32,7 @@ export const list = query({
       return await listOrganizationResources(
         ctx,
         organizationId,
-        paginationOpts,
+        paginationOpts
       )
     }
     return await listOwnedResources(ctx, user._id, paginationOpts)
@@ -51,7 +52,7 @@ export const get = query({
           ctx,
           resource.organizationId,
           user._id,
-          'read',
+          'read'
         )
       } catch {
         // Fail closed without exposing whether another tenant owns this ID.
@@ -73,21 +74,21 @@ export const create = mutation({
         ctx,
         organizationId,
         user._id,
-        'write',
+        'write'
       )
     const resource = validateResource(input)
     await limitUserOperation(ctx, 'resourceWrite', user._id)
     const id = await ctx.db.insert('resources', {
       ...resource,
       ownerId: user._id,
-      ...(organizationId !== undefined ? { organizationId } : {}),
+      ...(organizationId === undefined ? {} : { organizationId }),
       updatedAt: Date.now(),
     })
     await ctx.db.insert('securityEvents', {
       event: 'resource.created',
       actorId: user._id,
       resourceId: id,
-      ...(organizationId !== undefined ? { organizationId } : {}),
+      ...(organizationId === undefined ? {} : { organizationId }),
     })
     return id
   },
@@ -105,7 +106,7 @@ export const update = mutation({
         ctx,
         resource.organizationId,
         user._id,
-        'write',
+        'write'
       )
     else if (resource.ownerId !== user._id)
       throw new ConvexError({ code: 'NOT_FOUND' })
@@ -116,9 +117,9 @@ export const update = mutation({
       event: 'resource.updated',
       actorId: user._id,
       resourceId: id,
-      ...(resource.organizationId !== undefined
-        ? { organizationId: resource.organizationId }
-        : {}),
+      ...(resource.organizationId === undefined
+        ? {}
+        : { organizationId: resource.organizationId }),
     })
     return null
   },
@@ -136,7 +137,7 @@ export const remove = mutation({
         ctx,
         resource.organizationId,
         user._id,
-        'write',
+        'write'
       )
     else if (resource.ownerId !== user._id)
       throw new ConvexError({ code: 'NOT_FOUND' })
@@ -146,9 +147,9 @@ export const remove = mutation({
       event: 'resource.deleted',
       actorId: user._id,
       resourceId: id,
-      ...(resource.organizationId !== undefined
-        ? { organizationId: resource.organizationId }
-        : {}),
+      ...(resource.organizationId === undefined
+        ? {}
+        : { organizationId: resource.organizationId }),
     })
     return null
   },

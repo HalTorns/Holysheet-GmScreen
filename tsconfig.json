@@ -23,6 +23,14 @@
       "@shared/*": ["./shared/*"]
     }
   },
-  "include": ["src", "convex", "shared", "tests", "*.config.ts"],
+  "include": [
+    "src",
+    "convex",
+    "shared",
+    "tests",
+    "*.config.ts",
+    "knip.ts",
+    "config"
+  ],
   "exclude": ["node_modules", ".output", "dist"]
 }

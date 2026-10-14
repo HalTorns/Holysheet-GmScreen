@@ -1,4 +1,5 @@
 import { useState } from 'react'
+
 import { operationErrorMessage } from '@/features/auth/errors'
 
 export function useOrganizationOperation() {
@@ -10,8 +11,8 @@ export function useOrganizationOperation() {
     try {
       await operation()
       return true
-    } catch (failure) {
-      setError(operationErrorMessage(failure))
+    } catch (error) {
+      setError(operationErrorMessage(error))
       return false
     } finally {
       setPending(false)

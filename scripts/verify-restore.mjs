@@ -3,14 +3,13 @@ import { createHash, randomBytes } from 'node:crypto'
 import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { parseEnv, promisify } from 'node:util'
 
-const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const projectRoot = dirname(import.meta.dirname)
 const execute = promisify(execFile)
 const controller = new AbortController()
 const originalUmask = process.umask(0o077)
-const runId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${randomBytes(4).toString('hex')}`
+const runId = `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${randomBytes(4).toString('hex')}`
 const containerName = `boilerplate-restore-${runId.toLowerCase()}`
 const volumeName = `${containerName}-data`
 const runDirectory = join(projectRoot, 'backups', runId)
@@ -35,7 +34,7 @@ async function command(program, arguments_, options = {}) {
   } catch {
     // CLI errors may include imported documents, credentials or server logs.
     throw new Error(
-      `${program} operation failed; no private output was printed.`,
+      `${program} operation failed; no private output was printed.`
     )
   }
 }
@@ -53,7 +52,7 @@ function deploymentEnvironment(url, adminKey) {
 }
 
 async function convex(arguments_, environment) {
-  return command('pnpm', ['exec', 'convex', ...arguments_], {
+  return await command('pnpm', ['exec', 'convex', ...arguments_], {
     env: environment,
   })
 }
@@ -74,12 +73,17 @@ async function freePorts() {
               }
               resolve(address.port)
             })
-          }),
-      ),
+          })
+      )
     )
   } finally {
     await Promise.all(
-      servers.map((server) => new Promise((resolve) => server.close(resolve))),
+      servers.map(
+        (server) =>
+          new Promise((resolve) => {
+            server.close(resolve)
+          })
+      )
     )
   }
 }
@@ -90,16 +94,15 @@ async function waitForBackend(url) {
     controller.signal.throwIfAborted()
     try {
       const response = await fetch(`${url}/version`, {
-        signal: AbortSignal.any([
-          controller.signal,
-          AbortSignal.timeout(2_000),
-        ]),
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(2000)]),
       })
       if (response.ok) return
     } catch {
       controller.signal.throwIfAborted()
     }
-    await new Promise((resolve) => setTimeout(resolve, 1_000))
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1000)
+    })
   }
   throw new Error('The disposable backend did not become ready.')
 }
@@ -110,7 +113,7 @@ function canonicalJson(value) {
     return Object.fromEntries(
       Object.keys(value)
         .sort()
-        .map((key) => [key, canonicalJson(value[key])]),
+        .map((key) => [key, canonicalJson(value[key])])
     )
   }
   return value
@@ -195,7 +198,7 @@ async function environmentFileChecksums() {
           cause: error,
         })
       }
-    }),
+    })
   )
   return Object.fromEntries(entries)
 }
@@ -204,7 +207,7 @@ async function verifyRestore() {
   const startedAt = Date.now()
   const originalEnvironment = await environmentFileChecksums()
   const configuration = parseEnv(
-    await readFile(join(projectRoot, '.env.local'), 'utf8'),
+    await readFile(join(projectRoot, '.env.local'), 'utf-8')
   )
   const sourceUrl = new URL(configuration.CONVEX_SELF_HOSTED_URL ?? '')
   const sourceKey = configuration.CONVEX_SELF_HOSTED_ADMIN_KEY
@@ -220,41 +223,42 @@ async function verifyRestore() {
     configuration.CONVEX_DEPLOYMENT
   ) {
     throw new Error(
-      'Restore verification requires an explicit local source backend.',
+      'Restore verification requires an explicit local source backend.'
     )
   }
   const compose = await readFile(
     join(projectRoot, 'docker-compose.yml'),
-    'utf8',
+    'utf-8'
   )
-  const image = compose.match(
-    /^\s+image:\s+(ghcr\.io\/get-convex\/convex-backend@sha256:[a-f0-9]{64})\s*$/m,
-  )?.[1]
+  const image =
+    /^\s+image:\s+(ghcr\.io\/get-convex\/convex-backend@sha256:[a-f0-9]{64})\s*$/m.exec(
+      compose
+    )?.[1]
   if (!image)
     throw new Error('The backend Docker image must be pinned by digest.')
   await mkdir(join(projectRoot, 'backups'), { mode: 0o700, recursive: true })
   await mkdir(runDirectory, { mode: 0o700 })
   const sourceEnvironment = deploymentEnvironment(sourceUrl.origin, sourceKey)
   console.info(
-    'Exporting the local source, including components and file storage.',
+    'Exporting the local source, including components and file storage.'
   )
   await convex(
     ['export', '--include-file-storage', '--path', sourceArchive],
-    sourceEnvironment,
+    sourceEnvironment
   )
   await chmod(sourceArchive, 0o600)
   const source = await archiveInventory(sourceArchive)
   if (
     Object.keys(source.tables).length === 0 ||
     !Object.keys(source.tables).some((name) =>
-      /betterAuth\/user$/.test(name),
+      name.endsWith('betterAuth/user')
     ) ||
     !Object.keys(source.tables).some((name) =>
-      /betterAuth\/passkey$/.test(name),
+      name.endsWith('betterAuth/passkey')
     )
   ) {
     throw new Error(
-      'The source snapshot is missing tables or required auth-component tables.',
+      'The source snapshot is missing tables or required auth-component tables.'
     )
   }
   let volumeCreated = false
@@ -265,12 +269,12 @@ async function verifyRestore() {
     const targetUrl = `http://127.0.0.1:${cloudPort}`
     if (targetUrl === sourceUrl.origin) {
       throw new Error(
-        'The disposable target must differ from the source backend.',
+        'The disposable target must differ from the source backend.'
       )
     }
     await writePrivateFile(
       dockerEnvironmentPath,
-      Object.entries({
+      `${Object.entries({
         INSTANCE_NAME: containerName,
         INSTANCE_SECRET: randomBytes(32).toString('hex'),
         CONVEX_CLOUD_ORIGIN: targetUrl,
@@ -280,7 +284,7 @@ async function verifyRestore() {
         RUST_LOG: 'warn',
       })
         .map(([name, value]) => `${name}=${value}`)
-        .join('\n') + '\n',
+        .join('\n')}\n`
     )
     await command('docker', ['volume', 'create', volumeName])
     volumeCreated = true
@@ -316,13 +320,13 @@ async function verifyRestore() {
     // No main .env file or generated source is rewritten by this deployment.
     await convex(
       ['deploy', '--codegen', 'disable', '--typecheck', 'disable'],
-      targetEnvironment,
+      targetEnvironment
     )
     console.info('Importing and re-exporting only the disposable backend.')
     await convex(['import', sourceArchive, '--yes'], targetEnvironment)
     await convex(
       ['export', '--include-file-storage', '--path', restoredArchive],
-      targetEnvironment,
+      targetEnvironment
     )
     await chmod(restoredArchive, 0o600)
     const restored = await archiveInventory(restoredArchive)
@@ -336,14 +340,14 @@ async function verifyRestore() {
         Object.entries(source.tables).map(([name, table]) => [
           name,
           table.count,
-        ]),
+        ])
       ),
       fileStorage: {
         files: Object.keys(source.files).length,
         nonEmptyPayloadVerified: Object.keys(source.files).length > 0,
         bytes: Object.values(source.files).reduce(
           (total, file) => total + file.bytes,
-          0,
+          0
         ),
       },
       verification:
@@ -377,7 +381,7 @@ async function verifyRestore() {
       // Cleanup failure must supersede the result so no successful report is emitted.
       // eslint-disable-next-line no-unsafe-finally
       throw new Error(
-        `Disposable cleanup failed for ${failures.join(' and ')}; names start with ${containerName}.`,
+        `Disposable cleanup failed for ${failures.join(' and ')}; names start with ${containerName}.`
       )
     }
     if (
@@ -387,7 +391,7 @@ async function verifyRestore() {
       // Preservation failure must prevent reporting a successful restoration.
       // eslint-disable-next-line no-unsafe-finally
       throw new Error(
-        'Main environment files changed during restore verification.',
+        'Main environment files changed during restore verification.'
       )
     }
   }
@@ -397,17 +401,17 @@ async function verifyRestore() {
   report.mainEnvironmentFilesPreserved = true
   await writePrivateFile(
     join(runDirectory, 'report.json'),
-    JSON.stringify(report, null, 2) + '\n',
+    `${JSON.stringify(report, null, 2)}\n`
   )
   console.info(
-    `Restore verified: ${Object.keys(report.tables).length} tables and ${report.fileStorage.files} stored files. Report: backups/${runId}/report.json. Disposable container and volume removed.`,
+    `Restore verified: ${Object.keys(report.tables).length} tables and ${report.fileStorage.files} stored files. Report: backups/${runId}/report.json. Disposable container and volume removed.`
   )
 }
 
 verifyRestore()
   .catch((error) => {
     console.error(
-      error instanceof Error ? error.message : 'Restore verification failed.',
+      error instanceof Error ? error.message : 'Restore verification failed.'
     )
     process.exitCode = 1
   })

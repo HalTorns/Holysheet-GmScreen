@@ -28,17 +28,17 @@ En cloud/staging/production, configurer cette variable sur la cible voulue, avec
 
 Les propriétaires et administrateurs peuvent également renommer l’organisation sans changer son identifiant ni ses permissions.
 
-| Opération                                            | Propriétaire                        | Administrateur | Membre | Lecteur |
-| ---------------------------------------------------- | ----------------------------------- | -------------- | ------ | ------- |
-| Lire les ressources communes                         | Oui                                 | Oui            | Oui    | Oui     |
-| Créer, modifier et supprimer les ressources communes | Oui                                 | Oui            | Oui    | Non     |
-| Inviter un membre ou lecteur                         | Oui                                 | Oui            | Non    | Non     |
-| Inviter un administrateur                            | Oui                                 | Non            | Non    | Non     |
-| Modifier ou retirer un membre/lecteur                | Oui                                 | Oui            | Non    | Non     |
-| Modifier les propriétaires et administrateurs        | Oui                                 | Non            | Non    | Non     |
-| Exporter les ressources de l’organisation            | Oui                                 | Oui            | Non    | Non     |
-| Supprimer l’organisation                             | Oui                                 | Non            | Non    | Non     |
-| Quitter l’organisation                               | Oui, si un autre propriétaire reste | Oui            | Oui    | Oui     |
+| Opération | Propriétaire | Administrateur | Membre | Lecteur |
+| --- | --- | --- | --- | --- |
+| Lire les ressources communes | Oui | Oui | Oui | Oui |
+| Créer, modifier et supprimer les ressources communes | Oui | Oui | Oui | Non |
+| Inviter un membre ou lecteur | Oui | Oui | Non | Non |
+| Inviter un administrateur | Oui | Non | Non | Non |
+| Modifier ou retirer un membre/lecteur | Oui | Oui | Non | Non |
+| Modifier les propriétaires et administrateurs | Oui | Non | Non | Non |
+| Exporter les ressources de l’organisation | Oui | Oui | Non | Non |
+| Supprimer l’organisation | Oui | Non | Non | Non |
+| Quitter l’organisation | Oui, si un autre propriétaire reste | Oui | Oui | Oui |
 
 Les noms des membres sont visibles dans l’organisation ; les adresses email des autres membres et invitations ne sont exposées qu’aux propriétaires/administrateurs. Les invitations n’accordent pas directement le rôle propriétaire : promouvoir un membre existant après acceptation et vérification de son email.
 

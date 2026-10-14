@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { appConfig } from '@shared/app-config'
+import { createFileRoute } from '@tanstack/react-router'
 
 import { ErrorState } from '@/components/page-state'
 import { ResourceList } from '@/features/resources/resource-list'

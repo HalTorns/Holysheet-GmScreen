@@ -25,7 +25,7 @@ Pour adapter le produit ou ajouter/remplacer un domaine, lire `docs/adopting.md`
 
 ## Secrets et authentification
 
-- `VITE_*` est public. Ne jamais exposer une clé de déploiement/admin, un cookie de session Better Auth, un OTP ou un secret dans Vite ou un retour SSR. Aucun token dans une URL, un log ou un stockage navigateur persistant.
+- `VITE_*` est public. Ne jamais exposer une clé de déploiement/admin, un cookie de session Better Auth, un OTP ou un secret dans Vite ou un retour SSR. Aucun token de session ou JWT dans une URL, un log ou un stockage navigateur persistant. Seul le module Magic Link autorise son jeton de vérification haché, valable cinq minutes et consommé une fois dans son URL email ; ne jamais journaliser ou persister cette URL.
 - Le JWT Convex de courte durée est un bearer destiné au navigateur authentifié. Son passage SSR via `initialToken` est permis uniquement pour la requête de cet utilisateur, avec une réponse `Cache-Control: private, no-store`. Ne pas le partager entre requêtes.
 - Ne pas lire ni afficher les secrets existants pour diagnostiquer un problème. Vérifier leur présence, leur longueur et leur portée avec des sorties masquées.
 - Ne pas journaliser les OTP, cookies, tokens de session ni clés de déploiement. Garder les traces, vidéos, captures et snapshots ARIA automatiques E2E désactivés dans les parcours d’auth ; conserver `PLAYWRIGHT_NO_COPY_PROMPT=1` dans le lanceur.
@@ -36,7 +36,17 @@ Pour adapter le produit ou ajouter/remplacer un domaine, lire `docs/adopting.md`
 - Préserver les hooks passkeys qui imposent le flag UV issu de la vérification cryptographique, avant création de clé ou de session. Une option navigateur `userVerification` ou un booléen client ne remplace pas ce contrôle serveur.
 - Ne pas modifier à la main un schéma d’auth généré ; modifier la configuration puis lancer `pnpm auth:generate` et examiner le diff.
 
+## Modules et conventions des agents
+
+Lire `docs/agent-patterns.md` pour les Server Functions, fonctions Convex, formulaires et composants shadcn. Lire `docs/auth-modules.md` et `docs/observability.md` avant d’activer un module d’auth ou un fournisseur externe. Les flags privés font autorité ; les capacités publiques servent uniquement à l’affichage. Les plugins restent dans un schéma stable.
+
+Préserver l’assurance MFA liée à la session et à l’ID du facteur réellement vérifié. Une désactivation du flag ne libère pas un compte enrôlé. L’administration de plateforme exige une allowlist d’IDs, une MFA vérifiée récemment et un accès support limité à cinq minutes en lecture seule, lié à sa session d’origine. Conserver les limites d’essais et le nettoyage/exports des métadonnées d’audit, sans exporter de secret TOTP ou code de récupération.
+
+Sentry et PostHog utilisent des allowlists de données. Ne pas ouvrir autocapture, replay, logs, corps HTTP, variables ou propriétés personnelles par défaut. Arcjet exige une IP attestée par un proxy de confiance et le garde auth côté Convex ; ne pas utiliser des forwarded headers clients comme preuve.
+
 ## Qualité et validation
+
+Oxlint type-aware avec Ultracite, Oxfmt et Knip sont les outils communs ; Lefthook/lint-staged formatent les fichiers staged et vérifient les types avant commit. Installer Chromium avant Vitest Browser Mode. Les alias et plugins UI viennent de `config/vite-shared.ts`.
 
 TypeScript strict, pas de `any` dans le code maintenu, erreurs typées, fonctions ciblées et noms explicites. Le code généré par les dépendances est traité comme généré.
 
@@ -47,7 +57,9 @@ Pour chaque test ajouté, identifier le comportement observable, la régression 
 ```sh
 pnpm backend:push
 pnpm check
-pnpm test:e2e
+pnpm test:e2e:local
+pnpm test:e2e:local organizations
+pnpm test:e2e:local modules
 ```
 
 Exécuter les vérifications adaptées à la modification, puis `git diff --check`. Rapporter les preuves réellement exécutées et les éventuelles limitations. Ne pas annoncer un déploiement, une restauration, une CI distante ou un test réussi sans résultat observable.

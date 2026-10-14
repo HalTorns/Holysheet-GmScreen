@@ -1,0 +1,7 @@
+pre-commit:
+  parallel: false
+  jobs:
+    - name: fichiers-indexés
+      run: pnpm exec lint-staged
+    - name: types-du-projet
+      run: pnpm ts

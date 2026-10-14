@@ -6,14 +6,14 @@ Ce guide s’adresse au développeur et aux agents de code (Codex, Claude, Curso
 
 La question centrale : **les données appartiennent-elles à une personne ou à une équipe, même lorsque leur créateur quitte cette équipe ?**
 
-| Besoin du produit                                                             | Recommandation                     | Motif                                                                                                                           |
-| ----------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Chaque utilisateur gère ses propres notes, tâches, factures ou fichiers       | Personnel                          | Le propriétaire stable du compte suffit pour autoriser les accès.                                                               |
-| SaaS avec abonnement individuel, sans données d’équipe                        | Personnel                          | La facturation ne nécessite pas à elle seule des organisations.                                                                 |
-| Entreprises ou équipes avec données communes, invitations et rôles par espace | Organisations                      | La propriété et les permissions appartiennent à un espace partagé.                                                              |
-| Une personne peut participer à plusieurs équipes avec des droits différents   | Organisations                      | Le rôle est propre à chaque organisation.                                                                                       |
-| Données personnelles et espaces collaboratifs                                 | Organisations avec les deux scopes | L’espace personnel coexiste avec les données communes.                                                                          |
-| Contenu public, échanges entre utilisateurs ou partage ponctuel d’un document | Étudier les droits du domaine      | Plusieurs utilisateurs ne suffisent pas à justifier un espace d’équipe ; un partage ciblé peut demander une autre règle métier. |
+| Besoin du produit | Recommandation | Motif |
+| --- | --- | --- |
+| Chaque utilisateur gère ses propres notes, tâches, factures ou fichiers | Personnel | Le propriétaire stable du compte suffit pour autoriser les accès. |
+| SaaS avec abonnement individuel, sans données d’équipe | Personnel | La facturation ne nécessite pas à elle seule des organisations. |
+| Entreprises ou équipes avec données communes, invitations et rôles par espace | Organisations | La propriété et les permissions appartiennent à un espace partagé. |
+| Une personne peut participer à plusieurs équipes avec des droits différents | Organisations | Le rôle est propre à chaque organisation. |
+| Données personnelles et espaces collaboratifs | Organisations avec les deux scopes | L’espace personnel coexiste avec les données communes. |
+| Contenu public, échanges entre utilisateurs ou partage ponctuel d’un document | Étudier les droits du domaine | Plusieurs utilisateurs ne suffisent pas à justifier un espace d’équipe ; un partage ciblé peut demander une autre règle métier. |
 
 Exemples : un outil de facturation pour indépendants démarre en personnel ; un outil de suivi de projets d’entreprise utilise les organisations ; un assistant personnel payant reste personnel tant qu’il ne propose pas d’espace d’équipe.
 

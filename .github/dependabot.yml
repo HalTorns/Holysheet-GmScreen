@@ -12,6 +12,26 @@ updates:
           - auth
           - '@better-auth/*'
           - '@convex-dev/better-auth'
+      quality:
+        patterns:
+          [
+            'oxlint',
+            'oxlint-tsgolint',
+            'oxfmt',
+            'ultracite',
+            'knip',
+            'lefthook',
+            'lint-staged',
+          ]
+      tests:
+        patterns:
+          ['vitest', '@vitest/*', 'vitest-browser-react', '@playwright/test']
+      monitoring:
+        patterns: ['@sentry/*', 'posthog-js', '@posthog/*']
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
   - package-ecosystem: github-actions
     directory: /
     schedule:

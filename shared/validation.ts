@@ -1,7 +1,7 @@
 import { z } from './zod'
 
 export const RESOURCE_TITLE_MAX_LENGTH = 120
-export const RESOURCE_DESCRIPTION_MAX_LENGTH = 4_000
+export const RESOURCE_DESCRIPTION_MAX_LENGTH = 4000
 export const MAX_PAGE_SIZE = 50
 export const RECENT_AUTH_MAX_AGE_SECONDS = 300
 

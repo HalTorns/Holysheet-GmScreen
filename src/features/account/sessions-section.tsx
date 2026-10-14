@@ -93,7 +93,7 @@ export function SessionsSection() {
           <p className="field-error" role="alert">
             {operationErrorMessage(
               error,
-              'Impossible de gérer vos sessions pour le moment.',
+              'Impossible de gérer vos sessions pour le moment.'
             )}
           </p>
           {sessions.isError && (

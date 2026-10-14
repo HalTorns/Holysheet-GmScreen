@@ -1,11 +1,12 @@
 import { ConvexError } from 'convex/values'
+
 import {
   canManageOrganizationMembers,
   canWriteOrganizationResources,
   MAX_PENDING_INVITATIONS,
   organizationRoleSchema,
-  type OrganizationRole,
 } from '../../shared/organizations'
+import type { OrganizationRole } from '../../shared/organizations'
 import type { Doc } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 
@@ -18,7 +19,7 @@ export function parseRole(value: string): OrganizationRole {
 export async function requireMembership(
   ctx: QueryCtx,
   organizationId: string,
-  userId: string,
+  userId: string
 ) {
   const id = ctx.db.normalizeId('organization', organizationId)
   const organization = id ? await ctx.db.get('organization', id) : null
@@ -26,7 +27,7 @@ export async function requireMembership(
   const membership = await ctx.db
     .query('member')
     .withIndex('organizationId_userId', (q) =>
-      q.eq('organizationId', organizationId).eq('userId', userId),
+      q.eq('organizationId', organizationId).eq('userId', userId)
     )
     .unique()
   if (!membership) throw new ConvexError({ code: 'NOT_FOUND' })
@@ -35,7 +36,7 @@ export async function requireMembership(
 
 export function requirePermission(
   role: OrganizationRole,
-  permission: 'read' | 'write' | 'manage' | 'own',
+  permission: 'read' | 'write' | 'manage' | 'own'
 ) {
   const allowed =
     permission === 'read' ||
@@ -50,7 +51,7 @@ export async function preserveOwner(ctx: QueryCtx, membership: Doc<'member'>) {
   const owners = await ctx.db
     .query('member')
     .withIndex('organizationId_role', (q) =>
-      q.eq('organizationId', membership.organizationId).eq('role', 'owner'),
+      q.eq('organizationId', membership.organizationId).eq('role', 'owner')
     )
     .take(2)
   if (owners.length < 2) throw new ConvexError({ code: 'LAST_OWNER' })
@@ -64,14 +65,14 @@ export async function getUser(ctx: QueryCtx, userId: string) {
 export async function revokeMemberInvitations(
   ctx: MutationCtx,
   membership: Doc<'member'>,
-  nextRole?: OrganizationRole,
+  nextRole?: OrganizationRole
 ) {
   const issued = await ctx.db
     .query('invitation')
     .withIndex('organizationId_inviterId', (q) =>
       q
         .eq('organizationId', membership.organizationId)
-        .eq('inviterId', membership.userId),
+        .eq('inviterId', membership.userId)
     )
     .take(MAX_PENDING_INVITATIONS)
   for (const invitation of issued) {
@@ -89,7 +90,7 @@ export async function revokeMemberInvitations(
     .withIndex('organizationId_email', (q) =>
       q
         .eq('organizationId', membership.organizationId)
-        .eq('email', user.email.toLowerCase()),
+        .eq('email', user.email.toLowerCase())
     )
     .take(MAX_PENDING_INVITATIONS)
   for (const invitation of received)
@@ -99,12 +100,12 @@ export async function revokeMemberInvitations(
 export async function findMembership(
   ctx: QueryCtx,
   organizationId: string,
-  userId: string,
+  userId: string
 ) {
   return await ctx.db
     .query('member')
     .withIndex('organizationId_userId', (q) =>
-      q.eq('organizationId', organizationId).eq('userId', userId),
+      q.eq('organizationId', organizationId).eq('userId', userId)
     )
     .unique()
 }

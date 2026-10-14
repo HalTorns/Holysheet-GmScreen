@@ -1,12 +1,16 @@
 import { passkey } from '@better-auth/passkey'
 import { convex } from '@convex-dev/better-auth/plugins'
-import { emailOTP } from 'better-auth/plugins/email-otp'
-import { organization } from 'better-auth/plugins/organization'
-import { APIError } from 'better-auth/api'
 import type { DBAdapterInstance } from 'better-auth'
+import { APIError } from 'better-auth/api'
 import type { BetterAuthOptions } from 'better-auth/minimal'
-import { RECENT_AUTH_MAX_AGE_SECONDS } from '../shared/validation'
+import { admin } from 'better-auth/plugins/admin'
+import { emailOTP } from 'better-auth/plugins/email-otp'
+import { magicLink } from 'better-auth/plugins/magic-link'
+import { organization } from 'better-auth/plugins/organization'
+import { twoFactor } from 'better-auth/plugins/two-factor'
+
 import { appConfig } from '../shared/app-config'
+import { RECENT_AUTH_MAX_AGE_SECONDS } from '../shared/validation'
 import authConfig from './auth.config'
 
 export type AuthSettings = {
@@ -16,6 +20,16 @@ export type AuthSettings = {
 }
 
 type OtpDelivery = (message: { email: string; otp: string }) => Promise<void>
+type MagicLinkDelivery = (message: {
+  email: string
+  url: string
+}) => Promise<void>
+type SocialCredentials = { clientId: string; clientSecret: string }
+export type AuthModuleOptions = {
+  adminIds: string[]
+  google?: SocialCredentials
+  github?: SocialCredentials
+}
 
 function requirePasskeyVerification(userVerified: boolean | undefined) {
   if (!userVerified) {
@@ -38,6 +52,9 @@ export function buildAuthOptions(
   database: DBAdapterInstance,
   settings: AuthSettings,
   sendVerificationOTP: OtpDelivery,
+  sendMagicLink: MagicLinkDelivery = () =>
+    Promise.reject(new Error('Magic links are not configured.')),
+  modules: AuthModuleOptions = { adminIds: [] }
 ) {
   return {
     appName: appConfig.name,
@@ -46,7 +63,11 @@ export function buildAuthOptions(
     trustedOrigins: [settings.siteUrl],
     database,
     emailAndPassword: { enabled: false },
-    account: { accountLinking: { enabled: false } },
+    account: { accountLinking: { enabled: false }, encryptOAuthTokens: true },
+    socialProviders: {
+      ...(modules.google ? { google: modules.google } : {}),
+      ...(modules.github ? { github: modules.github } : {}),
+    },
     user: { deleteUser: { enabled: false }, changeEmail: { enabled: false } },
     session: {
       expiresIn: 60 * 60 * 24 * 7,
@@ -78,6 +99,14 @@ export function buildAuthOptions(
       // Keep the optional module's schema stable in personal mode. Organization
       // endpoints are guarded in auth.ts; writes use atomic Convex operations.
       organization({ allowUserToCreateOrganization: false }),
+      // Keep schemas stable; public endpoints are separately gated in auth.ts.
+      magicLink({ sendMagicLink, expiresIn: 300, storeToken: 'hashed' }),
+      twoFactor({ issuer: appConfig.name, allowPasswordless: true }),
+      admin({
+        defaultRole: 'user',
+        adminUserIds: modules.adminIds,
+        impersonationSessionDuration: 300,
+      }),
       emailOTP({
         sendVerificationOTP,
         otpLength: 6,
@@ -100,14 +129,14 @@ export function buildAuthOptions(
         registration: {
           afterVerification: ({ verification }) => {
             requirePasskeyVerification(
-              verification.registrationInfo?.userVerified,
+              verification.registrationInfo?.userVerified
             )
           },
         },
         authentication: {
           afterVerification: ({ verification }) => {
             requirePasskeyVerification(
-              verification.authenticationInfo.userVerified,
+              verification.authenticationInfo.userVerified
             )
           },
         },

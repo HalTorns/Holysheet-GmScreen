@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+
 import { env } from '@/env'
 
 export const Route = createFileRoute('/api/health')({
@@ -11,7 +12,7 @@ export const Route = createFileRoute('/api/health')({
           })
           return Response.json(
             { status: result.ok ? 'ok' : 'unavailable' },
-            { status: result.ok ? 200 : 503 },
+            { status: result.ok ? 200 : 503 }
           )
         } catch {
           return Response.json({ status: 'unavailable' }, { status: 503 })

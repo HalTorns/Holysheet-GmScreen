@@ -4,12 +4,12 @@ export const organizationRoleValidator = v.union(
   v.literal('owner'),
   v.literal('admin'),
   v.literal('member'),
-  v.literal('viewer'),
+  v.literal('viewer')
 )
 export const invitationRoleValidator = v.union(
   v.literal('admin'),
   v.literal('member'),
-  v.literal('viewer'),
+  v.literal('viewer')
 )
 export const organizationSummaryValidator = v.object({
   id: v.string(),

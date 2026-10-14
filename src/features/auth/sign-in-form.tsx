@@ -1,26 +1,39 @@
+import { emailSchema, otpSchema } from '@shared/validation'
+import { z } from '@shared/zod'
 import { useForm } from '@tanstack/react-form'
 import { useHydrated } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, Fingerprint, Mail } from 'lucide-react'
 import { useState } from 'react'
-import { z } from '@shared/zod'
 
-import { emailSchema, otpSchema } from '@shared/validation'
 import { FormError } from '@/components/form-error'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authErrorMessage } from '@/features/auth/errors'
 import { authClient } from '@/lib/auth-client'
 
-export function SignInForm() {
+import type { LoginCapabilities } from './optional-sign-in'
+import { OptionalSignIn } from './optional-sign-in'
+
+export function SignInForm({
+  capabilities,
+}: {
+  capabilities: LoginCapabilities
+}) {
   const [email, setEmail] = useState<string | null>(null)
   return email ? (
     <VerifyCodeForm email={email} onBack={() => setEmail(null)} />
   ) : (
-    <RequestCodeForm onSent={setEmail} />
+    <RequestCodeForm onSent={setEmail} capabilities={capabilities} />
   )
 }
 
-function RequestCodeForm({ onSent }: { onSent: (email: string) => void }) {
+function RequestCodeForm({
+  onSent,
+  capabilities,
+}: {
+  onSent: (email: string) => void
+  capabilities: LoginCapabilities
+}) {
   const isHydrated = useHydrated()
   const [error, setError] = useState<string | null>(null)
   const form = useForm({
@@ -40,7 +53,7 @@ function RequestCodeForm({ onSent }: { onSent: (email: string) => void }) {
         onSent(value.email)
       } catch {
         setError(
-          'Impossible d’envoyer le code. Vérifiez votre connexion et réessayez.',
+          'Impossible d’envoyer le code. Vérifiez votre connexion et réessayez.'
         )
       }
     },
@@ -110,6 +123,7 @@ function RequestCodeForm({ onSent }: { onSent: (email: string) => void }) {
       </form>
       <div className="auth-divider">ou, si vous en avez déjà une</div>
       <PasskeySignInButton />
+      <OptionalSignIn capabilities={capabilities} />
       <p className="field-hint mt-6 text-center">
         Aucun mot de passe à retenir.
         <br />
@@ -144,8 +158,8 @@ function VerifyCodeForm({
           setError(
             authErrorMessage(
               result.error.code,
-              'Ce code est incorrect ou a expiré. Demandez un nouveau code.',
-            ),
+              'Ce code est incorrect ou a expiré. Demandez un nouveau code.'
+            )
           )
           return
         }
@@ -285,21 +299,21 @@ function PasskeySignInButton() {
         setError(
           authErrorMessage(
             'code' in result.error ? result.error.code : undefined,
-            'La connexion a été annulée ou aucune passkey n’est disponible sur cet appareil.',
-          ),
+            'La connexion a été annulée ou aucune passkey n’est disponible sur cet appareil.'
+          )
         )
         return
       }
       if (!result?.data) {
         setError(
-          'La connexion a été annulée ou aucune passkey n’est disponible sur cet appareil.',
+          'La connexion a été annulée ou aucune passkey n’est disponible sur cet appareil.'
         )
         return
       }
       window.location.assign('/app')
     } catch {
       setError(
-        'Impossible d’utiliser cette passkey. Vous pouvez recevoir un code par e-mail.',
+        'Impossible d’utiliser cette passkey. Vous pouvez recevoir un code par e-mail.'
       )
     } finally {
       setIsPending(false)

@@ -1,6 +1,6 @@
 # Modules optionnels
 
-Le module organisations est intégré et désactivé par défaut. Les autres modules ci-dessous ne sont pas installés. Les ajouter lorsque le produit possède un parcours réel et des exigences définies ; garder les interfaces métier dans le projet et le code fournisseur à sa frontière.
+Organisations, modules d’auth, Sentry/Spotlight, PostHog et Arcjet sont intégrés et désactivés par défaut. Paiements, fichiers externes et IA ne sont pas installés. Les ajouter lorsque le produit possède un parcours réel et des exigences définies ; garder les interfaces métier dans le projet et le code fournisseur à sa frontière.
 
 ## Organisations et permissions
 
@@ -9,6 +9,10 @@ Commencer par [choisir le modèle d’accès](project-start.md) : la propriété
 Le socle conserve un espace personnel et propose des organisations optionnelles, avec memberships, invitations à expiration et rôles explicites. Activer le module via le backend, puis définir les permissions du premier domaine partagé. Chaque accès vérifie une membership active ; le client peut proposer un `organizationId` mais ne décide pas du tenant autorisé. Lire [Organisations et rôles](organizations.md).
 
 Le schéma Better Auth Organization utilise Local Install ; les opérations applicatives restent transactionnelles dans Convex et les routes natives du plugin sont fermées pour conserver une seule frontière d’autorisation. SSO reste incompatible. [Compatibilité officielle](https://labs.convex.dev/better-auth/supported-plugins).
+
+## Authentification, sécurité et analytics
+
+Lire [les modules d’auth](auth-modules.md) et [SEO/observabilité/protection](observability.md). Choisir chaque module selon le parcours du produit : aucun provider OAuth, clé analytics, DSN ou rôle administrateur partagé entre projets. Leur suppression physique exige de traiter leurs comptes et données avant une migration de schéma.
 
 ## Paiements
 
@@ -24,7 +28,7 @@ Placer les appels modèles et outils côté serveur avec clé dédiée, budgets 
 
 ## Observabilité et emails avancés
 
-Brancher un outil d’erreurs lorsque l’environnement cible est choisi, avec masquage de PII, cookies et tokens. Définir logs structurés, identifiant de corrélation et alertes de panne email/auth. Resend est l’adaptateur transactionnel du socle en production ; files de travail, templates marketing et analytics sont des besoins séparés. Vérifier le domaine expéditeur et les politiques DNS du fournisseur avant l’ouverture publique.
+Les adaptateurs Sentry/Spotlight et PostHog sont préconfigurés avec collecte minimale et chargement conditionnel. Choisir leurs projets et politiques avant activation. Définir logs structurés, identifiant de corrélation et alertes de panne email/auth. Resend est l’adaptateur transactionnel du socle en production ; files de travail, templates marketing et analytics sont des besoins séparés. Vérifier le domaine expéditeur et les politiques DNS du fournisseur avant l’ouverture publique.
 
 ## Règle d’ajout
 

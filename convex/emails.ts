@@ -1,18 +1,23 @@
 import { ConvexError, v } from 'convex/values'
+
+import { appConfig } from '../shared/app-config'
+import { emailSchema, otpSchema } from '../shared/validation'
 import { internal } from './_generated/api'
 import { internalAction, internalMutation } from './_generated/server'
-import { emailSchema, otpSchema } from '../shared/validation'
-import { appConfig } from '../shared/app-config'
-import { getAuthSettings, requiredEnvironment } from './lib/environment'
+import { getEmailSettings } from './lib/emailEnvironment'
+import { getAuthSettings } from './lib/environment'
 import { limitAuthEmail } from './lib/rateLimits'
 
 const REQUEST_TIMEOUT_MS = 10_000
 
-async function deliverOtp(email: string, otp: string): Promise<void> {
-  const provider = requiredEnvironment('AUTH_EMAIL_PROVIDER')
-  const from = emailSchema.parse(requiredEnvironment('AUTH_EMAIL_FROM'))
-  const subject = 'Votre code de connexion'
-  const text = `Votre code de connexion est ${otp}. Il expire dans 5 minutes.\n\nSi vous n'avez pas demandé ce code, ignorez ce message.`
+async function deliverMessage(
+  email: string,
+  subject: string,
+  text: string
+): Promise<void> {
+  const settings = getEmailSettings()
+  const provider = settings.AUTH_EMAIL_PROVIDER
+  const from = settings.AUTH_EMAIL_FROM
   const payload =
     provider === 'mailpit'
       ? {
@@ -22,10 +27,10 @@ async function deliverOtp(email: string, otp: string): Promise<void> {
           Text: text,
         }
       : { from, to: [email], subject, text }
-  const endpoint = getEmailEndpoint(provider)
+  const endpoint = getEmailEndpoint(settings)
   const headers: Record<string, string> = { 'content-type': 'application/json' }
   if (provider === 'resend')
-    headers.authorization = `Bearer ${requiredEnvironment('RESEND_API_KEY')}`
+    headers.authorization = `Bearer ${settings.RESEND_API_KEY}`
   const response = await fetch(endpoint, {
     method: 'POST',
     headers,
@@ -35,24 +40,27 @@ async function deliverOtp(email: string, otp: string): Promise<void> {
   // Never surface provider bodies: they can echo recipients, tokens or API keys.
   if (!response.ok)
     throw new Error(
-      `Authentication email delivery failed (${response.status}).`,
+      `Authentication email delivery failed (${response.status}).`
     )
 }
 
-function getEmailEndpoint(provider: string): string {
+function getEmailEndpoint(
+  settings: ReturnType<typeof getEmailSettings>
+): string {
+  const provider = settings.AUTH_EMAIL_PROVIDER
   if (provider === 'resend') return 'https://api.resend.com/emails'
   if (provider !== 'mailpit')
     throw new Error('AUTH_EMAIL_PROVIDER must be mailpit or resend.')
   const siteUrl = new URL(getAuthSettings().siteUrl)
   if (!['localhost', '127.0.0.1'].includes(siteUrl.hostname)) {
     throw new Error(
-      'Mailpit is restricted to local development; configure Resend for production.',
+      'Mailpit is restricted to local development; configure Resend for production.'
     )
   }
-  const mailpit = new URL(requiredEnvironment('MAILPIT_URL'))
+  const mailpit = new URL(settings.MAILPIT_URL ?? '')
   if (
     !['localhost', '127.0.0.1', 'mailpit', 'host.docker.internal'].includes(
-      mailpit.hostname,
+      mailpit.hostname
     )
   ) {
     throw new Error('MAILPIT_URL must point to a local Mailpit service.')
@@ -78,7 +86,33 @@ export const sendOtp = internalAction({
     await ctx.runMutation(internal.emails.consumeQuota, {
       email: recipient.data,
     })
-    await deliverOtp(recipient.data, code.data)
+    await deliverMessage(
+      recipient.data,
+      'Votre code de connexion',
+      `Votre code de connexion est ${code.data}. Il expire dans 5 minutes.\n\nSi vous n'avez pas demandé ce code, ignorez ce message.`
+    )
+    return null
+  },
+})
+
+export const sendMagicLink = internalAction({
+  args: { email: v.string(), url: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { email, url }) => {
+    const recipient = emailSchema.parse(email)
+    if (url.length > 4096) throw new ConvexError({ code: 'INVALID_INPUT' })
+    const link = new URL(url)
+    if (
+      link.origin !== getAuthSettings().siteUrl ||
+      link.pathname !== '/api/auth/magic-link/verify'
+    )
+      throw new ConvexError({ code: 'INVALID_INPUT' })
+    await ctx.runMutation(internal.emails.consumeQuota, { email: recipient })
+    await deliverMessage(
+      recipient,
+      'Votre lien de connexion',
+      `Connectez-vous en ouvrant ce lien à usage unique, valable 5 minutes :\n${url}\n\nIgnorez ce message si vous n'avez pas demandé cette connexion.`
+    )
     return null
   },
 })

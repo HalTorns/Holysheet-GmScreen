@@ -36,14 +36,14 @@ const messages: Record<string, string> = {
 
 export function authErrorMessage(
   code: string | undefined,
-  fallback = 'L’opération a échoué. Réessayez dans un instant.',
+  fallback = 'L’opération a échoué. Réessayez dans un instant.'
 ): string {
   return code ? (messages[code] ?? fallback) : fallback
 }
 
 export function operationErrorMessage(
   error: unknown,
-  fallback?: string,
+  fallback?: string
 ): string {
   if (error instanceof AuthOperationError)
     return authErrorMessage(error.code, fallback)

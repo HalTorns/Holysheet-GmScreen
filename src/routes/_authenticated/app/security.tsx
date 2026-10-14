@@ -1,12 +1,13 @@
 import { convexQuery } from '@convex-dev/react-query'
+import { api } from '@convex/_generated/api'
+import { appConfig } from '@shared/app-config'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { UserRound } from 'lucide-react'
-import { appConfig } from '@shared/app-config'
 
-import { api } from '@convex/_generated/api'
 import { ErrorState } from '@/components/page-state'
 import { DataSection } from '@/features/account/data-section'
+import { MfaSection } from '@/features/account/mfa-section'
 import { PasskeysSection } from '@/features/account/passkeys-section'
 import { SessionsSection } from '@/features/account/sessions-section'
 
@@ -18,7 +19,7 @@ export const Route = createFileRoute('/_authenticated/app/security')({
 
 function SecurityPage() {
   const { data: user } = useSuspenseQuery(
-    convexQuery(api.auth.getCurrentUser, {}),
+    convexQuery(api.auth.getCurrentUser, {})
   )
   return (
     <>
@@ -46,6 +47,7 @@ function SecurityPage() {
         </span>
       </div>
       <PasskeysSection />
+      <MfaSection />
       <SessionsSection />
       <DataSection />
     </>

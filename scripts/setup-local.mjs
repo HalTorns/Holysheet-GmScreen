@@ -1,5 +1,6 @@
 import { existsSync, chmodSync } from 'node:fs'
 import { join } from 'node:path'
+
 import {
   assertLocalDeploymentSelection,
   assertDockerPortsOwnership,
@@ -33,7 +34,7 @@ async function setup() {
   run(
     'docker',
     composeArguments(dockerEnvironment, ['up', '-d', '--wait']),
-    dockerOptions,
+    dockerOptions
   )
   const adminKey = run(
     'docker',
@@ -43,7 +44,7 @@ async function setup() {
       'backend',
       './generate_admin_key.sh',
     ]),
-    dockerOptions,
+    dockerOptions
   )
   if (!adminKey || adminKey.includes('\n'))
     throw new Error('The backend returned an invalid admin key.')
@@ -78,7 +79,7 @@ async function setup() {
         })),
       }),
       signal: AbortSignal.timeout(10_000),
-    },
+    }
   )
   if (!response.ok)
     throw new Error(`Backend configuration failed (${response.status}).`)
@@ -94,10 +95,10 @@ async function setup() {
       '--env-file',
       join(projectRoot, '.env.local'),
     ],
-    { env, capture: true },
+    { env, capture: true }
   )
   console.info(
-    'Services locaux prêts : Convex, dashboard et Mailpit. Configuration et secrets existants conservés.\nLancer pnpm dev et pnpm backend:dev dans deux terminaux.\nApplication : http://localhost:3000 — Emails : http://localhost:8025\nDashboard : pnpm dashboard (http://127.0.0.1:6791).',
+    'Services locaux prêts : Convex, dashboard et Mailpit. Configuration et secrets existants conservés.\nLancer pnpm dev et pnpm backend:dev dans deux terminaux.\nApplication : http://localhost:3000 — Emails : http://localhost:8025\nDashboard : pnpm dashboard (http://127.0.0.1:6791).'
   )
 }
 

@@ -7,5 +7,7 @@ minimumReleaseAgeExclude:
 allowBuilds:
   esbuild: true
   unrs-resolver: true
+  lefthook: true
+  core-js: false
 patchedDependencies:
   '@convex-dev/better-auth@0.12.5': patches/@convex-dev__better-auth@0.12.5.patch

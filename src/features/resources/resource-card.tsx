@@ -1,10 +1,10 @@
+import { api } from '@convex/_generated/api'
+import { appConfig } from '@shared/app-config'
 import { useMutation } from 'convex/react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { api } from '@convex/_generated/api'
-import { appConfig } from '@shared/app-config'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -75,8 +75,8 @@ function DeleteResourceButton({ resource }: { resource: Resource }) {
       await removeResource({ id: resource._id })
       setOpen(false)
       toast.success('Ressource supprimée.')
-    } catch (failure) {
-      setError(operationErrorMessage(failure))
+    } catch (error) {
+      setError(operationErrorMessage(error))
     } finally {
       setIsPending(false)
     }

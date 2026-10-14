@@ -1,11 +1,13 @@
 import { convexQuery } from '@convex-dev/react-query'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { api } from '@convex/_generated/api'
 import { organizationRoleLabels } from '@shared/organizations'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
+
 import { ResourceList } from '@/features/resources/resource-list'
-import { OrganizationMembers } from './organization-members'
+
 import { OrganizationActions } from './organization-actions'
+import { OrganizationMembers } from './organization-members'
 
 export function OrganizationPage({
   organizationId,
@@ -13,7 +15,7 @@ export function OrganizationPage({
   organizationId: string
 }) {
   const { data } = useSuspenseQuery(
-    convexQuery(api.organizations.get, { organizationId }),
+    convexQuery(api.organizations.get, { organizationId })
   )
   return (
     <>

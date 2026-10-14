@@ -12,6 +12,6 @@ const result = spawnSync(
     'convex/betterAuth/generatedSchema.ts',
     '--yes',
   ],
-  { stdio: 'inherit' },
+  { stdio: 'inherit' }
 )
 process.exit(result.status ?? 1)

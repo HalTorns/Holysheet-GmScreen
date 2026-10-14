@@ -1,17 +1,17 @@
+import { api } from '@convex/_generated/api'
+import { z } from '@shared/zod'
 import { useForm } from '@tanstack/react-form'
-import { useHydrated } from '@tanstack/react-router'
 import {
   useMutation as useAuthMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { useHydrated } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { Fingerprint, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { z } from '@shared/zod'
 
-import { api } from '@convex/_generated/api'
 import { FormError } from '@/components/form-error'
 import { Button } from '@/components/ui/button'
 import {
@@ -77,7 +77,7 @@ export function PasskeysSection() {
           <p className="field-error" role="alert">
             {operationErrorMessage(
               passkeys.error,
-              'Impossible de charger vos passkeys.',
+              'Impossible de charger vos passkeys.'
             )}
           </p>
           <Button
@@ -235,7 +235,7 @@ function PasskeyNameForm({
         <p className="field-error" role="alert">
           {operationErrorMessage(
             error,
-            'L’ajout de la passkey a été annulé ou a échoué. Une connexion récente est nécessaire.',
+            'L’ajout de la passkey a été annulé ou a échoué. Une connexion récente est nécessaire.'
           )}
         </p>
       )}

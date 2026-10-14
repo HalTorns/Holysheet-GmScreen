@@ -1,21 +1,21 @@
 import { convexQuery } from '@convex-dev/react-query'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useForm } from '@tanstack/react-form'
-import { useHydrated, useNavigate } from '@tanstack/react-router'
-import { useConvex, useMutation } from 'convex/react'
-import type { FunctionReturnType } from 'convex/server'
-import { useState } from 'react'
 import { api } from '@convex/_generated/api'
 import { appConfig } from '@shared/app-config'
-import { MAX_PAGE_SIZE } from '@shared/validation'
 import {
   canManageOrganizationMembers,
   organizationSchema,
 } from '@shared/organizations'
+import { MAX_PAGE_SIZE } from '@shared/validation'
 import { z } from '@shared/zod'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useForm } from '@tanstack/react-form'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useHydrated, useNavigate } from '@tanstack/react-router'
+import { useConvex, useMutation } from 'convex/react'
+import type { FunctionReturnType } from 'convex/server'
+import { useState } from 'react'
+
 import { FormError } from '@/components/form-error'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogClose,
@@ -24,6 +24,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+
 import { useOrganizationOperation } from './use-organization-operation'
 
 type Organization = FunctionReturnType<
@@ -100,7 +102,7 @@ function RenameOrganizationForm({
         rename({
           organizationId: organization.id,
           ...organizationSchema.parse(value),
-        }),
+        })
       )
     },
   })
@@ -190,11 +192,11 @@ function ExportOrganizationButton({
                 exportedAt: new Date().toISOString(),
               },
               null,
-              2,
+              2
             ),
           ],
-          { type: 'application/json' },
-        ),
+          { type: 'application/json' }
+        )
       )
       const link = document.createElement('a')
       link.href = url
@@ -231,7 +233,7 @@ function LeaveOrganizationDialog({
 }) {
   const removeMember = useMutation(api.organizations.removeMember)
   const { data: user } = useSuspenseQuery(
-    convexQuery(api.auth.getCurrentUser, {}),
+    convexQuery(api.auth.getCurrentUser, {})
   )
   const navigate = useNavigate()
   const operation = useOrganizationOperation()

@@ -1,0 +1,286 @@
+import { paginationOptsValidator } from 'convex/server'
+import { ConvexError, v } from 'convex/values'
+
+import { z } from '../../shared/zod'
+import type { Doc } from './_generated/dataModel'
+import { mutation, query } from './_generated/server'
+import type { QueryCtx } from './_generated/server'
+
+export const exportAudit = query({
+  args: {
+    userId: v.string(),
+    scope: v.union(v.literal('actor'), v.literal('target')),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(v.object({ event: v.string(), createdAt: v.number() })),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    if (
+      !Number.isInteger(args.paginationOpts.numItems) ||
+      args.paginationOpts.numItems < 1 ||
+      args.paginationOpts.numItems > 100
+    )
+      throw new ConvexError({ code: 'INVALID_INPUT' })
+    // Native Convex pagination is unavailable inside components. Use an indexed
+    // keyset cursor with ID tie-breaking; cleanup between pages does not invalidate it.
+    const cursorSchema = z.object({
+      at: z.number().nonnegative(),
+      id: z.string(),
+    })
+    let cursor: z.infer<typeof cursorSchema> | null = null
+    try {
+      if (args.paginationOpts.cursor)
+        cursor = cursorSchema.parse(JSON.parse(args.paginationOpts.cursor))
+    } catch {
+      throw new ConvexError({ code: 'INVALID_INPUT' })
+    }
+    const after = cursor ? ctx.db.normalizeId('authAudit', cursor.id) : null
+    if (cursor && !after) throw new ConvexError({ code: 'INVALID_INPUT' })
+    const at = cursor?.at ?? 0
+    const collection =
+      args.scope === 'actor'
+        ? ctx.db
+            .query('authAudit')
+            .withIndex('by_actor', (q) =>
+              q.eq('actorId', args.userId).gte('_creationTime', at)
+            )
+        : ctx.db
+            .query('authAudit')
+            .withIndex('by_target', (q) =>
+              q.eq('targetId', args.userId).gte('_creationTime', at)
+            )
+    const filtered = after
+      ? collection.filter((q) =>
+          q.or(
+            q.gt(q.field('_creationTime'), at),
+            q.and(
+              q.eq(q.field('_creationTime'), at),
+              q.gt(q.field('_id'), after)
+            )
+          )
+        )
+      : collection
+    const rows = await filtered.take(args.paginationOpts.numItems + 1)
+    const page = rows.slice(0, args.paginationOpts.numItems)
+    const last = page.at(-1)
+    return {
+      page: page.map((row) => ({
+        event: row.event,
+        createdAt: row._creationTime,
+      })),
+      isDone: rows.length <= args.paginationOpts.numItems,
+      continueCursor: last
+        ? JSON.stringify({ at: last._creationTime, id: last._id })
+        : '',
+    }
+  },
+})
+
+export const sessionAccessValidator = v.object({
+  createdAt: v.number(),
+  expiresAt: v.number(),
+  mfaRequired: v.boolean(),
+  mfaVerified: v.boolean(),
+  impersonatedBy: v.union(v.string(), v.null()),
+})
+
+function isBanned(user: Doc<'user'>) {
+  return (
+    user.banned === true && (!user.banExpires || user.banExpires > Date.now())
+  )
+}
+
+async function sessionAccess(
+  ctx: QueryCtx,
+  session: Doc<'session'>,
+  user: Doc<'user'>
+) {
+  if (session.expiresAt <= Date.now() || isBanned(user)) return null
+  if (session.impersonatedBy) {
+    const link = await ctx.db
+      .query('impersonations')
+      .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+      .unique()
+    if (
+      !link ||
+      link.expiresAt <= Date.now() ||
+      link.actorId !== session.impersonatedBy ||
+      link.targetId !== user._id
+    )
+      return null
+    const actorSession = await ctx.db.get('session', link.actorSessionId)
+    const actorId = ctx.db.normalizeId('user', link.actorId)
+    const actor = actorId ? await ctx.db.get('user', actorId) : null
+    if (
+      !actorSession ||
+      !actor ||
+      actorSession.userId !== actor._id ||
+      actorSession.impersonatedBy ||
+      actorSession.expiresAt <= Date.now() ||
+      isBanned(actor)
+    )
+      return null
+    // An impersonated session cannot bypass the actor's own factor requirement.
+    const actorAccess = await sessionAccess(ctx, actorSession, actor)
+    if (!actorAccess || !actorAccess.mfaVerified || !actorAccess.mfaRequired)
+      return null
+  }
+  const factor = user.twoFactorEnabled
+    ? await ctx.db
+        .query('twoFactor')
+        .withIndex('userId', (q) => q.eq('userId', user._id))
+        .first()
+    : null
+  const assurance = user.twoFactorEnabled
+    ? await ctx.db
+        .query('sessionAssurances')
+        .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+        .unique()
+    : null
+  return {
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    mfaRequired: user.twoFactorEnabled === true,
+    // Impersonation is limited support access authorized by a verified actor.
+    mfaVerified:
+      Boolean(session.impersonatedBy) ||
+      !user.twoFactorEnabled ||
+      Boolean(
+        factor &&
+        factor.verified !== false &&
+        assurance?.factorId === factor._id &&
+        assurance.expiresAt > Date.now()
+      ),
+    impersonatedBy: session.impersonatedBy ?? null,
+  }
+}
+
+export const getSession = query({
+  args: { sessionId: v.string(), userId: v.string() },
+  returns: v.union(sessionAccessValidator, v.null()),
+  handler: async (ctx, args) => {
+    const sessionId = ctx.db.normalizeId('session', args.sessionId)
+    const userId = ctx.db.normalizeId('user', args.userId)
+    const session = sessionId ? await ctx.db.get('session', sessionId) : null
+    const user = userId ? await ctx.db.get('user', userId) : null
+    if (!session || !user || session.userId !== user._id) return null
+    return sessionAccess(ctx, session, user)
+  },
+})
+
+export const verifySessionFactor = mutation({
+  args: { sessionId: v.string(), userId: v.string(), factorId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const sessionId = ctx.db.normalizeId('session', args.sessionId)
+    const session = sessionId ? await ctx.db.get('session', sessionId) : null
+    const factor = await ctx.db
+      .query('twoFactor')
+      .withIndex('userId', (q) => q.eq('userId', args.userId))
+      .first()
+    if (
+      !session ||
+      session.userId !== args.userId ||
+      session.impersonatedBy ||
+      session.expiresAt <= Date.now() ||
+      !factor ||
+      factor._id !== args.factorId ||
+      factor.verified === false
+    )
+      throw new ConvexError({ code: 'UNAUTHENTICATED' })
+    const previous = await ctx.db
+      .query('sessionAssurances')
+      .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+      .unique()
+    const value = {
+      sessionId: session._id,
+      userId: args.userId,
+      factorId: factor._id,
+      verifiedAt: Date.now(),
+      expiresAt: session.expiresAt,
+    }
+    if (previous) await ctx.db.replace('sessionAssurances', previous._id, value)
+    else await ctx.db.insert('sessionAssurances', value)
+    await ctx.db.insert('authAudit', {
+      event: 'mfa.verified',
+      actorId: args.userId,
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    })
+    return null
+  },
+})
+
+export const currentFactor = query({
+  args: { userId: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { userId }) =>
+    (
+      await ctx.db
+        .query('twoFactor')
+        .withIndex('userId', (q) => q.eq('userId', userId))
+        .first()
+    )?._id ?? null,
+})
+
+export const recordImpersonation = mutation({
+  args: {
+    sessionId: v.string(),
+    actorSessionId: v.string(),
+    actorId: v.string(),
+    targetId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const sessionId = ctx.db.normalizeId('session', args.sessionId)
+    const actorSessionId = ctx.db.normalizeId('session', args.actorSessionId)
+    const session = sessionId ? await ctx.db.get('session', sessionId) : null
+    const actorSession = actorSessionId
+      ? await ctx.db.get('session', actorSessionId)
+      : null
+    if (
+      !session ||
+      !actorSession ||
+      session.impersonatedBy !== args.actorId ||
+      session.userId !== args.targetId ||
+      actorSession.userId !== args.actorId ||
+      actorSession.impersonatedBy ||
+      actorSession.expiresAt <= Date.now()
+    )
+      throw new ConvexError({ code: 'UNAUTHENTICATED' })
+    const existing = await ctx.db
+      .query('impersonations')
+      .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+      .unique()
+    if (!existing)
+      await ctx.db.insert('impersonations', {
+        sessionId: session._id,
+        actorSessionId: actorSession._id,
+        actorId: args.actorId,
+        targetId: args.targetId,
+        expiresAt: session.expiresAt,
+      })
+    await ctx.db.insert('authAudit', {
+      event: 'admin.impersonated',
+      actorId: args.actorId,
+      targetId: args.targetId,
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    })
+    return null
+  },
+})
+
+export const findUser = query({
+  args: { id: v.string() },
+  returns: v.union(
+    v.object({ id: v.string(), name: v.string(), email: v.string() }),
+    v.null()
+  ),
+  handler: async (ctx, { id }) => {
+    const userId = ctx.db.normalizeId('user', id)
+    const user = userId ? await ctx.db.get('user', userId) : null
+    return user ? { id: user._id, name: user.name, email: user.email } : null
+  },
+})

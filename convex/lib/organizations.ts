@@ -6,7 +6,7 @@ export async function requireOrganizationPermission(
   ctx: QueryCtx,
   organizationId: string,
   userId: string,
-  permission: 'read' | 'write' | 'manage' | 'own',
+  permission: 'read' | 'write' | 'manage' | 'own'
 ) {
   requireOrganizationsEnabled()
   return await ctx.runQuery(components.betterAuth.organizations.authorize, {

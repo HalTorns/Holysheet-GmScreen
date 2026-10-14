@@ -17,18 +17,18 @@ Le navigateur peut appeler Convex directement. Toute autorisation métier appart
 
 ## Organisation
 
-| Emplacement            | Responsabilité                                           |
-| ---------------------- | -------------------------------------------------------- |
-| `src/routes/`          | Routes, chargements SSR et garde UX                      |
-| `src/features/`        | Interfaces des fonctionnalités                           |
-| `src/components/ui/`   | Composants shadcn/ui réutilisables                       |
-| `src/lib/`             | Clients, configuration validée et primitives transverses |
-| `src/config/`          | Navigation publique typée, sans autorisation implicite   |
-| `shared/app-config.ts` | Identité publique et formats communs UI/backend          |
-| `convex/`              | Schéma, règles métier et API publique/interne            |
-| `convex/betterAuth/`   | Composant Local Install et schéma d’auth généré          |
-| `scripts/`             | Initialisation et génération reproductibles              |
-| `tests/e2e/`           | Parcours navigateur avec services réels                  |
+| Emplacement | Responsabilité |
+| --- | --- |
+| `src/routes/` | Routes, chargements SSR et garde UX |
+| `src/features/` | Interfaces des fonctionnalités |
+| `src/components/ui/` | Composants shadcn/ui réutilisables |
+| `src/lib/` | Clients, configuration validée et primitives transverses |
+| `src/config/` | Navigation publique typée, sans autorisation implicite |
+| `shared/app-config.ts` | Identité publique et formats communs UI/backend |
+| `convex/` | Schéma, règles métier et API publique/interne |
+| `convex/betterAuth/` | Composant Local Install et schéma d’auth généré |
+| `scripts/` | Initialisation et génération reproductibles |
+| `tests/e2e/` | Parcours navigateur avec services réels |
 
 Ajouter un domaine fonctionnel près de ses règles. Extraire une abstraction après répétition réelle ; éviter une couche générique de repositories qui masque les indexes et transactions Convex.
 

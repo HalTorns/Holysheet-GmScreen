@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { statSync } from 'node:fs'
 import { join } from 'node:path'
+
 import {
   assertLocalDeploymentSelection,
   backendUrl,
@@ -21,15 +22,15 @@ function check(name, inspect) {
   } catch (error) {
     failed = true
     console.error(
-      `ÉCHEC — ${name}: ${error instanceof Error ? error.message : 'vérification impossible'}`,
+      `ÉCHEC — ${name}: ${error instanceof Error ? error.message : 'vérification impossible'}`
     )
   }
 }
 
 check('Runtime Node compatible', () => {
-  const major = Number(process.versions.node.split('.')[0])
-  if (major < 24 || major >= 27)
-    throw new Error('Utiliser Node >=24 <27, recommandé 26.11.0.')
+  const [major = 0, minor = 0] = process.versions.node.split('.').map(Number)
+  if (major < 24 || (major === 24 && minor < 5) || major >= 27)
+    throw new Error('Utiliser Node >=24.5 <27, recommandé 26.11.0.')
 })
 check('pnpm verrouillé', () => {
   if (run('pnpm', ['--version'], { capture: true }) !== '11.8.0')
@@ -40,7 +41,7 @@ for (const name of ['.env.local', '.env.docker']) {
   check(`${name} privé et ignoré par Git`, () => {
     if ((statSync(join(projectRoot, name)).mode & 0o777) !== 0o600)
       throw new Error(
-        'Le fichier doit appartenir uniquement au propriétaire (chmod 600).',
+        'Le fichier doit appartenir uniquement au propriétaire (chmod 600).'
       )
     const result = spawnSync('git', ['check-ignore', '-q', name], {
       cwd: projectRoot,
@@ -64,13 +65,13 @@ check('URLs frontend et CLI locales cohérentes', () => {
 check('Identité Docker du checkout et services sains', () => {
   if (!readEnvironment('.env.docker').COMPOSE_PROJECT_NAME)
     throw new Error(
-      'Exécuter pnpm setup pour établir une identité Docker locale.',
+      'Exécuter pnpm setup pour établir une identité Docker locale.'
     )
   const configuration = prepareDockerEnvironment()
   const output = run(
     'docker',
     composeArguments(configuration, ['ps', '--format', 'json']),
-    { capture: true, env: composeEnvironment(configuration) },
+    { capture: true, env: composeEnvironment(configuration) }
   )
   const containers = output.trim().startsWith('[')
     ? JSON.parse(output)
@@ -78,27 +79,35 @@ check('Identité Docker du checkout et services sains', () => {
         .split('\n')
         .filter(Boolean)
         .map((line) => JSON.parse(line))
-  for (const service of ['backend', 'dashboard', 'mailpit']) {
+  for (const service of [
+    'backend',
+    'dashboard',
+    'mailpit',
+    ...(configuration.LOCAL_SPOTLIGHT_ENABLED === 'true' ? ['spotlight'] : []),
+  ]) {
     if (
       !containers.some(
         (container) =>
           container.Service === service &&
           container.State === 'running' &&
-          container.Health === 'healthy',
+          container.Health === 'healthy'
       )
     )
       throw new Error(
-        `Le service ${service} doit être démarré et sain (pnpm services:up).`,
+        `Le service ${service} doit être démarré et sain (pnpm services:up).`
       )
   }
 })
 for (const [name, url] of [
   ['API Convex', `${backendUrl}/version`],
   ['Dashboard Convex', dashboardUrl],
+  ...(readEnvironment('.env.docker').LOCAL_SPOTLIGHT_ENABLED === 'true'
+    ? [['Spotlight', 'http://localhost:8969']]
+    : []),
 ]) {
   try {
     const response = await fetch(url, {
-      signal: AbortSignal.timeout(2_000),
+      signal: AbortSignal.timeout(2000),
     })
     if (!response.ok) throw new Error('HTTP indisponible')
     console.info(`OK — ${name} local joignable`)
@@ -108,6 +117,6 @@ for (const [name, url] of [
   }
 }
 console.info(
-  'Diagnostic local en lecture seule terminé. Aucune valeur de secret affichée.',
+  'Diagnostic local en lecture seule terminé. Aucune valeur de secret affichée.'
 )
 process.exitCode = failed ? 1 : 0
