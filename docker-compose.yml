@@ -1,7 +1,7 @@
 name: ${COMPOSE_PROJECT_NAME:?Run pnpm setup to configure this checkout}
 services:
   backend:
-    image: ghcr.io/get-convex/convex-backend@sha256:d715e9ec088784407ca4ba2d3db592702cd328d02c76cdca3852c0018f2a76b4
+    image: ghcr.io/convex/convex-backend@sha256:d715e9ec088784407ca4ba2d3db592702cd328d02c76cdca3852c0018f2a76b4
     restart: unless-stopped
     stop_signal: SIGINT
     stop_grace_period: 10s
@@ -51,7 +51,7 @@ services:
       start_period: 10s
   dashboard:
     # Same upstream revision as the backend: 5c7cb5bc7db457290f1769f95f1d1340912f7fd7.
-    image: ghcr.io/get-convex/convex-dashboard@sha256:f85cf0d0448b9c835ae3df5c7c1c6f0145dd4c8f0f92eb0245daf304efdd9f1a
+    image: ghcr.io/convex/convex-dashboard@sha256:f85cf0d0448b9c835ae3df5c7c1c6f0145dd4c8f0f92eb0245daf304efdd9f1a
     restart: unless-stopped
     stop_signal: SIGINT
     stop_grace_period: 10s

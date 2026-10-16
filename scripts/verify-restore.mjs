@@ -161,7 +161,7 @@ async function verifyRestore() {
     'utf-8'
   )
   const image =
-    /^\s+image:\s+(ghcr\.io\/get-convex\/convex-backend@sha256:[a-f0-9]{64})\s*$/m.exec(
+    /^\s+image:\s+(ghcr\.io\/convex\/convex-backend@sha256:[a-f0-9]{64})\s*$/m.exec(
       compose
     )?.[1]
   if (!image)

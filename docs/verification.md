@@ -22,6 +22,8 @@ Vérifications sur ce Mac avec OrbStack. PostgreSQL remplace SQLite comme stocka
 
 Le premier passage E2E a révélé le défaut du sélecteur de mode. Une passe perturbée par un build concurrent a été interrompue ; les résultats ci-dessus proviennent de la passe complète exécutée ensuite sans build concurrent. Les annulations Nitro `ECONNRESET` déjà documentées restent présentes dans les logs, sans empêcher cette passe de réussir.
 
+La première CI de publication a échoué pendant le téléchargement Docker : le registre `ghcr.io/get-convex` refuse les accès anonymes (HTTP 403). Les mêmes manifestes, avec exactement les mêmes digests et les plateformes amd64/arm64, sont accessibles sous `ghcr.io/convex`. Les deux Compose et le vérificateur de restauration utilisent ce namespace ; les versions et les données restent identiques.
+
 Les fichiers `docker-compose.coolify.yml`, `Dockerfile`, `.dockerignore` et `.env.coolify.example` préparent la publication. Ce contrôle local ne prouve ni un déploiement Coolify, ni DNS/TLS, ni les règles du proxy, ni l’envoi email de production. Les domaines et secrets réels restent à configurer selon [le guide](deployment.md). La restauration sans fichier ne prouve pas un stockage de fichiers non vide. Les tâches planifiées ne sont pas transférées par l’export Convex ; les volumes et secrets exigent toujours une sauvegarde cohérente hors serveur.
 
 ## Enrichissement DX, auth et observabilité — 14 octobre 2026
