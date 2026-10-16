@@ -1,0 +1,16 @@
+.git
+node_modules
+.pnpm-store
+.env
+.env.*
+!.env.example
+.output
+dist
+.tanstack
+.convex
+backups
+coverage
+playwright-report
+test-results
+*.log
+.DS_Store

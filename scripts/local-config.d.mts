@@ -1,6 +1,9 @@
 export const projectRoot: string
 export function assertLocalDeploymentSelection(): void
 export function prepareDockerEnvironment(): Record<string, string>
+export function assertPostgresConfiguration(
+  configuration: Record<string, string>
+): void
 export function assertDockerPortsOwnership(
   configuration: Record<string, string>
 ): void

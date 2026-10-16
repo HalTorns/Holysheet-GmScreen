@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import {
   assertLocalDeploymentSelection,
+  assertPostgresConfiguration,
   assertDockerPortsOwnership,
   backendUrl,
   composeArguments,
@@ -19,6 +20,7 @@ async function setup() {
   assertLocalDeploymentSelection()
   const current = readEnvironment('.env.local')
   const dockerEnvironment = prepareDockerEnvironment()
+  assertPostgresConfiguration(dockerEnvironment)
   assertDockerPortsOwnership(dockerEnvironment)
   const originalDocker = readEnvironment('.env.docker')
   if (
@@ -98,7 +100,7 @@ async function setup() {
     { env, capture: true }
   )
   console.info(
-    'Services locaux prêts : Convex, dashboard et Mailpit. Configuration et secrets existants conservés.\nLancer pnpm dev et pnpm backend:dev dans deux terminaux.\nApplication : http://localhost:3000 — Emails : http://localhost:8025\nDashboard : pnpm dashboard (http://127.0.0.1:6791).'
+    'Services locaux prêts : PostgreSQL 18, Convex, dashboard et Mailpit. Configuration et secrets existants conservés.\nLancer pnpm dev et pnpm backend:dev dans deux terminaux.\nApplication : http://localhost:3000 — Emails : http://localhost:8025\nDashboard : pnpm dashboard (http://127.0.0.1:6791).'
   )
 }
 

@@ -1,5 +1,29 @@
 # Vérifications du socle
 
+## PostgreSQL 18 et préparation Coolify — 16 octobre 2026
+
+Vérifications sur ce Mac avec OrbStack. PostgreSQL remplace SQLite comme stockage interne de Convex ; aucune publication distante n’est incluse.
+
+| Vérification | Résultat observé |
+| --- | --- |
+| Migration locale | **24 tables** exportées puis restaurées et comparées exactement, dont Better Auth ; IDs et dates de création conservés ; zéro fichier de stockage dans la source |
+| Préservation | Toutes les valeurs précédentes de `.env.docker` conservées, y compris l’identité du projet et les secrets ; volume SQLite conservé pour récupération |
+| Moteur effectif | PostgreSQL **18.6**, tables internes et connexions Convex actives vérifiées avec SQL ; `pnpm doctor` contrôle la version du serveur et le pilote PostgreSQL du backend, y compris quand le pool est au repos |
+| Persistance | Exports avant et après `pnpm services:down` / `pnpm services:up` identiques pour les documents et fichiers présents |
+| Qualité | `pnpm check` réussi : types, Oxlint, Oxfmt, Knip, **45 tests backend/unitaires/scripts**, **4 tests Browser Mode** et build |
+| E2E SSR personnel | **11 réussis en 41,3 s**, 7 scénarios optionnels réservés aux passes dédiées |
+| E2E SSR organisations | **11 réussis en 55,0 s**, dont les permissions partagées et la restauration sur PostgreSQL ; origine et flag initiaux restaurés |
+| Modules d’authentification | **4 réussis en 37,9 s** : MFA/TOTP, récupération, support admin, Magic Link et refus du contournement du proxy |
+| Setup réel | `pnpm setup` réexécuté sur PostgreSQL puis `pnpm doctor` réussis, fichiers privés et secrets conservés |
+| Restauration PostgreSQL | Export réel restauré sur un nouveau Convex avec un PostgreSQL 18 isolé ; **24 tables** comparées ; conteneurs, volumes et réseau jetables supprimés |
+| Dockerfile SSR | Images construites sous Linux, serveur lancé en utilisateur `node` (UID 1000), réponse SSR HTTP 200 avec CSP en contact avec le backend local |
+| Compose de production | Configuration analysée puis quatre services démarrés et sains dans un projet Docker isolé ; ressources jetables supprimées |
+| Correction du lanceur | Le lanceur E2E local transmet désormais une absence de sélecteur pour le mode ordinaire au lieu d’une chaîne vide invalide ; son test de processus échoue avant correction puis réussit après |
+
+Le premier passage E2E a révélé le défaut du sélecteur de mode. Une passe perturbée par un build concurrent a été interrompue ; les résultats ci-dessus proviennent de la passe complète exécutée ensuite sans build concurrent. Les annulations Nitro `ECONNRESET` déjà documentées restent présentes dans les logs, sans empêcher cette passe de réussir.
+
+Les fichiers `docker-compose.coolify.yml`, `Dockerfile`, `.dockerignore` et `.env.coolify.example` préparent la publication. Ce contrôle local ne prouve ni un déploiement Coolify, ni DNS/TLS, ni les règles du proxy, ni l’envoi email de production. Les domaines et secrets réels restent à configurer selon [le guide](deployment.md). La restauration sans fichier ne prouve pas un stockage de fichiers non vide. Les tâches planifiées ne sont pas transférées par l’export Convex ; les volumes et secrets exigent toujours une sauvegarde cohérente hors serveur.
+
 ## Enrichissement DX, auth et observabilité — 14 octobre 2026
 
 La stack initiale et le mode personnel par défaut sont conservés. Les modules et leurs conditions d’activation sont décrits dans [auth-modules.md](auth-modules.md), [observability.md](observability.md) et [agent-patterns.md](agent-patterns.md).

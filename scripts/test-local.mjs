@@ -85,6 +85,7 @@ try {
       : {}),
   }
   const file = join(projectRoot, '.env.local')
+  if (mode !== 'organizations') delete env.PLAYWRIGHT_EXPECT_ORGANIZATIONS
   const command = (args) =>
     run('pnpm', ['exec', 'convex', 'env', ...args, '--env-file', file], {
       capture: true,

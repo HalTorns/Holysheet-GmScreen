@@ -39,13 +39,13 @@ Se connecter avec une adresse fictive, lire le code dans Mailpit puis créer des
 
 ## Secrets et données propres au projet
 
-Au premier setup, chaque checkout reçoit une identité Docker aléatoire, un volume Convex dédié, un secret d’instance et un secret Better Auth nouveaux. La clé admin dérive de cette instance ; elle appartient à ce backend uniquement. Les fichiers `.env.docker` et `.env.local` sont privés (`600`) et ignorés par Git. Les variables backend d’auth/email sont configurées dans cette instance Convex.
+Au premier setup, chaque checkout reçoit une identité Docker aléatoire, des volumes Convex et PostgreSQL dédiés, un secret d’instance, un secret Better Auth et un mot de passe PostgreSQL nouveaux. La clé admin dérive de cette instance ; elle appartient à ce backend uniquement. Les fichiers `.env.docker` et `.env.local` sont privés (`600`) et ignorés par Git. Les variables backend d’auth/email sont configurées dans cette instance Convex.
 
 **Ne pas copier** les `.env*` privés, volumes ou sauvegardes d’un autre projet. Installer depuis les fichiers versionnés suffit. `.env.example` contient des exemples publics et une clé admin vide ; `pnpm setup` écrit les fichiers nécessaires.
 
-Un nouveau setup dans le même projet conserve ses secrets, son volume, ses variables personnalisées et son choix de mode. Une configuration Docker copiée depuis un autre dossier est refusée, tout comme un sélecteur Convex distant : le setup local ne remplace pas une cible cloud.
+Un nouveau setup dans le même projet conserve ses secrets, ses volumes, ses variables personnalisées et son choix de mode. Une configuration Docker copiée depuis un autre dossier est refusée, tout comme un sélecteur Convex distant : le setup local ne remplace pas une cible cloud.
 
-Conserver `.env.docker` avec le volume auquel il appartient, dans un emplacement privé si une sauvegarde est nécessaire. Perdre ce fichier ne justifie pas de régénérer les secrets sur un volume existant. Pour déplacer un checkout existant, préserver sa configuration et planifier le déplacement avec les contrôles de propriété ; créer un nouveau produit utilise toujours le parcours template.
+Conserver `.env.docker` avec les volumes auxquels il appartient, dans un emplacement privé si une sauvegarde est nécessaire. Perdre ce fichier ne justifie pas de régénérer les secrets sur un volume existant. Pour déplacer un checkout existant, préserver sa configuration et planifier le déplacement avec les contrôles de propriété ; créer un nouveau produit utilise toujours le parcours template.
 
 Les emails Mailpit sont temporaires. Tables, sessions, clés publiques passkeys et fichiers Convex persistent après `pnpm services:down`. Les clés privées passkeys restent dans l’authentificateur. Ne pas réutiliser de données ou secrets de production en local.
 
@@ -89,6 +89,6 @@ Utiliser les wrappers du projet. Ne pas lancer `docker compose down -v`, importe
 
 ## Déploiement futur
 
-Ce parcours simule l’application en local. Coolify sera une étape distincte : domaines HTTPS stables, secrets dédiés, volumes persistants, email réel, proxy, sauvegardes et contrôle des accès administratifs devront être configurés sur cette cible. Ne pas réutiliser le Compose de développement tel quel sur un serveur public.
+Ce parcours simule l’application en local. Le [Compose Coolify](../docker-compose.coolify.yml) et le [guide de déploiement](deployment.md) préparent une étape distincte : domaines HTTPS stables, secrets dédiés, volumes persistants, email réel, proxy, sauvegardes et contrôle des accès administratifs devront être configurés sur cette cible. Ne pas réutiliser le Compose de développement tel quel sur un serveur public.
 
 Pour choisir les fonctionnalités : lire [les modules auth](auth-modules.md) et [les intégrations optionnelles](observability.md). Aucun secret, compte opérateur, clé analytics ou projet Sentry du template n’est réutilisé. Activer Spotlight avec `pnpm services:up --spotlight` si le produit a besoin de diagnostic local.

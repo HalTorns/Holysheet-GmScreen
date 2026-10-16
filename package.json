@@ -12,6 +12,7 @@
     "doctor": "node scripts/doctor.mjs",
     "dashboard": "node scripts/dashboard.mjs",
     "backup:verify": "node scripts/verify-restore.mjs",
+    "storage:migrate": "node scripts/migrate-postgres.mjs",
     "services:up": "node scripts/services.mjs up",
     "services:down": "node scripts/services.mjs down",
     "services:status": "node scripts/services.mjs status",

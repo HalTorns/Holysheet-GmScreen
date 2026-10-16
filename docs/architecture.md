@@ -42,6 +42,8 @@ Une liste est paginée ; une mutation s’exécute dans une transaction Convex. 
 
 ## Données et interface
 
+Convex persiste ses données dans PostgreSQL 18.6 en développement local et dans le Compose prévu pour Coolify. Les accès métier et l’authentification continuent de passer par Convex ; le volume Convex conserve les fichiers, modules et indexes. La [décision de stockage](decisions/storage.md) et le [guide de déploiement](deployment.md) décrivent la migration depuis SQLite et la séparation des environnements.
+
 TanStack Query et son intégration Convex fournissent le chargement SSR et la cohérence des données. Ne pas recopier les résultats dans `useState`. L’état local contient le dialogue ouvert, les champs en cours de saisie et les interactions de présentation.
 
 Le loader authentifié valide l’utilisateur et fournit son ID stable pour le document courant. Une confirmation de token en cours ne démonte pas ses pages et brouillons, même si la query utilisateur retourne temporairement `null`. Un utilisateur absent après confirmation ou une authentification refusée ferme l’interface. Si la query indique un autre compte, le layout masque l’ancien espace et recharge le document pour recréer les caches : aucun brouillon ou résultat du premier compte ne doit passer au second. Cette continuité d’interface n’autorise aucun accès backend et n’ajoute pas de cache de session.

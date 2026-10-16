@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import {
   assertLocalDeploymentSelection,
+  assertPostgresConfiguration,
   backendUrl,
   dashboardUrl,
   composeArguments,
@@ -68,6 +69,7 @@ check('Identité Docker du checkout et services sains', () => {
       'Exécuter pnpm setup pour établir une identité Docker locale.'
     )
   const configuration = prepareDockerEnvironment()
+  assertPostgresConfiguration(configuration)
   const output = run(
     'docker',
     composeArguments(configuration, ['ps', '--format', 'json']),
@@ -81,6 +83,7 @@ check('Identité Docker du checkout et services sains', () => {
         .map((line) => JSON.parse(line))
   for (const service of [
     'backend',
+    'postgres',
     'dashboard',
     'mailpit',
     ...(configuration.LOCAL_SPOTLIGHT_ENABLED === 'true' ? ['spotlight'] : []),
@@ -97,6 +100,43 @@ check('Identité Docker du checkout et services sains', () => {
         `Le service ${service} doit être démarré et sain (pnpm services:up).`
       )
   }
+})
+check('PostgreSQL 18 et pilote PostgreSQL du backend', () => {
+  const configuration = prepareDockerEnvironment()
+  assertPostgresConfiguration(configuration)
+  const output = run(
+    'docker',
+    composeArguments(configuration, [
+      'exec',
+      '-T',
+      'postgres',
+      'psql',
+      '-U',
+      'convex',
+      '-d',
+      configuration.LOCAL_POSTGRES_DATABASE,
+      '-Atc',
+      "SELECT current_setting('server_version_num')::int >= 180000 AND current_setting('server_version_num')::int < 190000;",
+    ]),
+    { capture: true, env: composeEnvironment(configuration) }
+  )
+  if (output !== 't') throw new Error('Le serveur doit utiliser PostgreSQL 18.')
+  // Idle PostgreSQL pools may close every connection. Inspect only the driver
+  // argument, keeping credentials in the process arguments out of the output.
+  const driver = run(
+    'docker',
+    composeArguments(configuration, [
+      'exec',
+      '-T',
+      'backend',
+      'sh',
+      '-c',
+      "tr '\\000' '\\n' < /proc/1/cmdline | grep -Fx postgres-v5",
+    ]),
+    { capture: true, env: composeEnvironment(configuration) }
+  )
+  if (driver !== 'postgres-v5')
+    throw new Error('Le backend doit utiliser le pilote PostgreSQL.')
 })
 for (const [name, url] of [
   ['API Convex', `${backendUrl}/version`],

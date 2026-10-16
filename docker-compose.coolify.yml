@@ -1,0 +1,114 @@
+# Coolify: repository Compose build pack, /docker-compose.coolify.yml.
+# Configure domains for site (:3000) and backend (:3210 and :3211).
+# Keep dashboard without a public domain. Its random loopback port is for SSH tunnels.
+services:
+  site:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SITE_URL: ${VITE_SITE_URL:?Set the HTTPS frontend origin}
+        VITE_CONVEX_URL: ${VITE_CONVEX_URL:?Set the HTTPS Convex API origin}
+        VITE_CONVEX_SITE_URL: ${VITE_CONVEX_SITE_URL:?Set the HTTPS Convex HTTP actions origin}
+        VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}
+        VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-https://eu.i.posthog.com}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+    restart: unless-stopped
+    init: true
+    expose: ['3000']
+    environment:
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SPOTLIGHT_ENABLED: 'false'
+      ARCJET_ENABLED: 'false'
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/favicon.svg').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+  backend:
+    image: ghcr.io/get-convex/convex-backend@sha256:d715e9ec088784407ca4ba2d3db592702cd328d02c76cdca3852c0018f2a76b4
+    restart: unless-stopped
+    stop_signal: SIGINT
+    stop_grace_period: 10s
+    expose: ['3210', '3211']
+    environment:
+      INSTANCE_NAME: convex-production
+      INSTANCE_SECRET: ${CONVEX_INSTANCE_SECRET:?Set a persistent 64-character hex secret}
+      CONVEX_CLOUD_ORIGIN: ${VITE_CONVEX_URL:?}
+      CONVEX_SITE_ORIGIN: ${VITE_CONVEX_SITE_URL:?}
+      POSTGRES_URL: postgresql://convex:${POSTGRES_PASSWORD:?Set a persistent hex password}@postgres:5432
+      # PostgreSQL is restricted to the private network on this Docker host.
+      DO_NOT_REQUIRE_SSL: '1'
+      DISABLE_BEACON: 'true'
+      DISABLE_METRICS_ENDPOINT: 'true'
+      REDACT_LOGS_TO_CLIENT: 'true'
+      RUST_LOG: warn
+    volumes:
+      - convex-data:/convex/data
+    networks: [default, database]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:3210/version']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  postgres:
+    image: postgres:18.6@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: convex
+      POSTGRES_DB: convex_production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks: [database]
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  dashboard:
+    image: ghcr.io/get-convex/convex-dashboard@sha256:f85cf0d0448b9c835ae3df5c7c1c6f0145dd4c8f0f92eb0245daf304efdd9f1a
+    restart: unless-stopped
+    stop_signal: SIGINT
+    stop_grace_period: 10s
+    ports: ['127.0.0.1::6791']
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: ${VITE_CONVEX_URL:?}
+      NEXT_PUBLIC_LOAD_MONACO_INTERNALLY: 'true'
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:6791/']
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+networks:
+  database:
+    internal: true
+
+volumes:
+  convex-data:
+  postgres-data:

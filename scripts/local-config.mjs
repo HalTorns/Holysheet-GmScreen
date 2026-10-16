@@ -146,12 +146,16 @@ export function prepareDockerEnvironment() {
   const current = readEnvironment('.env.docker')
   if (!Object.keys(current).length) {
     const name = `boilerplate-${randomBytes(6).toString('hex')}`
+    const password = randomBytes(32).toString('hex')
     return {
       COMPOSE_PROJECT_NAME: name,
       LOCAL_PROJECT_DIRECTORY: projectRoot,
       INSTANCE_NAME: name,
       INSTANCE_SECRET: randomBytes(32).toString('hex'),
       LOCAL_AUTH_SECRET: randomBytes(48).toString('base64url'),
+      LOCAL_POSTGRES_PASSWORD: password,
+      LOCAL_POSTGRES_DATABASE: name.replaceAll('-', '_'),
+      LOCAL_POSTGRES_URL: `postgresql://convex:${password}@postgres:5432`,
     }
   }
   if (
@@ -231,9 +235,33 @@ export function composeEnvironment(configuration) {
   return {
     ...process.env,
     COMPOSE_PROJECT_NAME: configuration.COMPOSE_PROJECT_NAME,
+    LOCAL_POSTGRES_PASSWORD: configuration.LOCAL_POSTGRES_PASSWORD ?? '',
+    LOCAL_POSTGRES_DATABASE:
+      configuration.LOCAL_POSTGRES_DATABASE ?? 'convex_self_hosted',
+    LOCAL_POSTGRES_URL: configuration.LOCAL_POSTGRES_URL ?? '',
     COMPOSE_FILE: '',
     COMPOSE_PROFILES: '',
   }
+}
+
+export function assertPostgresConfiguration(configuration) {
+  if (!configuration.LOCAL_POSTGRES_URL)
+    throw new Error(
+      'Legacy SQLite storage found. Run pnpm storage:migrate during local maintenance before pnpm setup or services:up.'
+    )
+  if (
+    !/^[a-f0-9]{64}$/.test(configuration.LOCAL_POSTGRES_PASSWORD ?? '') ||
+    !/^[a-z][a-z0-9_]{0,62}$/.test(
+      configuration.LOCAL_POSTGRES_DATABASE ?? ''
+    ) ||
+    configuration.LOCAL_POSTGRES_DATABASE !==
+      configuration.INSTANCE_NAME.replaceAll('-', '_') ||
+    configuration.LOCAL_POSTGRES_URL !==
+      `postgresql://convex:${configuration.LOCAL_POSTGRES_PASSWORD}@postgres:5432`
+  )
+    throw new Error(
+      'Invalid local PostgreSQL configuration; no services were changed.'
+    )
 }
 
 export function assertDockerPortsOwnership(configuration) {

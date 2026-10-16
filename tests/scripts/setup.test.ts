@@ -9,11 +9,13 @@ import {
   writeFile,
   mkdir,
   copyFile,
+  realpath,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { parseEnv } from 'node:util'
 
+import { z } from '@shared/zod'
 import { afterEach, expect, test } from 'vitest'
 
 const projectRoot = dirname(dirname(import.meta.dirname))
@@ -46,7 +48,7 @@ async function fixture() {
   const fakeCommand = String.raw`#!${process.execPath}
 import { appendFileSync } from 'node:fs'
 const args = process.argv.slice(2)
-appendFileSync(process.env.TEST_COMMAND_LOG, JSON.stringify({ program: process.argv[1].split('/').at(-1), args, cloudSelected: Boolean(process.env.CONVEX_DEPLOY_KEY || process.env.CONVEX_DEPLOYMENT_TOKEN || process.env.CONVEX_DEPLOYMENT), localUrl: process.env.CONVEX_SELF_HOSTED_URL }) + '\n')
+appendFileSync(process.env.TEST_COMMAND_LOG, JSON.stringify({ program: process.argv[1].split('/').at(-1), args, cloudSelected: Boolean(process.env.CONVEX_DEPLOY_KEY || process.env.CONVEX_DEPLOYMENT_TOKEN || process.env.CONVEX_DEPLOYMENT), localUrl: process.env.CONVEX_SELF_HOSTED_URL, expectedOrganizations: process.env.PLAYWRIGHT_EXPECT_ORGANIZATIONS }) + '\n')
 if (args.includes('./generate_admin_key.sh')) console.log('development-only-fake-key')
 if (args.includes('ps') && args.includes('-a') && process.env.TEST_LEGACY_OWNER) console.log('development-only-container-id')
 if (args.includes('publish=' + process.env.TEST_PORT_NUMBER) && process.env.TEST_PORT_PROJECT) console.log(process.env.TEST_PORT_PROJECT)
@@ -187,6 +189,9 @@ test('deux nouveaux checkouts reçoivent des identités et secrets différents',
   // Compare without including private values in a failed assertion's output.
   expect(before.INSTANCE_SECRET !== after.INSTANCE_SECRET).toBe(true)
   expect(before.LOCAL_AUTH_SECRET !== after.LOCAL_AUTH_SECRET).toBe(true)
+  expect(before.LOCAL_POSTGRES_PASSWORD !== after.LOCAL_POSTGRES_PASSWORD).toBe(
+    true
+  )
 })
 
 test('une configuration Docker copiée depuis un autre checkout est refusée avant Docker', async () => {
@@ -203,7 +208,7 @@ test('une configuration Docker copiée depuis un autre checkout est refusée ava
   expect(await commands(copy.log)).toBe('')
 })
 
-test.each(['test-organizations.mjs', 'dashboard.mjs'])(
+test.each(['test-organizations.mjs', 'dashboard.mjs', 'migrate-postgres.mjs'])(
   'le lanceur %s refuse un checkout copié avant tout accès privé',
   async (script) => {
     const original = await fixture()
@@ -226,6 +231,48 @@ test.each(['test-organizations.mjs', 'dashboard.mjs'])(
     expect(await commands(copy.log)).toBe('')
   }
 )
+
+test('un checkout SQLite existant exige une migration explicite et conserve sa configuration', async () => {
+  const local = await fixture()
+  const legacy = `COMPOSE_PROJECT_NAME=local-project\nLOCAL_PROJECT_DIRECTORY=${await realpath(local.directory)}\nINSTANCE_NAME=local-project\nINSTANCE_SECRET=${'a'.repeat(64)}\nLOCAL_AUTH_SECRET=${'b'.repeat(64)}\n`
+  await writeFile(join(local.directory, '.env.docker'), legacy)
+  const result = setup(local)
+  expect(result.status).toBe(1)
+  expect(result.stderr).toContain('pnpm storage:migrate')
+  expect(await commands(local.log)).not.toContain('"up"')
+  expect(await readFile(join(local.directory, '.env.docker'), 'utf-8')).toBe(
+    legacy
+  )
+})
+
+test('le lanceur E2E local ne transmet pas une attente de mode vide ou héritée', async () => {
+  const local = await fixture()
+  expect(setup(local).status).toBe(0)
+  const result = spawnSync(
+    process.execPath,
+    [join(local.directory, 'scripts/test-local.mjs')],
+    {
+      cwd: local.directory,
+      env: { ...local.environment, PLAYWRIGHT_EXPECT_ORGANIZATIONS: 'true' },
+      encoding: 'utf-8',
+      timeout: 5000,
+    }
+  )
+  expect(result.status, result.stderr).toBe(0)
+  const invocationSchema = z.object({
+    args: z.array(z.string()),
+    expectedOrganizations: z.string().optional(),
+  })
+  const invocations = (await commands(local.log))
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => invocationSchema.parse(JSON.parse(line)))
+  const browserRun = invocations.find((entry) =>
+    entry.args.includes('test:e2e')
+  )
+  expect(browserRun).toBeDefined()
+  expect(browserRun?.expectedOrganizations).toBeUndefined()
+})
 
 test.each(['3210', '6791'])(
   'le port %s d’un autre projet refuse le setup avant création de services',

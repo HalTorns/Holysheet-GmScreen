@@ -1,5 +1,7 @@
 import {
   assertDockerPortsOwnership,
+  assertLocalDeploymentSelection,
+  assertPostgresConfiguration,
   composeArguments,
   composeEnvironment,
   prepareDockerEnvironment,
@@ -17,6 +19,10 @@ try {
       'Run pnpm setup once to establish this checkout’s local Docker identity.'
     )
   const configuration = prepareDockerEnvironment()
+  if (action === 'up') {
+    assertLocalDeploymentSelection()
+    assertPostgresConfiguration(configuration)
+  }
   if (process.argv.includes('--spotlight')) {
     if (action !== 'up')
       throw new Error(

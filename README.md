@@ -16,7 +16,7 @@ pnpm dev
 
 Ouvrir [localhost:3000](http://localhost:3000), utiliser une adresse email de développement et récupérer le code dans [Mailpit](http://localhost:8025). Les messages restent locaux ; aucun compte chez un fournisseur email n’est nécessaire. Utiliser **localhost** pour le frontend : le RP ID des passkeys locales est `localhost`.
 
-`pnpm setup` démarre les services, génère les secrets locaux absents, configure le backend et déploie ses fonctions. Il conserve les données et secrets existants. La configuration privée reste dans `.env.local` et dans les variables du backend ; ne pas copier ces fichiers dans Git.
+`pnpm setup` démarre PostgreSQL 18.6, Convex, son dashboard et Mailpit, génère les secrets locaux absents, configure le backend et déploie ses fonctions. Il conserve les données et secrets existants. La configuration privée reste dans `.env.local` et dans les variables du backend ; ne pas copier ces fichiers dans Git.
 
 | Service                 | Adresse               |
 | ----------------------- | --------------------- |
@@ -25,6 +25,8 @@ Ouvrir [localhost:3000](http://localhost:3000), utiliser une adresse email de d�
 | Actions HTTP Convex     | http://127.0.0.1:3211 |
 | Dashboard Convex        | http://127.0.0.1:6791 |
 | Boîte email Mailpit     | http://localhost:8025 |
+
+PostgreSQL stocke les données internes de Convex dans un volume distinct ; son port reste privé dans le réseau Docker. Pour un ancien checkout SQLite, arrêter les serveurs de développement puis lancer `pnpm storage:migrate` avant de reprendre le setup. La [procédure de migration](docs/deployment.md#cible-du-projet--développement-local-production-sur-coolify) conserve le volume SQLite et un export privé vérifié.
 
 Pendant les changements backend, lancer `pnpm backend:dev` dans un second terminal. `pnpm dashboard` ouvre l’outil admin local et, sur Mac, copie sa clé pour la connexion. Coller dans **Admin Key**, puis **Log In** ; remplacer le presse-papiers et se déconnecter après usage. Le dashboard inspecte toute l’instance, indépendamment des rôles de l’application.
 
@@ -41,6 +43,7 @@ Pendant les changements backend, lancer `pnpm backend:dev` dans un second termin
 | `pnpm check` | Types, Oxlint, Oxfmt, Knip, Vitest backend/Browser Mode et build |
 | `pnpm test:e2e` | Parcours réels Chromium, Convex et Mailpit |
 | `pnpm test:e2e:organizations` | Parcours partagé avec activation locale temporaire |
+| `pnpm storage:migrate` | Migrer un ancien checkout SQLite vers PostgreSQL 18 |
 | `pnpm backup:verify` | Restauration locale sur un backend Docker jetable |
 | `pnpm build` / `pnpm start` | Build puis serveur SSR de production |
 | `pnpm services:down` | Arrêter les conteneurs en conservant les volumes |
@@ -75,6 +78,8 @@ Pour vérifier le serveur construit et sa CSP stricte sans viser une autre appli
 - [Revue de l’isolation et des permissions](docs/organizations-review.md)
 
 Les organisations et rôles sont intégrés mais désactivés par défaut. Activer `ORGANIZATIONS_ENABLED=true` dans Convex pour ajouter des espaces partagés avec propriétaires, administrateurs, membres et lecteurs. L’espace personnel reste disponible. Le [guide du module](docs/organizations.md) décrit permissions, invitations et cycle de vie des données.
+
+La cible de production est Coolify : le [Compose de production](docker-compose.coolify.yml), le [Dockerfile SSR](Dockerfile) et le [guide de déploiement](docs/deployment.md) préparent la mise en ligne avec des domaines et secrets dédiés.
 
 Les paiements, stockage R2 et fonctions IA restent à brancher selon le produit.
 

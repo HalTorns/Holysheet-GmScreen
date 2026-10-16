@@ -33,7 +33,7 @@ Après `pnpm setup`, avec Docker démarré, pnpm et `unzip` disponibles :
 pnpm backup:verify
 ```
 
-Le script accepte uniquement une source auto-hébergée locale explicitement configurée dans `.env.local`. Il exporte cette source avec ses composants et son stockage, crée un backend Docker neuf avec le même digest et un volume jetable, y déploie le code puis importe et réexporte les données. Il compare les documents canoniques, y compris les IDs et `_creationTime`, et les empreintes des fichiers présents. Le conteneur et le volume qu’il vient de créer sont ensuite supprimés ; la source et son volume sont conservés.
+Le script accepte uniquement une source auto-hébergée locale explicitement configurée dans `.env.local`. Il exporte cette source avec ses composants et son stockage, crée un backend Docker et un PostgreSQL 18 neufs avec les mêmes digests, un réseau et des volumes jetables, y déploie le code puis importe et réexporte les données. Il compare les documents canoniques, y compris les IDs et `_creationTime`, et les empreintes des fichiers présents. Les conteneurs, volumes et réseau qu’il vient de créer sont ensuite supprimés ; la source et son volume sont conservés.
 
 Les archives et le rapport restent dans `backups/<exécution>/`, ignoré par Git, avec répertoire privé et fichiers limités au propriétaire. Les archives contiennent potentiellement des tokens de session : ne pas les publier comme artefacts CI. Chiffrer et déplacer uniquement une copie destinée à une sauvegarde durable.
 
@@ -56,6 +56,8 @@ Pour une cible déjà remplie, `--replace` remplace les tables importées et `--
 
 ## Sauvegarde physique auto-hébergée
 
-Une copie à froid du volume Docker complète les exports logiques. Arrêter proprement le backend avant de copier son volume, inclure la base et les fichiers de stockage, puis redémarrer. Ne pas copier uniquement le fichier SQLite pendant les écritures. Tester la récupération du volume avec la même version de backend avant toute montée de version.
+Avec PostgreSQL, sauvegarder la base avec une méthode PostgreSQL cohérente (`pg_dump` ou sauvegarde physique adaptée), ainsi que le volume `convex-data` et les secrets/configurations du même déploiement. Un dump PostgreSQL seul ne contient pas les fichiers Convex. La présence de PostgreSQL dans un Compose applicatif ne prouve pas qu’une sauvegarde automatique Coolify a été configurée.
+
+Une copie à froid des volumes Docker complète les exports logiques. Pour cette copie physique, arrêter proprement le backend **et PostgreSQL** avec `pnpm services:down`, copier les deux volumes ainsi que leur configuration privée, puis redémarrer avec `pnpm services:up`. Ne pas copier un volume PostgreSQL en cours d’écriture sans protocole de sauvegarde adapté. Un ancien volume SQLite conservé après migration se sauvegarde séparément à froid. Tester la récupération des volumes avec les mêmes versions avant toute montée de version.
 
 Ne jamais utiliser `docker compose down -v` comme arrêt courant : cette option supprime les volumes persistants. Le socle ne programme pas encore de sauvegarde de production ; fréquence, rétention et objectifs de perte/durée de récupération appartiennent à l’environnement déployé.

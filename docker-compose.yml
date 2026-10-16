@@ -10,6 +10,8 @@ services:
       - '127.0.0.1:3211:3211'
     env_file: .env.docker
     environment:
+      POSTGRES_URL: ${LOCAL_POSTGRES_URL:-}
+      DO_NOT_REQUIRE_SSL: '1'
       CONVEX_CLOUD_ORIGIN: http://127.0.0.1:3210
       CONVEX_SITE_ORIGIN: http://127.0.0.1:3211
       DISABLE_BEACON: 'true'
@@ -17,8 +19,32 @@ services:
       RUST_LOG: warn
     volumes:
       - convex-data:/convex/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-fsS', 'http://localhost:3210/version']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  postgres:
+    # PostgreSQL 18.6; multi-architecture image shared with production.
+    image: postgres:18.6@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: convex
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:-}
+      POSTGRES_DB: ${LOCAL_POSTGRES_DATABASE:-convex_self_hosted}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"',
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -64,3 +90,4 @@ services:
 
 volumes:
   convex-data:
+  postgres-data:
