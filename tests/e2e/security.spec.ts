@@ -19,6 +19,21 @@ const publicJwksSchema = z.object({
     .min(1),
 })
 
+test('la connexion passkey demande une vérification utilisateur obligatoire', async ({
+  request,
+}) => {
+  const response = await request.get(
+    '/api/auth/passkey/generate-authenticate-options'
+  )
+  expect(response.status()).toBe(200)
+  expect(
+    z
+      .object({ userVerification: z.literal('required') })
+      .safeParse(await response.json()).success,
+    'Le gestionnaire de passkeys doit recevoir la même exigence de vérification que le serveur.'
+  ).toBe(true)
+})
+
 test('un code email incorrect, remplacé ou déjà consommé ne crée pas de session', async ({
   browser,
 }) => {

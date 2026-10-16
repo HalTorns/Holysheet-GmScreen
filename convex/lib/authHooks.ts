@@ -31,6 +31,9 @@ const pendingSessionPaths = new Set([
   ...verificationPaths,
 ])
 const resultUser = z.object({ user: z.object({ id: z.string() }) }).loose()
+const passkeyAuthenticationOptions = z
+  .object({ challenge: z.string(), rpId: z.string() })
+  .loose()
 
 function forbidden(code = 'FORBIDDEN'): never {
   throw new APIError('FORBIDDEN', {
@@ -173,9 +176,18 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
         (request.context.returned instanceof Response &&
           !request.context.returned.ok)
       )
-        return
+        return undefined
+      if (request.path === '/passkey/generate-authenticate-options') {
+        // Passkey 1.6.22 hardcodes "preferred" for sign-in, independently of
+        // authenticatorSelection. Ask password managers for the UV proof that
+        // our afterVerification hook requires before creating a session.
+        return request.json({
+          ...passkeyAuthenticationOptions.parse(request.context.returned),
+          userVerification: 'required',
+        })
+      }
       const session = request.context.newSession ?? request.context.session
-      if (!session) return
+      if (!session) return undefined
       const action = requireActionCtx(ctx)
       if (
         verificationPaths.has(request.path ?? '') &&
@@ -208,6 +220,7 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
           }
         )
       }
+      return undefined
     }),
   }
 }

@@ -2,7 +2,7 @@ import { convexQuery } from '@convex-dev/react-query'
 import { api } from '@convex/_generated/api'
 import { appConfig } from '@shared/app-config'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { UserRound } from 'lucide-react'
 
 import { ErrorState } from '@/components/page-state'
@@ -46,6 +46,14 @@ function SecurityPage() {
           Connexion sans mot de passe
         </span>
       </div>
+      <p className="field-hint">
+        Les actions sensibles demandent une connexion datant de moins de cinq
+        minutes. Votre session reste ouverte pour utiliser l’application.{' '}
+        <Link to="/sign-in" className="text-primary underline">
+          Confirmer mon identité
+        </Link>{' '}
+        avec une passkey ou un code e-mail, puis revenir sur cette page.
+      </p>
       <PasskeysSection />
       <MfaSection />
       <SessionsSection />

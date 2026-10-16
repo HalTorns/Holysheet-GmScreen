@@ -3,7 +3,7 @@ import { appConfig } from '@shared/app-config'
 import { MAX_PAGE_SIZE } from '@shared/validation'
 import { z } from '@shared/zod'
 import { useForm } from '@tanstack/react-form'
-import { Link, useHydrated } from '@tanstack/react-router'
+import { useHydrated } from '@tanstack/react-router'
 import { useConvex, useMutation } from 'convex/react'
 import type { FunctionReturnType } from 'convex/server'
 import { Download, FolderLock, Trash2 } from 'lucide-react'
@@ -61,12 +61,6 @@ export function DataSection() {
         </div>
         <DeleteAccountDialog />
       </div>
-      <p className="field-hint mt-4">
-        Besoin de confirmer votre identité ?{' '}
-        <Link to="/sign-in" className="text-primary underline">
-          Se reconnecter
-        </Link>
-      </p>
     </section>
   )
 }
