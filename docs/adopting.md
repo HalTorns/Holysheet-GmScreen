@@ -38,7 +38,7 @@ Noter une décision courte lorsque le produit change une frontière : besoin, so
 
 1. Définir ses données, leur propriétaire, leur durée de conservation et le comportement observable. Identifier les utilisateurs autorisés et les refus à prouver.
 2. Ajouter les tables et indexes dans `convex/schema.ts`. Définir des limites de taille, de pagination et de débit avant les appels coûteux.
-3. Placer les queries/mutations dans `convex/<domaine>.ts` et les règles spécifiques dans `convex/lib/<domaine>.ts`. Appeler `requireUser` ou `requireRecentUser` depuis `convex/lib/auth.ts`, puis contrôler le propriétaire ou les permissions de chaque ressource. Calculer le propriétaire depuis la session ; ne pas accepter un propriétaire client comme autorité.
+3. Placer les queries/mutations dans `convex/<domaine>.ts` et les règles spécifiques dans `convex/lib/<domaine>.ts`. Appeler `requireUser` pour les opérations courantes ou `requireConfirmedUser` avec une opération précise pour les mutations sensibles depuis `convex/lib/auth.ts`, puis contrôler le propriétaire ou les permissions de chaque ressource. Calculer le propriétaire depuis la session ; ne pas accepter un propriétaire client comme autorité.
 4. Définir les validateurs Convex des arguments et retours. Si le formulaire partage des contraintes, créer son schéma dans `shared/` avec `z` importé depuis `@shared/zod`. Garder les contrôles backend même si le formulaire valide déjà.
 5. Créer l’interface dans `src/features/<domaine>/`. Réutiliser les composants UI et les états chargement, erreur, vide et succès. Conserver les données serveur dans Convex/TanStack Query, sans copie locale servant de deuxième cache.
 6. Ajouter la route dans `src/routes/` puis son lien dans `src/config/navigation.ts`. `linkOptions` vérifie les destinations contre l’arbre généré ; laisser TanStack générer `src/routeTree.gen.ts`. Un lien visible ou caché est une décision d’interface, jamais une permission backend.
@@ -77,3 +77,5 @@ Si des données réelles existent déjà, un changement de table ou de champ dem
 ## Modules selon les besoins
 
 Les organisations, paiements, stockage avancé et IA restent des ajouts conditionnés par le produit. Lire `docs/modules.md`, définir les frontières et réaliser un premier parcours complet avant d’ajouter une couche générique. Le modèle d’organisation et la supervision de production sont les premiers choix à préciser pour une application partagée ou ouverte au public.
+
+Lire [Comptes et formulaires](accounts.md) pour le bootstrap admin, la migration des pseudos, les preuves sensibles et les composants `DraftGuard`, `SaveActions`, `ListNavigation`. `requireRecentUser` reste réservé au support technique. Ne pas remplacer la confirmation dans le parcours par une limite sur l’âge de connexion.

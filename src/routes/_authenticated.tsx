@@ -14,9 +14,12 @@ import {
   appNavigation,
   organizationsNavigation,
   supportNavigation,
+  adminNavigation,
 } from '@/config/navigation'
+import { ProfileOnboarding } from '@/features/account/display-name-form'
 import { ImpersonationBanner } from '@/features/admin/support-panel'
 import { authErrorMessage } from '@/features/auth/errors'
+import { IdentityConfirmationProvider } from '@/features/auth/identity-confirmation'
 import { authClient } from '@/lib/auth-client'
 import { ensureConvexQuery } from '@/lib/convex-query'
 
@@ -44,7 +47,12 @@ export const Route = createFileRoute('/_authenticated')({
       throw redirect({ to: access?.requiresMfa ? '/verify-mfa' : '/sign-in' })
     }
     await ensureConvexQuery(context.queryClient, api.capabilities.get, {})
-    return { userId: user.id }
+    return {
+      userId: user.id,
+      onboarding: user.requiresName,
+      name: user.name,
+      profileVersion: user.profileVersion,
+    }
   },
   head: () => ({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] }),
   pendingComponent: LoadingState,
@@ -53,12 +61,18 @@ export const Route = createFileRoute('/_authenticated')({
 })
 
 function AuthenticatedLayout() {
+  const browserSession = authClient.useSession()
   const access = useQuery(api.auth.getAccessState, {})
   const { data: user } = useSuspenseQuery(currentUserQuery)
   const { data: capabilities } = useSuspenseQuery(capabilitiesQuery)
   const { isAuthenticated, isLoading } = useConvexAuth()
-  const { userId: validatedUserId } = Route.useLoaderData()
-  const accountChanged = user !== null && user.id !== validatedUserId
+  const initial = Route.useLoaderData()
+  const { userId: validatedUserId } = initial
+  const [onboarding, setOnboarding] = useState(initial.onboarding)
+  const accountChanged =
+    (user !== null && user.id !== validatedUserId) ||
+    (browserSession.data?.user.id !== undefined &&
+      browserSession.data.user.id !== validatedUserId)
   useEffect(() => {
     // A different account needs a fresh document and fresh query caches.
     if (accountChanged) window.location.reload()
@@ -77,7 +91,8 @@ function AuthenticatedLayout() {
         >
           {[
             ...appNavigation,
-            ...(access?.isAdmin ? [supportNavigation] : []),
+            ...(access?.isSupport ? [supportNavigation] : []),
+            ...(access?.isAdmin ? [adminNavigation] : []),
             ...(capabilities.organizations ? [organizationsNavigation] : []),
           ].map(({ label, icon: Icon, ...link }) => (
             <Link key={link.to} {...link} className="app-nav-link">
@@ -95,10 +110,23 @@ function AuthenticatedLayout() {
         {isAuthenticated || isLoading ? (
           <fieldset
             className="contents"
-            disabled={Boolean(access?.isImpersonating)}
+            disabled={isLoading || Boolean(access?.isImpersonating)}
             aria-label="Contenu de votre espace"
           >
-            <Outlet key={validatedUserId} />
+            <IdentityConfirmationProvider key={validatedUserId}>
+              {onboarding && !access?.isImpersonating ? (
+                <ProfileOnboarding
+                  name={user?.name ?? initial.name}
+                  profileVersion={
+                    user?.profileVersion ?? initial.profileVersion
+                  }
+                  hasName={user?.hasName ?? false}
+                  onComplete={() => setOnboarding(false)}
+                />
+              ) : (
+                <Outlet />
+              )}
+            </IdentityConfirmationProvider>
           </fieldset>
         ) : (
           <SessionExpiredState />

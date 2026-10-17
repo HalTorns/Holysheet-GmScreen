@@ -2,11 +2,12 @@ import { convexQuery } from '@convex-dev/react-query'
 import { api } from '@convex/_generated/api'
 import { appConfig } from '@shared/app-config'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { UserRound } from 'lucide-react'
 
 import { ErrorState } from '@/components/page-state'
 import { DataSection } from '@/features/account/data-section'
+import { DisplayNameForm } from '@/features/account/display-name-form'
 import { MfaSection } from '@/features/account/mfa-section'
 import { PasskeysSection } from '@/features/account/passkeys-section'
 import { SessionsSection } from '@/features/account/sessions-section'
@@ -46,13 +47,19 @@ function SecurityPage() {
           Connexion sans mot de passe
         </span>
       </div>
+      <section
+        className="security-section panel"
+        aria-labelledby="profile-heading"
+      >
+        <h2 id="profile-heading">Votre pseudo</h2>
+        <DisplayNameForm
+          name={user?.name ?? ''}
+          profileVersion={user?.profileVersion ?? 0}
+        />
+      </section>
       <p className="field-hint">
-        Les actions sensibles demandent une connexion datant de moins de cinq
-        minutes. Votre session reste ouverte pour utiliser l’application.{' '}
-        <Link to="/sign-in" className="text-primary underline">
-          Confirmer mon identité
-        </Link>{' '}
-        avec une passkey ou un code e-mail, puis revenir sur cette page.
+        Les actions sensibles vous demandent une confirmation d’identité ici, en
+        conservant votre saisie.
       </p>
       <PasskeysSection />
       <MfaSection />

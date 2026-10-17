@@ -45,6 +45,7 @@ describe('Owner-only resource API', () => {
     expect(await bob.client.query(api.resources.get, { id })).toBeNull()
     await expect(
       bob.client.mutation(api.resources.update, {
+        expectedUpdatedAt: 0,
         id,
         title: 'stolen',
         description: '',
@@ -58,6 +59,8 @@ describe('Owner-only resource API', () => {
       description: 'private',
     })
     await alice.client.mutation(api.resources.update, {
+      expectedUpdatedAt:
+        (await alice.client.query(api.resources.get, { id }))?.updatedAt ?? 0,
       id,
       title: 'Updated',
       description: 'New description',
@@ -66,6 +69,41 @@ describe('Owner-only resource API', () => {
       title: 'Updated',
       description: 'New description',
     })
+    const searchable = await alice.client.mutation(api.resources.create, {
+      title: 'Searchable note',
+      description: 'With details',
+    })
+    await alice.client.mutation(api.resources.create, {
+      title: 'Searchable empty',
+      description: '',
+    })
+    const foreign = await bob.client.mutation(api.resources.create, {
+      title: 'Searchable note',
+      description: 'Other owner',
+    })
+    const filters = {
+      search: 'Searchable',
+      described: true,
+      paginationOpts: { numItems: 10, cursor: null },
+    }
+    expect(
+      (await alice.client.query(api.resources.list, filters)).page.map(
+        (row) => row._id
+      )
+    ).toEqual([searchable])
+    expect(
+      (await bob.client.query(api.resources.list, filters)).page.map(
+        (row) => row._id
+      )
+    ).toEqual([foreign])
+    expect(
+      (
+        await alice.client.query(api.resources.list, {
+          ...filters,
+          described: false,
+        })
+      ).page
+    ).toHaveLength(2)
     await alice.client.mutation(api.resources.remove, { id })
     expect(await alice.client.query(api.resources.get, { id })).toBeNull()
   })
@@ -194,4 +232,38 @@ describe('Owner-only resource API', () => {
       })
     ).resolves.toBeTypeOf('string')
   })
+})
+
+// Owns compare-and-swap; the browser test owns preserving both editors' drafts.
+it('rejects a concurrent overwrite and advances versions even within one millisecond', async () => {
+  vi.useFakeTimers()
+  const backend = createBackendTest()
+  const owner = await createAuthenticatedUser(backend, 'owner@example.test')
+  const id = await owner.client.mutation(api.resources.create, {
+    title: 'Original',
+    description: '',
+  })
+  const original = await owner.client.query(api.resources.get, { id })
+  if (!original) throw new Error('Missing fixture')
+  const results = await Promise.allSettled(
+    ['First', 'Second'].map((title) =>
+      owner.client.mutation(api.resources.update, {
+        id,
+        expectedUpdatedAt: original.updatedAt,
+        title,
+        description: '',
+      })
+    )
+  )
+  expect(
+    results.filter((result) => result.status === 'fulfilled')
+  ).toHaveLength(1)
+  const rejected = results.find((result) => result.status === 'rejected')
+  const reason: unknown = rejected?.reason
+  expect(reason instanceof Error && reason.message.includes('CONFLICT')).toBe(
+    true
+  )
+  expect((await owner.client.query(api.resources.get, { id }))?.updatedAt).toBe(
+    original.updatedAt + 1
+  )
 })

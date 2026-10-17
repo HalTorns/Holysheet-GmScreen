@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 
 import { components, internal } from './_generated/api'
 import { internalMutation } from './_generated/server'
+import { clearUserRateLimits } from './lib/rateLimits'
 
 const BATCH_SIZE = 100
 const SECURITY_EVENT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
@@ -10,6 +11,7 @@ export const deletedAccount = internalMutation({
   args: { userId: v.string(), email: v.string() },
   returns: v.null(),
   handler: async (ctx, { userId, email }) => {
+    await clearUserRateLimits(ctx, userId)
     const resources = await ctx.db
       .query('resources')
       .withIndex('by_owner', (index) => index.eq('ownerId', userId))

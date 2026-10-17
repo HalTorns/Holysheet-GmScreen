@@ -14,6 +14,8 @@ import { authHooks } from './lib/authHooks'
 import { getAuthModules } from './lib/authModules'
 import { getEmailSettings } from './lib/emailEnvironment'
 import { getAuthSettings } from './lib/environment'
+import { pendingSignInPlugin } from './lib/pendingSignIn'
+import { getProfilePolicy } from './lib/profilePolicy'
 import { getSessionAccess } from './lib/sessionAccess'
 import { publicUserValidator } from './lib/validators'
 
@@ -72,8 +74,10 @@ export function createAuthOptions(
 }
 
 export function createAuth(ctx: GenericCtx<DataModel>) {
+  const options = createAuthOptions(ctx, getAuthSettings())
   return betterAuth({
-    ...createAuthOptions(ctx, getAuthSettings()),
+    ...options,
+    plugins: [...options.plugins, pendingSignInPlugin(ctx)],
     hooks: authHooks(ctx),
   })
 }
@@ -91,6 +95,10 @@ export const getCurrentUser = query({
     return {
       id: user._id,
       name: user.name,
+      updatedAt: user.updatedAt,
+      profileVersion: user.profileVersion ?? 0,
+      hasName: Boolean(user.nameKey),
+      requiresName: getProfilePolicy().required && !user.nameKey,
       email: user.email,
       createdAt: user.createdAt,
     }
@@ -106,6 +114,7 @@ export const getAccessState = query({
       mfaEnabled: v.boolean(),
       isImpersonating: v.boolean(),
       isAdmin: v.boolean(),
+      isSupport: v.boolean(),
     })
   ),
   handler: async (ctx) => {
@@ -121,6 +130,8 @@ export const getAccessState = query({
       mfaEnabled: user.twoFactorEnabled === true,
       isImpersonating: Boolean(access.impersonatedBy),
       isAdmin:
+        user.role === 'admin' && access.mfaVerified && !access.impersonatedBy,
+      isSupport:
         user.twoFactorEnabled === true &&
         access.mfaVerified &&
         !access.impersonatedBy &&

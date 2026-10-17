@@ -17,8 +17,8 @@ export function SupportPanel() {
   } | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  if (!access?.isAdmin)
-    return <p>Accès réservé à l’administration de la plateforme.</p>
+  if (!access?.isSupport)
+    return <p>Accès réservé aux opérateurs de support autorisés.</p>
   async function find() {
     setPending(true)
     setError(null)

@@ -3,11 +3,14 @@ import type { ConvexHttpClient } from 'convex/browser'
 import { z } from 'zod'
 
 import { api } from '../../convex/_generated/api'
+import { holdAuthTokenBudget } from './backend-operator'
 import {
+  deleteAccountWithClient,
   SITE_URL,
   createEmail,
   getAuthenticatedClient,
   requestSignInCode,
+  signInWithEmail,
 } from './helpers'
 
 const invalidOtpError = z.object({ code: z.literal('INVALID_OTP') })
@@ -118,9 +121,7 @@ test('un code email incorrect, remplacé ou déjà consommé ne crée pas de ses
   } finally {
     try {
       if (authenticatedClient) {
-        await authenticatedClient.mutation(api.account.deleteAccount, {
-          confirmation: 'DELETE',
-        })
+        await deleteAccountWithClient(authenticatedClient)
       }
     } finally {
       await Promise.allSettled([firstContext.close(), secondContext.close()])
@@ -264,4 +265,170 @@ test('public SEO is rendered with a CSP nonce and never lists private routes', a
       'Disallow: /'
     )
   ).toBe(true)
+})
+
+test('les budgets anonymes ne déconnectent pas un utilisateur et le quota du token est distinct de la session', async ({
+  page,
+  playwright,
+}) => {
+  await signInWithEmail(page, createEmail())
+  const client = await getAuthenticatedClient(page.context())
+  const anonymous = await playwright.request.newContext({ baseURL: SITE_URL })
+  try {
+    let limited = false
+    for (let batch = 0; batch < 16; batch++) {
+      const responses = await Promise.all(
+        Array.from({ length: 10 }, () =>
+          anonymous.get('/api/auth/convex/token')
+        )
+      )
+      limited ||= responses.some((response) => response.status() === 429)
+    }
+    expect(limited).toBe(true)
+    expect(
+      (
+        await anonymous.get('/api/auth/convex/token', {
+          headers: { Cookie: 'better-auth.session_token=invalid-probe' },
+        })
+      ).status()
+    ).toBe(403)
+    expect((await page.request.get('/api/auth/convex/token')).status()).toBe(
+      200
+    )
+    const actor = await client.query(api.auth.getCurrentUser, {})
+    if (!actor) throw new Error('Missing quota fixture')
+    holdAuthTokenBudget(actor.id)
+    expect((await page.request.get('/api/auth/convex/token')).status()).toBe(
+      429
+    )
+    expect((await page.request.get('/api/auth/get-session')).status()).toBe(200)
+    await page.goto('/app')
+    await expect(
+      page.getByRole('button', { name: 'Réessayer', exact: true })
+    ).toBeVisible()
+    expect(await client.query(api.auth.getCurrentUser, {})).not.toBeNull()
+    await expect(async () => {
+      const retry = page.getByRole('button', { name: 'Réessayer', exact: true })
+      if (await retry.isVisible()) await retry.click()
+      await expect(
+        page.getByRole('button', { name: 'Nouvelle ressource', exact: true })
+      ).toBeEnabled({ timeout: 1500 })
+    }).toPass({ timeout: 20_000, intervals: [1000, 2000] })
+  } finally {
+    await anonymous.dispose()
+    await deleteAccountWithClient(client)
+  }
+})
+
+test('une panne du renouvellement de token conserve le formulaire et propose de réessayer', async ({
+  page,
+}) => {
+  // SSR supplies a valid JWT. Fail the real browser renewal that Convex
+  // requests after confirming it, without jumping the client clock past a
+  // still-in-flight token response from the server's real clock.
+  await page.route('**/api/auth/convex/token', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: '{}',
+    })
+  })
+  await signInWithEmail(page, createEmail())
+  const client = await getAuthenticatedClient(page.context())
+  try {
+    await page
+      .getByRole('button', { name: 'Nouvelle ressource', exact: true })
+      .click()
+    await page
+      .getByLabel('Titre', { exact: true })
+      .fill('Brouillon pendant une panne')
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Réessayer la connexion', exact: true })
+    ).toBeVisible()
+    await expect(page.getByLabel('Titre', { exact: true })).toHaveValue(
+      'Brouillon pendant une panne'
+    )
+    expect(await client.query(api.auth.getCurrentUser, {})).not.toBeNull()
+    await page.unroute('**/api/auth/convex/token')
+    await page
+      .getByRole('button', { name: 'Réessayer la connexion', exact: true })
+      .click()
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Réessayer la connexion', exact: true })
+    ).toHaveCount(0)
+    await expect(page.getByLabel('Titre', { exact: true })).toHaveValue(
+      'Brouillon pendant une panne'
+    )
+    await page
+      .getByRole('button', { name: 'Créer la ressource', exact: true })
+      .click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  } finally {
+    await deleteAccountWithClient(client)
+  }
+})
+
+test('une connexion réussie remplace seulement la session présentée du même compte', async ({
+  page,
+  browser,
+}) => {
+  const email = createEmail()
+  await signInWithEmail(page, email)
+  const previous = await getAuthenticatedClient(page.context())
+  const other = await browser.newContext({ baseURL: SITE_URL })
+  const otherPage = await other.newPage()
+  await signInWithEmail(otherPage, email)
+  const otherClient = await getAuthenticatedClient(other)
+  try {
+    const code = await requestSignInCode(page.context(), email)
+    const incorrect = code === '000000' ? '000001' : '000000'
+    expect(
+      (
+        await page.request.post('/api/auth/sign-in/email-otp', {
+          headers: { Origin: SITE_URL },
+          data: { email, otp: incorrect },
+        })
+      ).status()
+    ).toBe(400)
+    expect(await previous.query(api.auth.getCurrentUser, {})).not.toBeNull()
+    expect(
+      (
+        await page.request.post('/api/auth/sign-in/email-otp', {
+          headers: { Origin: SITE_URL },
+          data: { email, otp: code },
+        })
+      ).status()
+    ).toBe(200)
+    expect(await previous.query(api.auth.getCurrentUser, {})).toBeNull()
+    expect(await otherClient.query(api.auth.getCurrentUser, {})).not.toBeNull()
+    const current = await getAuthenticatedClient(page.context())
+    expect(await current.query(api.auth.getCurrentUser, {})).not.toBeNull()
+    const differentEmail = createEmail()
+    const differentCode = await requestSignInCode(
+      page.context(),
+      differentEmail
+    )
+    expect(
+      (
+        await page.request.post('/api/auth/sign-in/email-otp', {
+          headers: { Origin: SITE_URL },
+          data: { email: differentEmail, otp: differentCode },
+        })
+      ).status()
+    ).toBe(200)
+    expect(await current.query(api.auth.getCurrentUser, {})).not.toBeNull()
+    expect(await otherClient.query(api.auth.getCurrentUser, {})).not.toBeNull()
+    const different = await getAuthenticatedClient(page.context())
+    expect((await different.query(api.auth.getCurrentUser, {}))?.email).toBe(
+      differentEmail
+    )
+    await deleteAccountWithClient(current)
+    await deleteAccountWithClient(different)
+  } finally {
+    await other.close()
+  }
 })

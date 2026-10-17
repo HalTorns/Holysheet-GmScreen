@@ -35,7 +35,9 @@
     "test:browser:ci": "vitest run --config vitest.browser.config.ts",
     "prepare": "node scripts/install-hooks.mjs",
     "test:e2e:modules": "node scripts/test-auth-modules.mjs",
-    "test:e2e:local": "node scripts/test-local.mjs"
+    "test:e2e:local": "node scripts/test-local.mjs",
+    "admin:grant": "node scripts/account-operator.mjs grant",
+    "profiles:migrate": "node scripts/account-operator.mjs profiles"
   },
   "dependencies": {
     "@arcjet/node": "1.14.1",

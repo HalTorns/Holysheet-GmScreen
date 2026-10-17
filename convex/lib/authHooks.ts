@@ -3,9 +3,10 @@ import { requireActionCtx } from '@convex-dev/better-auth/utils'
 import {
   APIError,
   createAuthMiddleware,
-  getSessionFromCtx,
+  getSession,
   isAPIError,
 } from 'better-auth/api'
+import { getSessionCookie } from 'better-auth/cookies'
 
 import { RECENT_AUTH_MAX_AGE_SECONDS } from '../../shared/validation'
 import { z } from '../../shared/zod'
@@ -14,6 +15,22 @@ import type { DataModel } from '../_generated/dataModel'
 import { getAuthModules } from './authModules'
 import { getSessionAccess } from './sessionAccess'
 
+export function isSignInPath(path: string) {
+  return (
+    [
+      '/sign-in/email-otp',
+      '/passkey/verify-authentication',
+      '/magic-link/verify',
+    ].includes(path) || path.startsWith('/callback/')
+  )
+}
+const sensitivePaths: Record<string, string> = {
+  '/passkey/verify-registration': 'passkey.add',
+  '/two-factor/enable': 'mfa.enable',
+  '/two-factor/disable': 'mfa.disable',
+  '/two-factor/get-totp-uri': 'mfa.uri',
+  '/two-factor/generate-backup-codes': 'mfa.backup-codes',
+}
 const verificationPaths = new Set([
   '/two-factor/verify-totp',
   '/two-factor/verify-backup-code',
@@ -28,6 +45,7 @@ const pendingSessionPaths = new Set([
   '/get-session',
   '/convex/token',
   '/sign-out',
+  '/pending-sign-in/cancel',
   ...verificationPaths,
 ])
 const resultUser = z.object({ user: z.object({ id: z.string() }) }).loose()
@@ -46,6 +64,17 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
   return {
     before: createAuthMiddleware(async (request) => {
       const path = request.path ?? ''
+      // Profile writes have one atomic owner, including calls made outside our UI.
+      if (
+        path === '/update-user' &&
+        request.body &&
+        ('name' in request.body ||
+          'nameKey' in request.body ||
+          'profileVersion' in request.body ||
+          'adminVersion' in request.body ||
+          'role' in request.body)
+      )
+        forbidden('PROFILE_UPDATE_FORBIDDEN')
       if (
         path.startsWith('/organization/') ||
         path === '/passkey/delete-passkey'
@@ -61,6 +90,13 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
       )
         forbidden()
       if (path === '/convex/jwks') return
+      // Convex's Bearer plugin runs after these guards and can change identity.
+      // This HTTP surface uses cookies; Convex JWTs go directly to Convex APIs.
+      if (
+        request.headers?.has('authorization') ||
+        request.request?.headers.has('authorization')
+      )
+        forbidden()
       if (
         path.startsWith('/two-factor/') &&
         !verificationPaths.has(path) &&
@@ -97,7 +133,73 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
         (!modules.AUTH_ADMIN_ENABLED || path !== '/admin/impersonate-user')
       )
         forbidden('MODULE_DISABLED')
-      const session = await getSessionFromCtx(request)
+      // getSessionFromCtx swallows storage failures as null. Preserve failures
+      // as 5xx, and validate revocation before allowing any sliding refresh.
+      const readSession = async (disableRefresh: boolean) => {
+        const live = await getSession()({
+          context: request.context,
+          method: 'GET',
+          headers: request.headers ?? new Headers(),
+          asResponse: false,
+          returnHeaders: true,
+          returnStatus: false,
+          query: { disableCookieCache: true, disableRefresh },
+        })
+        for (const [key, value] of live.headers) {
+          if (!request.context.responseHeaders)
+            request.context.responseHeaders = new Headers()
+          if (key.toLowerCase() === 'set-cookie')
+            request.context.responseHeaders.append(key, value)
+          else request.context.responseHeaders.set(key, value)
+        }
+        request.context.session = live.response
+        if (!disableRefresh)
+          Object.assign(request.context, {
+            refreshedSessionCookies: live.headers.getSetCookie(),
+          })
+        return live.response
+      }
+      const session = await readSession(true)
+      const access = session
+        ? await getSessionAccess(ctx, session.session.id, session.user.id)
+        : null
+      if (
+        (path === '/get-session' || path === '/convex/token') &&
+        !access &&
+        getSessionCookie(request.headers ?? new Headers())
+      )
+        forbidden('UNAUTHENTICATED')
+      const action = requireActionCtx(ctx)
+      const bucket =
+        path === '/get-session'
+          ? 'authSessionRead'
+          : path === '/convex/token'
+            ? 'authTokenRead'
+            : isSignInPath(path) || path.startsWith('/email-otp/')
+              ? 'authEntry'
+              : 'authOther'
+      try {
+        await action.runMutation(internal.authSecurity.consumeAuthBudget, {
+          bucket,
+          key: access && session ? `user:${session.user.id}` : 'anonymous',
+        })
+      } catch {
+        throw new APIError('TOO_MANY_REQUESTS', {
+          code: 'RATE_LIMITED',
+          message: 'Please retry shortly.',
+        })
+      }
+      // Token renewals reuse context.session in Better Auth's middleware. Run
+      // the normal sliding refresh only after live access and quota validation.
+      const disableRefresh =
+        request.query?.disableRefresh === true ||
+        request.query?.disableRefresh === 'true'
+      if (access && path === '/convex/token' && !disableRefresh)
+        await readSession(false)
+      if (session && isSignInPath(path))
+        Object.assign(request.context, {
+          previousSessionId: session.session.id,
+        })
       if (!session) {
         if (
           verificationPaths.has(path) ||
@@ -107,12 +209,11 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
           forbidden()
         return
       }
-      const access = await getSessionAccess(
-        ctx,
-        session.session.id,
-        session.user.id
+      if (
+        !access &&
+        !isSignInPath(path) &&
+        !['/sign-out', '/admin/stop-impersonating'].includes(path)
       )
-      if (!access && !['/sign-out', '/admin/stop-impersonating'].includes(path))
         forbidden('UNAUTHENTICATED')
       if (
         access?.impersonatedBy &&
@@ -124,17 +225,36 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
         ].includes(path)
       )
         forbidden('IMPERSONATION_RESTRICTED')
-      if (access && !access.mfaVerified && !pendingSessionPaths.has(path))
+      if (
+        access &&
+        !access.mfaVerified &&
+        !isSignInPath(path) &&
+        !pendingSessionPaths.has(path)
+      )
         forbidden('MFA_REQUIRED')
-      if (managingFactorPaths.has(path) || path === '/admin/impersonate-user') {
-        if (
-          !access ||
+      if (
+        path === '/admin/impersonate-user' &&
+        (!access ||
           access.impersonatedBy ||
-          Date.now() - access.createdAt >= RECENT_AUTH_MAX_AGE_SECONDS * 1000
-        )
-          forbidden('REAUTHENTICATION_REQUIRED')
-        if (managingFactorPaths.has(path) && !modules.AUTH_MFA_ENABLED)
-          forbidden('MODULE_DISABLED')
+          Date.now() - access.createdAt >= RECENT_AUTH_MAX_AGE_SECONDS * 1000)
+      )
+        forbidden('REAUTHENTICATION_REQUIRED')
+      if (managingFactorPaths.has(path) && !modules.AUTH_MFA_ENABLED)
+        forbidden('MODULE_DISABLED')
+      const operation = sensitivePaths[path]
+      if (operation) {
+        try {
+          await action.runMutation(
+            components.betterAuth.identityConfirmation.consume,
+            {
+              userId: session.user.id,
+              sessionId: session.session.id,
+              operation,
+            }
+          )
+        } catch {
+          forbidden('IDENTITY_CONFIRMATION_REQUIRED')
+        }
       }
       if (path === '/admin/impersonate-user') {
         if (!access?.mfaRequired) forbidden('MFA_REQUIRED')
@@ -171,6 +291,16 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
       }
     }),
     after: createAuthMiddleware(async (request) => {
+      // Endpoint response headers replace the before-hook accumulator. Forward
+      // the validated refresh cookies alongside the token endpoint's own cookie.
+      const { refreshedSessionCookies } = z
+        .object({ refreshedSessionCookies: z.array(z.string()).optional() })
+        .parse(request.context)
+      for (const cookie of refreshedSessionCookies ?? []) {
+        if (!request.context.responseHeaders)
+          request.context.responseHeaders = new Headers()
+        request.context.responseHeaders.append('set-cookie', cookie)
+      }
       if (
         isAPIError(request.context.returned) ||
         (request.context.returned instanceof Response &&
@@ -189,6 +319,20 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
       const session = request.context.newSession ?? request.context.session
       if (!session) return undefined
       const action = requireActionCtx(ctx)
+      if (isSignInPath(request.path ?? '') && request.context.newSession) {
+        const previous = z
+          .object({ previousSessionId: z.string().optional() })
+          .parse(request.context).previousSessionId
+        if (previous)
+          await action.runMutation(
+            components.betterAuth.access.replaceSession,
+            {
+              previousId: previous,
+              sessionId: request.context.newSession.session.id,
+              userId: request.context.newSession.user.id,
+            }
+          )
+      }
       if (
         verificationPaths.has(request.path ?? '') &&
         resultUser.safeParse(request.context.returned).success

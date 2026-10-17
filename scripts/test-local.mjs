@@ -40,7 +40,8 @@ try {
       else resolve()
     })
   })
-  const mode = process.argv[2]
+  const mode = process.argv[2] === '--' ? undefined : process.argv[2]
+  const testArguments = process.argv.slice(3)
   if (
     mode &&
     !['modules', 'organizations', 'observability', 'spotlight'].includes(mode)
@@ -114,7 +115,7 @@ try {
         ['exec', 'playwright', 'test', 'tests/e2e/spotlight.spec.ts'],
         { env, timeout: 600_000 }
       )
-    else run('pnpm', ['test:e2e'], { env, timeout: 600_000 })
+    else run('pnpm', ['test:e2e', ...testArguments], { env, timeout: 600_000 })
   } finally {
     let restored = true
     try {

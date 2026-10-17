@@ -1,15 +1,22 @@
 import { paginationOptsValidator } from 'convex/server'
-import { v } from 'convex/values'
+import { ConvexError, v } from 'convex/values'
 
+import { displayNameSchema } from '../shared/validation'
 import { components, internal } from './_generated/api'
 import { mutation, query } from './_generated/server'
-import { requireRecentUser } from './lib/auth'
+import {
+  requireUser,
+  requireAccountUser,
+  requireConfirmedUser,
+} from './lib/auth'
 import {
   invitationValidator,
   organizationSummaryValidator,
 } from './lib/organizationValidators'
+import { getProfilePolicy } from './lib/profilePolicy'
 import { limitUserOperation } from './lib/rateLimits'
 import { listOwnedResources } from './lib/resources'
+import { ownAccountStatus } from './lib/userAdminValidators'
 import { publicUserValidator, resourcePageValidator } from './lib/validators'
 
 export const exportSecurityAudit = query({
@@ -23,11 +30,20 @@ export const exportSecurityAudit = query({
     continueCursor: v.string(),
   }),
   handler: async (ctx, args) => {
-    const user = await requireRecentUser(ctx)
-    return ctx.runQuery(components.betterAuth.access.exportAudit, {
-      userId: user._id,
-      ...args,
-    })
+    const user = await requireAccountUser(ctx)
+    const result = await ctx.runQuery(
+      components.betterAuth.access.exportAudit,
+      {
+        userId: user._id,
+        ...args,
+      }
+    )
+    // The personal export omits identities of other actors. Application admins
+    // use their separately authorized audit endpoint for accountability.
+    return {
+      ...result,
+      page: result.page.map(({ event, createdAt }) => ({ event, createdAt })),
+    }
   },
 })
 
@@ -35,20 +51,29 @@ export const exportData = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
     profile: publicUserValidator,
+    accountStatus: ownAccountStatus,
     resources: resourcePageValidator,
     organizations: v.array(organizationSummaryValidator),
     invitations: v.array(invitationValidator),
     exportedAt: v.number(),
   }),
   handler: async (ctx, { paginationOpts }) => {
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
     return {
       profile: {
         id: user._id,
         name: user.name,
+        updatedAt: user.updatedAt,
+        profileVersion: user.profileVersion ?? 0,
+        hasName: Boolean(user.nameKey),
+        requiresName: getProfilePolicy().required && !user.nameKey,
         email: user.email,
         createdAt: user.createdAt,
       },
+      accountStatus: await ctx.runQuery(
+        components.betterAuth.userAdministration.status,
+        { userId: user._id }
+      ),
       resources: await listOwnedResources(ctx, user._id, paginationOpts),
       organizations: await ctx.runQuery(
         components.betterAuth.organizations.listMine,
@@ -67,7 +92,7 @@ export const removePasskey = mutation({
   args: { id: v.string() },
   returns: v.null(),
   handler: async (ctx, { id }) => {
-    const user = await requireRecentUser(ctx)
+    const user = await requireConfirmedUser(ctx, `passkey.remove:${id}`)
     await limitUserOperation(ctx, 'accountSensitive', user._id)
     await ctx.runMutation(components.betterAuth.lifecycle.removePasskey, {
       userId: user._id,
@@ -85,7 +110,7 @@ export const deleteAccount = mutation({
   args: { confirmation: v.literal('DELETE') },
   returns: v.null(),
   handler: async (ctx) => {
-    const user = await requireRecentUser(ctx)
+    const user = await requireConfirmedUser(ctx, 'account.delete')
     await limitUserOperation(ctx, 'accountSensitive', user._id)
     // Removing the auth user blocks every existing session immediately.
     // Detach memberships atomically; a last owner must first transfer ownership.
@@ -101,5 +126,22 @@ export const deleteAccount = mutation({
     })
     await ctx.db.insert('securityEvents', { event: 'account.deleted' })
     return null
+  },
+})
+
+export const setDisplayName = mutation({
+  args: { name: v.string(), expectedVersion: v.number() },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    const parsed = displayNameSchema.safeParse(args.name)
+    if (!parsed.success) throw new ConvexError({ code: 'INVALID_USERNAME' })
+    await limitUserOperation(ctx, 'accountSensitive', user._id)
+    return ctx.runMutation(components.betterAuth.profiles.setName, {
+      userId: user._id,
+      expectedVersion: args.expectedVersion,
+      name: parsed.data,
+      unique: getProfilePolicy().unique,
+    })
   },
 })

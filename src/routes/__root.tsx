@@ -1,4 +1,3 @@
-import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
 import type { ConvexQueryClient } from '@convex-dev/react-query'
 import { appConfig } from '@shared/app-config'
 import type { QueryClient } from '@tanstack/react-query'
@@ -12,9 +11,8 @@ import {
 import { createServerFn } from '@tanstack/react-start'
 import { Toaster } from 'sonner'
 
-import { Button } from '@/components/ui/button'
 import { OptionalAnalytics } from '@/features/observability/analytics'
-import { authClient } from '@/lib/auth-client'
+import { AppAuthProvider } from '@/lib/auth-provider'
 import { getToken } from '@/lib/auth-server'
 
 import stylesheet from '@/styles.css?url'
@@ -52,13 +50,7 @@ export const Route = createRootRouteWithContext<{
       <Link to="/">Retour à l’accueil</Link>
     </main>
   ),
-  errorComponent: ({ reset }) => (
-    <main className="status-page">
-      <h1>Une erreur est survenue</h1>
-      <p>Réessayez dans quelques instants.</p>
-      <Button onClick={reset}>Réessayer</Button>
-    </main>
-  ),
+  errorComponent: RootError,
 })
 
 function Root() {
@@ -69,16 +61,42 @@ function Root() {
         <HeadContent />
       </head>
       <body>
-        <ConvexBetterAuthProvider
+        <AppAuthProvider
           client={context.convexQueryClient.convexClient}
-          authClient={authClient}
           initialToken={context.token ?? null}
         >
           <OptionalAnalytics>
             <Outlet />
           </OptionalAnalytics>
           <Toaster richColors position="bottom-right" />
-        </ConvexBetterAuthProvider>
+        </AppAuthProvider>
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+
+// A root SSR failure happens before the authenticated shell can hydrate. The
+// retry must remain usable as ordinary HTML, with the existing cookie intact.
+function RootError() {
+  return (
+    <html lang={appConfig.language}>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <main className="status-page">
+          <h1>Une erreur est survenue</h1>
+          <p>Réessayez dans quelques instants.</p>
+          <form method="get">
+            <button
+              type="submit"
+              className="rounded-lg bg-primary px-5 py-3 text-primary-foreground"
+            >
+              Réessayer
+            </button>
+          </form>
+        </main>
         <Scripts />
       </body>
     </html>

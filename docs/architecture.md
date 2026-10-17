@@ -46,6 +46,8 @@ Convex persiste ses données dans PostgreSQL 18.6 en développement local et dan
 
 TanStack Query et son intégration Convex fournissent le chargement SSR et la cohérence des données. Ne pas recopier les résultats dans `useState`. L’état local contient le dialogue ouvert, les champs en cours de saisie et les interactions de présentation.
 
+Les [comptes et modèles réutilisables](accounts.md) couvrent pseudos atomiques, rôles applicatifs, preuves de confirmation sensibles, quotas isolés et versions attendues des formulaires. Le composant local garde ces invariants dans les mêmes transactions que les données auth.
+
 Le loader authentifié valide l’utilisateur et fournit son ID stable pour le document courant. Une confirmation de token en cours ne démonte pas ses pages et brouillons, même si la query utilisateur retourne temporairement `null`. Un utilisateur absent après confirmation ou une authentification refusée ferme l’interface. Si la query indique un autre compte, le layout masque l’ancien espace et recharge le document pour recréer les caches : aucun brouillon ou résultat du premier compte ne doit passer au second. Cette continuité d’interface n’autorise aucun accès backend et n’ajoute pas de cache de session.
 
 Zod valide les formulaires à leur frontière ; les validateurs Convex restent nécessaires côté backend. Conserver des libellés accessibles, l’état de chargement, les erreurs compréhensibles et le focus des dialogues. Les composants shadcn/ui appartiennent au projet et évoluent avec ses usages.

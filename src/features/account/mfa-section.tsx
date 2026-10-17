@@ -4,9 +4,11 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useIdentityConfirmation } from '@/features/auth/identity-confirmation'
 import { authClient } from '@/lib/auth-client'
 
 export function MfaSection() {
+  const confirmIdentity = useIdentityConfirmation()
   const capabilities = useQuery(api.capabilities.get, {})
   const access = useQuery(api.auth.getAccessState, {})
   const [setup, setSetup] = useState<{
@@ -21,9 +23,10 @@ export function MfaSection() {
     setPending(true)
     setMessage(null)
     try {
+      if (!(await confirmIdentity('mfa.enable'))) return
       const result = await authClient.twoFactor.enable({})
       if (result.error || !result.data) {
-        setMessage('Activation refusée. Reconnectez-vous avant de réessayer.')
+        setMessage('Activation refusée. Réessayez.')
         return
       }
       setSetup({
@@ -66,10 +69,11 @@ export function MfaSection() {
     setPending(true)
     setMessage(null)
     try {
+      if (!(await confirmIdentity('mfa.disable'))) return
       const result = await authClient.twoFactor.disable({})
       if (result.error) {
         setMessage(
-          'Désactivation refusée. Reconnectez-vous puis vérifiez votre second facteur.'
+          'Désactivation refusée. Réessayez après confirmation de votre identité.'
         )
         return
       }

@@ -46,29 +46,64 @@ export function publicResource(resource: Doc<'resources'>) {
 export async function listOwnedResources(
   ctx: QueryCtx,
   ownerId: string,
-  options: PaginationOptions
+  options: PaginationOptions,
+  filters: { search?: string; described?: boolean } = {}
 ) {
   validatePagination(options)
-  const { page, isDone, continueCursor } = await ctx.db
-    .query('resources')
-    .withIndex('by_owner', (index) =>
-      index.eq('ownerId', ownerId).eq('organizationId', undefined)
-    )
-    .order('desc')
-    .paginate(options)
+  const search = filters.search?.trim() ?? ''
+  if (search.length > 100) throw new ConvexError({ code: 'INVALID_INPUT' })
+  const collection = search
+    ? ctx.db
+        .query('resources')
+        .withSearchIndex('search_title', (q) =>
+          q
+            .search('title', search)
+            .eq('ownerId', ownerId)
+            .eq('organizationId', undefined)
+        )
+    : ctx.db
+        .query('resources')
+        .withIndex('by_owner', (q) =>
+          q.eq('ownerId', ownerId).eq('organizationId', undefined)
+        )
+        .order('desc')
+  const filtered = filters.described
+    ? collection.filter((q) => q.neq(q.field('description'), ''))
+    : collection
+  const { page, isDone, continueCursor } = await filtered.paginate({
+    ...options,
+    maximumRowsRead: 200,
+  })
   return { page: page.map(publicResource), isDone, continueCursor }
 }
 
 export async function listOrganizationResources(
   ctx: QueryCtx,
   organizationId: string,
-  options: PaginationOptions
+  options: PaginationOptions,
+  filters: { search?: string; described?: boolean } = {}
 ) {
   validatePagination(options)
-  const { page, isDone, continueCursor } = await ctx.db
-    .query('resources')
-    .withIndex('by_organization', (q) => q.eq('organizationId', organizationId))
-    .order('desc')
-    .paginate(options)
+  const search = filters.search?.trim() ?? ''
+  if (search.length > 100) throw new ConvexError({ code: 'INVALID_INPUT' })
+  const collection = search
+    ? ctx.db
+        .query('resources')
+        .withSearchIndex('search_title', (q) =>
+          q.search('title', search).eq('organizationId', organizationId)
+        )
+    : ctx.db
+        .query('resources')
+        .withIndex('by_organization', (q) =>
+          q.eq('organizationId', organizationId)
+        )
+        .order('desc')
+  const filtered = filters.described
+    ? collection.filter((q) => q.neq(q.field('description'), ''))
+    : collection
+  const { page, isDone, continueCursor } = await filtered.paginate({
+    ...options,
+    maximumRowsRead: 200,
+  })
   return { page: page.map(publicResource), isDone, continueCursor }
 }

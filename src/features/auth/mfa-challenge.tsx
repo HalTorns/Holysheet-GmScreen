@@ -10,6 +10,26 @@ import { authClient } from '@/lib/auth-client'
 export function MfaChallenge() {
   const [backup, setBackup] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  async function cancel() {
+    setCancelling(true)
+    setError(null)
+    try {
+      const result = await authClient.$fetch<{ restored: boolean }>(
+        '/pending-sign-in/cancel',
+        { method: 'POST', body: {} }
+      )
+      if (result.error || !result.data) {
+        setError('Annulation indisponible. Réessayez.')
+        return
+      }
+      window.location.assign(result.data.restored ? '/app' : '/sign-in')
+    } catch {
+      setError('Annulation indisponible. Réessayez.')
+    } finally {
+      setCancelling(false)
+    }
+  }
   const form = useForm({
     defaultValues: { code: '' },
     validators: {
@@ -18,6 +38,7 @@ export function MfaChallenge() {
       }),
     },
     onSubmit: async ({ value }) => {
+      if (cancelling) return
       setError(null)
       try {
         const result = backup
@@ -59,6 +80,7 @@ export function MfaChallenge() {
               <Input
                 id="mfa-code"
                 type="password"
+                disabled={cancelling}
                 autoComplete="one-time-code"
                 value={field.state.value}
                 onChange={(event) => field.handleChange(event.target.value)}
@@ -80,7 +102,7 @@ export function MfaChallenge() {
         )}
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(pending) => (
-            <Button disabled={pending} type="submit">
+            <Button disabled={pending || cancelling} type="submit">
               {pending ? 'Vérification…' : 'Vérifier le code'}
             </Button>
           )}
@@ -88,6 +110,7 @@ export function MfaChallenge() {
       </form>
       <Button
         variant="ghost"
+        disabled={cancelling}
         onClick={() => {
           form.reset()
           setError(null)
@@ -98,16 +121,19 @@ export function MfaChallenge() {
           ? 'Utiliser mon application'
           : 'Utiliser un code de récupération'}
       </Button>
-      <Button
-        variant="outline"
-        onClick={() => {
-          void authClient
-            .signOut()
-            .then(() => window.location.assign('/sign-in'))
-        }}
-      >
-        Annuler et se déconnecter
-      </Button>
+      <form.Subscribe selector={(state) => state.isSubmitting}>
+        {(pending) => (
+          <Button
+            variant="outline"
+            disabled={pending || cancelling}
+            onClick={() => void cancel()}
+          >
+            {cancelling
+              ? 'Annulation…'
+              : 'Annuler cette tentative de connexion'}
+          </Button>
+        )}
+      </form.Subscribe>
     </section>
   )
 }

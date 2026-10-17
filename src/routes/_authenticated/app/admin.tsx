@@ -12,7 +12,7 @@ const getAdminAccess = createServerFn({ method: 'GET' }).handler(() =>
 export const Route = createFileRoute('/_authenticated/app/admin')({
   loader: async () => {
     const access = await getAdminAccess()
-    if (!access?.isAdmin) throw redirect({ to: '/app' })
+    if (!access?.isSupport) throw redirect({ to: '/app' })
   },
   head: () => ({
     meta: [

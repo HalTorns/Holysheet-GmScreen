@@ -2,7 +2,9 @@ import type { GenericCtx } from '@convex-dev/better-auth'
 import { ConvexError } from 'convex/values'
 
 import { RECENT_AUTH_MAX_AGE_SECONDS } from '../../shared/validation'
+import { components } from '../_generated/api'
 import type { DataModel } from '../_generated/dataModel'
+import type { MutationCtx } from '../_generated/server'
 import { authComponent } from '../auth'
 import { getSessionAccess } from './sessionAccess'
 
@@ -35,5 +37,32 @@ export async function requireRecentUser(ctx: GenericCtx<DataModel>) {
   ) {
     throw new ConvexError({ code: 'REAUTHENTICATION_REQUIRED' })
   }
+  return user
+}
+
+export async function requireConfirmedUser(
+  ctx: MutationCtx,
+  operation: string
+) {
+  const user = await requireUser(ctx)
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity || typeof identity.sessionId !== 'string')
+    throw new ConvexError({ code: 'UNAUTHENTICATED' })
+  await ctx.runMutation(components.betterAuth.identityConfirmation.consume, {
+    userId: user._id,
+    sessionId: identity.sessionId,
+    operation,
+  })
+  return user
+}
+
+export async function requireAccountUser(ctx: GenericCtx<DataModel>) {
+  const user = await requireUser(ctx)
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity || typeof identity.sessionId !== 'string')
+    throw new ConvexError({ code: 'UNAUTHENTICATED' })
+  const session = await getSessionAccess(ctx, identity.sessionId, user._id)
+  if (!session || session.impersonatedBy)
+    throw new ConvexError({ code: 'IMPERSONATION_READ_ONLY' })
   return user
 }

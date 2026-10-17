@@ -30,7 +30,8 @@ Pour adapter le produit ou ajouter/remplacer un domaine, lire `docs/adopting.md`
 - Ne pas lire ni afficher les secrets existants pour diagnostiquer un problème. Vérifier leur présence, leur longueur et leur portée avec des sorties masquées.
 - Ne pas journaliser les OTP, cookies, tokens de session ni clés de déploiement. Garder les traces, vidéos, captures et snapshots ARIA automatiques E2E désactivés dans les parcours d’auth ; conserver `PLAYWRIGHT_NO_COPY_PROMPT=1` dans le lanceur.
 - Préserver les protections CSRF et origines. Pas de `disableCSRFCheck`, `disableOriginCheck`, origine globale ou wildcard d’hébergeur pour faire passer une intégration.
-- Pas de cache de session supplémentaire sans décision explicite sur la révocation. Revalider l’auth récente pour les actions sensibles.
+- La surface HTTP Better Auth utilise les cookies signés et refuse `Authorization` avant les hooks des plugins (JWKS public excepté). Préserver ce garde : une conversion bearer tardive contournerait les contrôles préalables de session et de confirmation. Les JWT des appels métier directs à Convex restent distincts.
+- Pas de cache de session supplémentaire sans décision explicite sur la révocation. Les opérations courantes utilisent la session valide sans limite de cinq minutes. Les actions sensibles consomment une preuve serveur à usage unique liée à la session et à l’opération, obtenue dans le parcours sans perdre le formulaire ; lire `docs/accounts.md`. Le support technique conserve ses protections de session récente.
 - Le code email sert aussi de récupération de compte. Préserver ses limites d’envoi, d’essais et sa consommation unique.
 - Les passkeys nécessitent un domaine/RP ID stable. Ne pas partager les données ou secrets de production avec des previews.
 - Préserver les hooks passkeys qui imposent le flag UV issu de la vérification cryptographique, avant création de clé ou de session. Une option navigateur `userVerification` ou un booléen client ne remplace pas ce contrôle serveur.
@@ -40,7 +41,9 @@ Pour adapter le produit ou ajouter/remplacer un domaine, lire `docs/adopting.md`
 
 Lire `docs/agent-patterns.md` pour les Server Functions, fonctions Convex, formulaires et composants shadcn. Lire `docs/auth-modules.md` et `docs/observability.md` avant d’activer un module d’auth ou un fournisseur externe. Les flags privés font autorité ; les capacités publiques servent uniquement à l’affichage. Les plugins restent dans un schéma stable.
 
-Préserver l’assurance MFA liée à la session et à l’ID du facteur réellement vérifié. Une désactivation du flag ne libère pas un compte enrôlé. L’administration de plateforme exige une allowlist d’IDs, une MFA vérifiée récemment et un accès support limité à cinq minutes en lecture seule, lié à sa session d’origine. Conserver les limites d’essais et le nettoyage/exports des métadonnées d’audit, sans exporter de secret TOTP ou code de récupération.
+Les rôles applicatifs `user`/`admin` sont distincts des organisations et du support : contrôler le rôle courant dans chaque opération, protéger atomiquement le dernier admin actif et ne jamais ouvrir une attribution publique. Les pseudos passent uniquement par la mutation atomique du profil ; préserver la politique privée, la normalisation, l’export et le nettoyage.
+
+Préserver l’assurance MFA liée à la session et à l’ID du facteur réellement vérifié. Une désactivation du flag ne libère pas un compte enrôlé. Le support technique avec impersonation exige une allowlist d’IDs, une MFA vérifiée récemment et un accès support limité à cinq minutes en lecture seule, lié à sa session d’origine. Conserver les limites d’essais et le nettoyage/exports des métadonnées d’audit, sans exporter de secret TOTP ou code de récupération.
 
 Sentry et PostHog utilisent des allowlists de données. Ne pas ouvrir autocapture, replay, logs, corps HTTP, variables ou propriétés personnelles par défaut. Arcjet exige une IP attestée par un proxy de confiance et le garde auth côté Convex ; ne pas utiliser des forwarded headers clients comme preuve.
 

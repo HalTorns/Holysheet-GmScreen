@@ -6,16 +6,17 @@ import {
 } from '@shared/validation'
 import { useForm } from '@tanstack/react-form'
 import { useHydrated } from '@tanstack/react-router'
-import { useMutation } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { DraftGuard } from '@/components/draft-guard'
+import { FormDialogContent as DialogContent } from '@/components/form-dialog-content'
 import { FormError } from '@/components/form-error'
+import { SaveActions } from '@/components/save-actions'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
-  DialogClose,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -37,13 +38,26 @@ export function ResourceDialog({
   organizationId?: string
 }) {
   const [isPending, setIsPending] = useState(false)
+  const [dirty, setDirty] = useState(false)
+  function close(nextOpen: boolean) {
+    if (isPending) return
+    if (
+      !nextOpen &&
+      dirty &&
+      !window.confirm('Quitter sans enregistrer vos modifications ?')
+    )
+      return
+    if (!nextOpen) setDirty(false)
+    onOpenChange(nextOpen)
+  }
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!isPending) onOpenChange(nextOpen)
+        close(nextOpen)
       }}
     >
+      <DraftGuard dirty={open && dirty} />
       <DialogContent showCloseButton={!isPending}>
         <DialogHeader>
           <DialogTitle>
@@ -58,7 +72,12 @@ export function ResourceDialog({
           resource={resource}
           isPending={isPending}
           onPendingChange={setIsPending}
-          onSaved={() => onOpenChange(false)}
+          onDirtyChange={setDirty}
+          onCancel={() => close(false)}
+          onSaved={() => {
+            setDirty(false)
+            onOpenChange(false)
+          }}
           {...(organizationId ? { organizationId } : {})}
         />
       </DialogContent>
@@ -71,17 +90,28 @@ function ResourceForm({
   isPending,
   onPendingChange,
   onSaved,
+  onDirtyChange,
+  onCancel,
   organizationId,
 }: {
   resource: Resource | null
   isPending: boolean
   onPendingChange: (pending: boolean) => void
   onSaved: () => void
+  onDirtyChange: (dirty: boolean) => void
+  onCancel: () => void
   organizationId?: string
 }) {
   const isHydrated = useHydrated()
   const createResource = useMutation(api.resources.create)
   const updateResource = useMutation(api.resources.update)
+  const current = useQuery(
+    api.resources.get,
+    resource ? { id: resource._id } : 'skip'
+  )
+  const [expectedUpdatedAt, setExpectedUpdatedAt] = useState(
+    resource?.updatedAt ?? 0
+  )
   const [error, setError] = useState<string | null>(null)
   const form = useForm({
     defaultValues: {
@@ -94,7 +124,12 @@ function ResourceForm({
       onPendingChange(true)
       try {
         const validated = resourceSchema.parse(value)
-        if (resource) await updateResource({ id: resource._id, ...validated })
+        if (resource)
+          await updateResource({
+            id: resource._id,
+            expectedUpdatedAt,
+            ...validated,
+          })
         else
           await createResource({
             ...validated,
@@ -128,7 +163,14 @@ function ResourceForm({
               id="resource-title"
               name={field.name}
               value={field.state.value}
-              onChange={(event) => field.handleChange(event.target.value)}
+              onChange={(event) => {
+                field.handleChange(event.target.value)
+                onDirtyChange(
+                  form.state.values.title !== (resource?.title ?? '') ||
+                    form.state.values.description !==
+                      (resource?.description ?? '')
+                )
+              }}
               onBlur={field.handleBlur}
               maxLength={RESOURCE_TITLE_MAX_LENGTH}
               placeholder="Une idée à garder, un projet à poser…"
@@ -160,7 +202,14 @@ function ResourceForm({
               id="resource-description"
               name={field.name}
               value={field.state.value}
-              onChange={(event) => field.handleChange(event.target.value)}
+              onChange={(event) => {
+                field.handleChange(event.target.value)
+                onDirtyChange(
+                  form.state.values.title !== (resource?.title ?? '') ||
+                    form.state.values.description !==
+                      (resource?.description ?? '')
+                )
+              }}
               onBlur={field.handleBlur}
               maxLength={RESOURCE_DESCRIPTION_MAX_LENGTH}
               rows={5}
@@ -184,23 +233,34 @@ function ResourceForm({
           {error}
         </p>
       )}
+      {error && current && current.updatedAt !== expectedUpdatedAt && (
+        <div className="grid gap-3 rounded-md border p-4">
+          <p>
+            Version actuelle : <strong>{current.title}</strong>
+          </p>
+          <p className="whitespace-pre-wrap">{current.description}</p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setExpectedUpdatedAt(current.updatedAt)
+              setError(null)
+            }}
+          >
+            Conserver mon brouillon et reprendre sur cette version
+          </Button>
+        </div>
+      )}
       <form.Subscribe selector={(state) => state.isSubmitting}>
         {(isSubmitting) => (
-          <div className="flex flex-wrap justify-end gap-2">
-            <DialogClose
-              render={<Button variant="outline" />}
-              disabled={isSubmitting}
-            >
-              Annuler
-            </DialogClose>
-            <Button type="submit" disabled={!isHydrated || isSubmitting}>
-              {isSubmitting
-                ? 'Enregistrement…'
-                : resource
-                  ? 'Enregistrer les modifications'
-                  : 'Créer la ressource'}
-            </Button>
-          </div>
+          <SaveActions
+            pending={isSubmitting}
+            disabled={!isHydrated}
+            onCancel={onCancel}
+            label={
+              resource ? 'Enregistrer les modifications' : 'Créer la ressource'
+            }
+          />
         )}
       </form.Subscribe>
     </form>

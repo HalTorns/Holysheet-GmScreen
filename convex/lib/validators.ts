@@ -3,6 +3,10 @@ import { v } from 'convex/values'
 export const publicUserValidator = v.object({
   id: v.string(),
   name: v.string(),
+  updatedAt: v.number(),
+  profileVersion: v.number(),
+  hasName: v.boolean(),
+  requiresName: v.boolean(),
   email: v.string(),
   createdAt: v.number(),
 })

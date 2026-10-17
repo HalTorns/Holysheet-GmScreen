@@ -16,12 +16,12 @@ import { useMutation } from 'convex/react'
 import type { FunctionReturnType } from 'convex/server'
 import { useState } from 'react'
 
+import { FormDialogContent as DialogContent } from '@/components/form-dialog-content'
 import { FormError } from '@/components/form-error'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,

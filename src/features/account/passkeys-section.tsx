@@ -12,12 +12,12 @@ import { Fingerprint, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { FormDialogContent as DialogContent } from '@/components/form-dialog-content'
 import { FormError } from '@/components/form-error'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -29,6 +29,7 @@ import {
   authOperationError,
   operationErrorMessage,
 } from '@/features/auth/errors'
+import { useIdentityConfirmation } from '@/features/auth/identity-confirmation'
 import { authClient } from '@/lib/auth-client'
 
 const passkeysQueryKey = ['account', 'passkeys'] as const
@@ -124,14 +125,18 @@ function AddPasskeyDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const confirmIdentity = useIdentityConfirmation()
   const queryClient = useQueryClient()
   const add = useAuthMutation({
     mutationFn: async (name: string) => {
+      if (!(await confirmIdentity('passkey.add'))) return false
       const result = await authClient.passkey.addPasskey({ name })
       if (result.error) throw authOperationError(result.error)
       if (!result.data) throw new Error('Passkey registration cancelled')
+      return true
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
+      if (!saved) return
       void queryClient.invalidateQueries({ queryKey: passkeysQueryKey })
       toast.success('Passkey enregistrée.')
       onOpenChange(false)
@@ -157,7 +162,9 @@ function AddPasskeyDialog({
           </DialogDescription>
         </DialogHeader>
         <PasskeyNameForm
-          onSubmit={(name) => add.mutateAsync(name)}
+          onSubmit={async (name) => {
+            await add.mutateAsync(name)
+          }}
           isPending={add.isPending}
           error={add.error}
         />
@@ -221,7 +228,7 @@ function PasskeyNameForm({
               }
               aria-describedby="passkey-name-error"
               required
-              disabled={!isHydrated}
+              disabled={!isHydrated || isPending}
             />
             <FormError
               id="passkey-name-error"
@@ -235,7 +242,7 @@ function PasskeyNameForm({
         <p className="field-error" role="alert">
           {operationErrorMessage(
             error,
-            'L’ajout de la passkey a été annulé ou a échoué. Une connexion récente est nécessaire.'
+            'L’ajout de la passkey a été annulé ou a échoué. Réessayez en conservant ce nom.'
           )}
         </p>
       )}
@@ -254,12 +261,18 @@ function PasskeyNameForm({
 }
 
 function RemovePasskeyButton({ id, name }: { id: string; name: string }) {
+  const confirmIdentity = useIdentityConfirmation()
   const queryClient = useQueryClient()
   const removePasskey = useMutation(api.account.removePasskey)
   const [open, setOpen] = useState(false)
   const remove = useAuthMutation({
-    mutationFn: () => removePasskey({ id }),
-    onSuccess: () => {
+    mutationFn: async () => {
+      if (!(await confirmIdentity(`passkey.remove:${id}`))) return false
+      await removePasskey({ id })
+      return true
+    },
+    onSuccess: (saved) => {
+      if (!saved) return
       void queryClient.invalidateQueries({ queryKey: passkeysQueryKey })
       setOpen(false)
       toast.success('Passkey supprimée.')

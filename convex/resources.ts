@@ -23,19 +23,22 @@ export const list = query({
   args: {
     paginationOpts: paginationOptsValidator,
     organizationId: v.optional(v.string()),
+    search: v.optional(v.string()),
+    described: v.optional(v.boolean()),
   },
   returns: resourcePageValidator,
-  handler: async (ctx, { paginationOpts, organizationId }) => {
+  handler: async (ctx, { paginationOpts, organizationId, ...filters }) => {
     const user = await requireUser(ctx)
     if (organizationId !== undefined) {
       await requireOrganizationPermission(ctx, organizationId, user._id, 'read')
       return await listOrganizationResources(
         ctx,
         organizationId,
-        paginationOpts
+        paginationOpts,
+        filters
       )
     }
-    return await listOwnedResources(ctx, user._id, paginationOpts)
+    return await listOwnedResources(ctx, user._id, paginationOpts, filters)
   },
 })
 
@@ -95,9 +98,13 @@ export const create = mutation({
 })
 
 export const update = mutation({
-  args: { id: v.id('resources'), ...resourceArgs },
+  args: {
+    id: v.id('resources'),
+    expectedUpdatedAt: v.number(),
+    ...resourceArgs,
+  },
   returns: v.null(),
-  handler: async (ctx, { id, ...input }) => {
+  handler: async (ctx, { id, expectedUpdatedAt, ...input }) => {
     const user = await requireUser(ctx)
     const resource = await ctx.db.get('resources', id)
     if (!resource) throw new ConvexError({ code: 'NOT_FOUND' })
@@ -110,9 +117,14 @@ export const update = mutation({
       )
     else if (resource.ownerId !== user._id)
       throw new ConvexError({ code: 'NOT_FOUND' })
+    if (resource.updatedAt !== expectedUpdatedAt)
+      throw new ConvexError({ code: 'CONFLICT' })
     const fields = validateResource(input)
     await limitUserOperation(ctx, 'resourceWrite', user._id)
-    await ctx.db.patch('resources', id, { ...fields, updatedAt: Date.now() })
+    await ctx.db.patch('resources', id, {
+      ...fields,
+      updatedAt: Math.max(Date.now(), resource.updatedAt + 1),
+    })
     await ctx.db.insert('securityEvents', {
       event: 'resource.updated',
       actorId: user._id,

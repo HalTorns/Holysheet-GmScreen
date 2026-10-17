@@ -7,6 +7,10 @@ import { ConvexError } from 'convex/values'
 import { api } from '../../convex/_generated/api'
 import { verifyLocalRestore } from './backup'
 import {
+  deleteAccountWithClient,
+  deleteOrganizationWithClient,
+  finishIdentityConfirmation,
+  identityMailbox,
   SITE_URL,
   createEmail,
   createResource,
@@ -79,7 +83,7 @@ test('le mode personnel cache les organisations et refuse leur API', async ({
       ).page
     ).toEqual([])
   } finally {
-    await client.mutation(api.account.deleteAccount, { confirmation: 'DELETE' })
+    await deleteAccountWithClient(client)
   }
 })
 
@@ -168,6 +172,7 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
     if (!shared) throw new Error('La ressource commune est absente.')
     await expectErrorCode(
       reader.mutation(api.resources.update, {
+        expectedUpdatedAt: 0,
         id: shared._id,
         title: 'Sans permission',
         description: '',
@@ -284,6 +289,7 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
     ).toBe(title)
     await readerPage.goto(`/app/organizations/${organizationId}`)
     await expect(readerPage.getByText(title, { exact: true })).toHaveCount(0)
+    const deleteMailbox = await identityMailbox(page)
     await page
       .getByRole('button', { name: 'Supprimer l’organisation', exact: true })
       .click()
@@ -296,6 +302,7 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
         exact: true,
       })
       .click()
+    await finishIdentityConfirmation(page, deleteMailbox)
     await expect(page).toHaveURL(`${SITE_URL}/app/organizations`)
     expect(await owner.query(api.organizations.list, {})).toEqual([])
     organizationId = undefined
@@ -303,18 +310,9 @@ test('une organisation partage ses ressources selon les rôles et révoque immé
   } finally {
     try {
       if (organizationId && owner)
-        await owner.mutation(api.organizations.remove, {
-          organizationId,
-          confirmation: 'DELETE',
-        })
-      if (owner)
-        await owner.mutation(api.account.deleteAccount, {
-          confirmation: 'DELETE',
-        })
-      if (reader)
-        await reader.mutation(api.account.deleteAccount, {
-          confirmation: 'DELETE',
-        })
+        await deleteOrganizationWithClient(owner, organizationId)
+      if (owner) await deleteAccountWithClient(owner)
+      if (reader) await deleteAccountWithClient(reader)
     } finally {
       await readerContext.close()
     }

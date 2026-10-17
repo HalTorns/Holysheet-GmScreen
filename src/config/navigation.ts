@@ -28,3 +28,9 @@ export const supportNavigation = linkOptions({
   label: 'Support',
   icon: LifeBuoy,
 })
+
+export const adminNavigation = linkOptions({
+  to: '/app/users',
+  label: 'Utilisateurs',
+  icon: ShieldCheck,
+})

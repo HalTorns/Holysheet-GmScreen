@@ -6,7 +6,7 @@ import { internal } from './_generated/api'
 import { internalAction, internalMutation } from './_generated/server'
 import { getEmailSettings } from './lib/emailEnvironment'
 import { getAuthSettings } from './lib/environment'
-import { limitAuthEmail } from './lib/rateLimits'
+import { limitAuthEmail, limitIdentityEmail } from './lib/rateLimits'
 
 const REQUEST_TIMEOUT_MS = 10_000
 
@@ -122,6 +122,32 @@ export const consumeQuota = internalMutation({
   returns: v.null(),
   handler: async (ctx, { email }) => {
     await limitAuthEmail(ctx, emailSchema.parse(email))
+    return null
+  },
+})
+
+export const sendConfirmation = internalAction({
+  args: { userId: v.string(), email: v.string(), otp: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const email = emailSchema.parse(args.email)
+    const code = otpSchema.parse(args.otp)
+    await ctx.runMutation(internal.emails.consumeIdentityQuota, {
+      userId: args.userId,
+    })
+    await deliverMessage(
+      email,
+      'Confirmez votre identité',
+      `Votre code de confirmation est ${code}. Il expire dans 5 minutes et autorise uniquement l’action demandée. Ne le partagez pas.`
+    )
+    return null
+  },
+})
+export const consumeIdentityQuota = internalMutation({
+  args: { userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await limitIdentityEmail(ctx, userId)
     return null
   },
 })

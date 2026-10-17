@@ -1,7 +1,11 @@
 import { afterEach, expect, test, vi } from 'vitest'
 
 import { api, components } from '../../convex/_generated/api'
-import { createAuthenticatedUser, createBackendTest } from './fixtures'
+import {
+  confirmOperation,
+  createAuthenticatedUser,
+  createBackendTest,
+} from './fixtures'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -12,7 +16,10 @@ const paginationOpts = { numItems: 20, cursor: null }
 async function fixture() {
   vi.stubEnv('ORGANIZATIONS_ENABLED', 'true')
   const backend = createBackendTest()
-  const alice = await createAuthenticatedUser(backend, 'alice@example.com')
+  // Ordinary organization management must work with a valid hour-old session.
+  const alice = await createAuthenticatedUser(backend, 'alice@example.com', {
+    sessionCreatedAt: Date.now() - 3_600_000,
+  })
   const bob = await createAuthenticatedUser(backend, 'bob@example.com')
   const eve = await createAuthenticatedUser(backend, 'eve@example.com')
   const organizationId = await alice.client.mutation(api.organizations.create, {
@@ -142,6 +149,7 @@ test('personal mode is the default and disabling organizations closes their API 
   ).toBeNull()
   await expect(
     local.alice.client.mutation(api.resources.update, {
+      expectedUpdatedAt: 0,
       id: shared,
       title: 'Blocked',
       description: '',
@@ -154,6 +162,7 @@ test('personal mode is the default and disabling organizations closes their API 
   expect(exported.organizations).toMatchObject([
     { id: local.organizationId, role: 'owner' },
   ])
+  await confirmOperation(local.backend, local.alice, 'account.delete')
   await expect(
     local.alice.client.mutation(api.account.deleteAccount, {
       confirmation: 'DELETE',
@@ -194,6 +203,7 @@ test('tenant membership and reader permissions are enforced at every resource en
     ).rejects.toThrow()
     await expect(
       client.mutation(api.resources.update, {
+        expectedUpdatedAt: 0,
         id,
         title: 'No rights',
         description: '',
@@ -223,6 +233,9 @@ test('tenant membership and reader permissions are enforced at every resource en
     role: 'member',
   })
   await local.bob.client.mutation(api.resources.update, {
+    expectedUpdatedAt:
+      (await local.backend.run((ctx) => ctx.db.get('resources', id)))
+        ?.updatedAt ?? 0,
     id,
     title: 'Member can edit',
     description: '',
@@ -285,12 +298,16 @@ test('two organizations keep roles, management, resources and exports isolated f
   )
   await expect(
     local.bob.client.mutation(api.resources.update, {
+      expectedUpdatedAt: 0,
       id: sharedA,
       title: 'Author and owner elsewhere',
       description: '',
     })
   ).rejects.toThrow('FORBIDDEN')
   await local.bob.client.mutation(api.resources.update, {
+    expectedUpdatedAt:
+      (await local.backend.run((ctx) => ctx.db.get('resources', sharedB)))
+        ?.updatedAt ?? 0,
     id: sharedB,
     title: 'B updated',
     description: '',
@@ -327,6 +344,7 @@ test('two organizations keep roles, management, resources and exports isolated f
       }),
     () =>
       local.alice.client.mutation(api.resources.update, {
+        expectedUpdatedAt: 0,
         id: sharedB,
         title: 'Foreign',
         description: '',
@@ -728,6 +746,7 @@ test('invitations bind to verified email, expire, consume once and revalidate in
 
 test('last-owner protection is atomic across demotion and account deletion', async () => {
   const local = await fixture()
+  await confirmOperation(local.backend, local.alice, 'account.delete')
   await expect(
     local.alice.client.mutation(api.account.deleteAccount, {
       confirmation: 'DELETE',
@@ -783,6 +802,7 @@ test('account deletion leaves shared data available to its organization and anon
     title: 'Personal removed',
     description: '',
   })
+  await confirmOperation(local.backend, local.alice, 'account.delete')
   await local.alice.client.mutation(api.account.deleteAccount, {
     confirmation: 'DELETE',
   })
@@ -823,6 +843,17 @@ test('organization deletion closes access immediately and cleans shared data in 
     title: 'Personal stays',
     description: '',
   })
+  await expect(
+    local.alice.client.mutation(api.organizations.remove, {
+      organizationId: local.organizationId,
+      confirmation: 'DELETE',
+    })
+  ).rejects.toThrow('IDENTITY_CONFIRMATION_REQUIRED')
+  await confirmOperation(
+    local.backend,
+    local.alice,
+    `organization.delete:${local.organizationId}`
+  )
   await local.alice.client.mutation(api.organizations.remove, {
     organizationId: local.organizationId,
     confirmation: 'DELETE',

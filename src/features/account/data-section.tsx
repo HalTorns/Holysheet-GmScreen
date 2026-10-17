@@ -9,12 +9,12 @@ import type { FunctionReturnType } from 'convex/server'
 import { Download, FolderLock, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
+import { FormDialogContent as DialogContent } from '@/components/form-dialog-content'
 import { FormError } from '@/components/form-error'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { operationErrorMessage } from '@/features/auth/errors'
+import { useIdentityConfirmation } from '@/features/auth/identity-confirmation'
 import { authClient } from '@/lib/auth-client'
 
 type ExportPage = FunctionReturnType<typeof api.account.exportData>
@@ -36,8 +37,8 @@ export function DataSection() {
             Vos données
           </h2>
           <p>
-            Récupérez vos données ou supprimez votre compte. Ces actions
-            demandent une connexion datant de moins de cinq minutes.
+            Récupérez vos données ou supprimez votre compte après confirmation
+            de votre identité.
           </p>
         </div>
       </div>
@@ -66,6 +67,7 @@ export function DataSection() {
 }
 
 function ExportDataButton() {
+  const hydrated = useHydrated()
   const convex = useConvex()
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +78,7 @@ function ExportDataButton() {
       let cursor: string | null = null
       const resources: ExportPage['resources']['page'] = []
       let profile: ExportPage['profile'] | null = null
+      let accountStatus: ExportPage['accountStatus'] | null = null
       let organizations: ExportPage['organizations'] = []
       let invitations: ExportPage['invitations'] = []
       let isDone = false
@@ -85,6 +88,7 @@ function ExportDataButton() {
         })
         resources.push(...page.resources.page)
         profile = page.profile
+        accountStatus = page.accountStatus
         organizations = page.organizations
         invitations = page.invitations
         isDone = page.resources.isDone
@@ -112,6 +116,7 @@ function ExportDataButton() {
       }
       downloadExport({
         profile,
+        accountStatus,
         resources,
         organizations,
         invitations,
@@ -129,7 +134,7 @@ function ExportDataButton() {
       <Button
         variant="outline"
         size="sm"
-        disabled={isPending}
+        disabled={!hydrated || isPending}
         onClick={() => void exportData()}
       >
         <Download aria-hidden="true" />
@@ -146,6 +151,7 @@ function ExportDataButton() {
 
 function downloadExport(value: {
   profile: ExportPage['profile'] | null
+  accountStatus: ExportPage['accountStatus'] | null
   resources: ExportPage['resources']['page']
   organizations: ExportPage['organizations']
   invitations: ExportPage['invitations']
@@ -206,6 +212,7 @@ function DeleteAccountForm({
   onPendingChange: (pending: boolean) => void
 }) {
   const isHydrated = useHydrated()
+  const confirmIdentity = useIdentityConfirmation()
   const deleteAccount = useMutation(api.account.deleteAccount)
   const [error, setError] = useState<string | null>(null)
   const form = useForm({
@@ -221,6 +228,10 @@ function DeleteAccountForm({
       setError(null)
       onPendingChange(true)
       try {
+        if (!(await confirmIdentity('account.delete'))) {
+          onPendingChange(false)
+          return
+        }
         await deleteAccount({ confirmation: 'DELETE' })
       } catch (error) {
         setError(operationErrorMessage(error))

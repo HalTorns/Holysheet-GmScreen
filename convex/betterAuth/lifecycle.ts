@@ -1,6 +1,7 @@
 import { ConvexError, v } from 'convex/values'
 
 import { mutation } from './_generated/server'
+import { ensureAnotherAdmin } from './userAdministration'
 
 const CLEANUP_BATCH_SIZE = 100
 const AUTH_RATE_LIMIT_RETENTION_MS = 24 * 60 * 60 * 1000
@@ -30,7 +31,11 @@ export const deleteUser = mutation({
   returns: v.null(),
   handler: async (ctx, { userId }) => {
     const id = ctx.db.normalizeId('user', userId)
-    if (id) await ctx.db.delete('user', id)
+    const user = id ? await ctx.db.get('user', id) : null
+    if (user) {
+      await ensureAnotherAdmin(ctx, user)
+      await ctx.db.delete('user', user._id)
+    }
     return null
   },
 })
@@ -59,6 +64,18 @@ export const cleanupUserCredentials = mutation({
       .query('sessionAssurances')
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .take(CLEANUP_BATCH_SIZE)
+    const revocations = await ctx.db
+      .query('sessionRevocations')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .take(CLEANUP_BATCH_SIZE)
+    const challenges = await ctx.db
+      .query('identityChallenges')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .take(CLEANUP_BATCH_SIZE)
+    for (const row of revocations)
+      await ctx.db.delete('sessionRevocations', row._id)
+    for (const row of challenges)
+      await ctx.db.delete('identityChallenges', row._id)
     const actorLinks = await ctx.db
       .query('impersonations')
       .withIndex('by_actor', (q) => q.eq('actorId', userId))
@@ -95,6 +112,8 @@ export const cleanupUserCredentials = mutation({
       targetLinks,
       actorAudit,
       targetAudit,
+      revocations,
+      challenges,
     ].some((batch) => batch.length === CLEANUP_BATCH_SIZE)
   },
 })
@@ -121,6 +140,18 @@ export const cleanupExpired = mutation({
       .query('sessionAssurances')
       .withIndex('by_expiry', (q) => q.lt('expiresAt', Date.now()))
       .take(CLEANUP_BATCH_SIZE)
+    const revocations = await ctx.db
+      .query('sessionRevocations')
+      .withIndex('by_expiry', (q) => q.lt('expiresAt', Date.now()))
+      .take(CLEANUP_BATCH_SIZE)
+    const challenges = await ctx.db
+      .query('identityChallenges')
+      .withIndex('by_expiry', (q) => q.lt('expiresAt', Date.now()))
+      .take(CLEANUP_BATCH_SIZE)
+    for (const row of revocations)
+      await ctx.db.delete('sessionRevocations', row._id)
+    for (const row of challenges)
+      await ctx.db.delete('identityChallenges', row._id)
     const links = await ctx.db
       .query('impersonations')
       .withIndex('by_expiry', (q) => q.lt('expiresAt', Date.now()))
@@ -137,8 +168,15 @@ export const cleanupExpired = mutation({
     for (const verification of verifications)
       await ctx.db.delete('verification', verification._id)
     for (const limit of rateLimits) await ctx.db.delete('rateLimit', limit._id)
-    return [sessions, verifications, rateLimits, assurances, links, audit].some(
-      (batch) => batch.length === CLEANUP_BATCH_SIZE
-    )
+    return [
+      sessions,
+      verifications,
+      rateLimits,
+      assurances,
+      links,
+      audit,
+      revocations,
+      challenges,
+    ].some((batch) => batch.length === CLEANUP_BATCH_SIZE)
   },
 })

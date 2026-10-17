@@ -1,5 +1,56 @@
 # Vérifications du socle
 
+## Revue approfondie des comptes et sessions — 17 octobre 2026
+
+Périmètre : 96 fichiers modifiés ou ajoutés, incluant les fichiers générés. Trois revues indépendantes ont examiné les règles du dépôt, le cahier des charges et la sécurité/backend/tests ; l’intégration navigateur a été relue séparément. Les constats ci-dessous sont corrigés et aucun blocage confirmé ne reste dans ce périmètre.
+
+| Axe | Défaut confirmé | Correction et preuve |
+| --- | --- | --- |
+| Standards | Les nouveaux quotas conservaient l’ID et des métadonnées d’activité après suppression du compte | Nettoyage des dix partitions liées au compte, sans toucher aux autres comptes ni aux quotas anti-abus ; test du cycle de vie rouge avant correction puis vert |
+| Standards | `take(21)` après un filtre d’expiration pouvait lire un nombre non borné de sessions | Lecture de 100 candidats au maximum, puis aperçu de 20 sessions actives ; signalement explicite d’un aperçu incomplet et régression sur sessions expirées/révoquées |
+| Cahier des charges | Une tentative MFA abandonnée gardait l’ancienne session en base mais le navigateur perdait son cookie, contrairement à l’exigence de préserver la session après échec | Reprise via cookie HttpOnly signé, lié au flux et limité à cinq minutes, avec revalidation de la session et du facteur d’origine ; parcours navigateur après mauvais TOTP puis annulation et nouvelle connexion réussie |
+| Sécurité | Le plugin bearer pouvait interpréter `Authorization` après les gardes HTTP et atteindre une cérémonie passkey sans preuve ; un token de session révoqué pouvait obtenir un JWT | Refus du header avant les hooks de plugins, JWKS public excepté ; les deux contournements ont été reproduits en HTTP puis refusés après correction |
+| Sessions | Le préchargement sans refresh empêchait le renouvellement glissant de `/convex/token` ; les cookies renouvelés n’étaient pas transmis | Refresh après validation vivante et quota, transfert du cookie dans la réponse ; SSR sans refresh puisqu’il ne transfère pas ces cookies. Tests HTTP de renouvellement, lecture SSR, révocation et panne de stockage |
+
+Le test de confirmation utilise désormais deux sessions valides du même utilisateur : la preuve de l’une ne permet pas de supprimer le compte depuis l’autre. Huit tests HTTP de reprise MFA couvrent le contrôle positif, le cookie absent/altéré/d’un autre flux/expiré, la session d’origine révoquée ou sans assurance MFA, et le refus CSRF. La seule possession d’une session en attente n’accorde jamais l’assurance précédente. Les boutons empêchent une vérification et une annulation simultanées.
+
+| Vérification après corrections | Résultat observé |
+| --- | --- |
+| Backend local | `pnpm backend:push` réussi sur `127.0.0.1:3210` |
+| Qualité complète | `pnpm check` réussi : types, lint, formatage, Knip, **75 tests backend/unitaires/scripts**, **4 tests Browser Mode**, build SSR |
+| E2E personnel | **19 réussis**, 8 réservés aux autres modes, 1.6m |
+| E2E organisations | **19 réussis**, 8 réservés aux autres modes, 1.9m |
+| E2E modules d’auth | **5 réussis**, 46.9s, dont annulation MFA et remplacement effectif de la session |
+| Dépendances et état local | `pnpm audit --prod --audit-level=high` sans vulnérabilité connue ; `pnpm doctor` réussi et `git diff --check` réussi |
+
+Production/outillage : **+3520 / −181 lignes** ; tests et helpers : **+2284 / −96 lignes** ; fichiers générés examinés séparément. Ces contrôles locaux n’attestent pas un déploiement de production ni un échange OAuth réel avec Google/GitHub. La vérification de la CI du commit publié est rapportée dans le compte rendu d’envoi.
+
+## Comptes, administration et continuité de connexion — 17 octobre 2026
+
+La stack et le mode personnel par défaut sont conservés. Les comportements génériques du projet Truffothèque ont servi de référence en lecture seule ; aucune donnée ou configuration privée de ce projet n’est importée. La politique, le bootstrap opérateur et la migration sont décrits dans [Comptes](accounts.md).
+
+| Vérification finale | Résultat observé |
+| --- | --- |
+| Schéma et backend local | Schéma Better Auth régénéré par la CLI ; seuls `nameKey`, `profileVersion` et `adminVersion` optionnels sont ajoutés au schéma généré ; fonctions et index appliqués au backend local |
+| Qualité | `pnpm check` réussi : types stricts, Oxlint, Oxfmt, Knip, **61 tests backend/unitaires/scripts**, **4 tests Browser Mode** et build SSR |
+| E2E personnel | `pnpm test:e2e:local` : **19 réussis**, 1.6m ; 7 scénarios réservés aux autres modes |
+| E2E organisations | `pnpm test:e2e:local organizations` : **19 réussis**, 1.9m ; 7 scénarios réservés aux autres modes |
+| Modules optionnels | `pnpm test:e2e:local modules` : **4 réussis**, 38.5s |
+| Migration additive | `pnpm profiles:migrate` exécuté puis rejoué ; deux passes successives de 50 comptes, aucune clé à modifier ni collision ; 35 profils incomplets conservés et guidés vers le choix du pseudo à leur prochaine connexion |
+| État final | `pnpm doctor` réussi, variables temporaires restaurées, capacités publiques revenues au mode personnel ; `git diff --check` réussi |
+
+Les tests backend possèdent les autorisations sur les rôles courants, les modifications concurrentes du dernier admin, les collisions de pseudos, les versions indépendantes des timestamps d’authentification, la coupure immédiate des sessions et leur nettoyage borné. Ils couvrent aussi le lien session/opération des confirmations, leur expiration, la consommation unique et la persistance des essais refusés. Les fixtures d’organisation utilisent une session vieille d’une heure ; la suppression exige désormais une preuve liée à l’organisation.
+
+Les parcours réels couvrent l’administration sans MFA imposée avec une connexion vieille d’une heure, le choix et les conflits de pseudo entre onglets, les refus des endpoints génériques, les confirmations email dans le parcours, les brouillons à 390 px, la recherche et ses filtres, le changement réel de compte, les budgets anonymes séparés et le remplacement limité à la session présentée du même compte. La restauration isolée compare des données non vides de profil, rôle, audit, révocation et confirmation en attente, en plus des ressources et passkeys.
+
+Plusieurs régressions ont été reproduites avant correction : un renvoi de code refusé invalidait le code déjà délivré ; des tentatives MFA successives perdaient la référence à la session à remplacer ; une erreur de stockage était transformée en refus de session. Les vérifications HTTP et navigateur passent après correction. Le démarrage du client respecte le contrat de jeton SSR/renouvellement de Convex et attend sa confirmation avant d’activer les écritures. Les boutons de reprise sont utilisables dans l’erreur SSR et dans un dialogue ouvert.
+
+Les traces, vidéos et captures automatiques restent désactivées et le lanceur conserve `PLAYWRIGHT_NO_COPY_PROMPT=1`. Les avertissements upstream de bundling et les logs Nitro d’annulation (`aborted`/`ECONNRESET`) restent présents ; ils ne font pas échouer les passes ci-dessus.
+
+L’administration borne à 100 comptes admin et fournit un aperçu des sessions actives, avec révocation de toutes les sessions. La fixture locale `boilerplate-admin-e2e@example.test` est conservée pour respecter la protection du dernier admin. Aucun échange OAuth Google/GitHub réel, déploiement public, CI distante, TLS/proxy de production ou stockage de fichiers non vide n’est certifié par ces passes initiales. Elles précèdent la revue approfondie ci-dessus ; aucune réinitialisation des données du projet n’est effectuée.
+
+Périmètre de cette évolution, hors documentation et fichiers générés : production/outillage **+3190 / −169 lignes** ; tests et helpers **+1633 / −54 lignes**. Les fichiers générés sont examinés séparément.
+
 ## PostgreSQL 18 et préparation Coolify — 16 octobre 2026
 
 Vérifications sur ce Mac avec OrbStack. PostgreSQL remplace SQLite comme stockage interne de Convex ; aucune publication distante n’est incluse.

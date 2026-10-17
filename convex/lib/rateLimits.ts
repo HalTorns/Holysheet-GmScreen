@@ -5,6 +5,32 @@ import { components } from '../_generated/api'
 import type { MutationCtx } from '../_generated/server'
 
 const limiter = new RateLimiter(components.rateLimiter, {
+  authSessionRead: {
+    kind: 'token bucket',
+    rate: 120,
+    period: MINUTE,
+    capacity: 120,
+  },
+  authTokenRead: {
+    kind: 'token bucket',
+    rate: 120,
+    period: MINUTE,
+    capacity: 120,
+  },
+  authEntry: { kind: 'token bucket', rate: 60, period: MINUTE, capacity: 60 },
+  authOther: { kind: 'token bucket', rate: 120, period: MINUTE, capacity: 120 },
+  identityEmail: {
+    kind: 'token bucket',
+    rate: 5,
+    period: 5 * MINUTE,
+    capacity: 5,
+  },
+  identityVerification: {
+    kind: 'token bucket',
+    rate: 5,
+    period: 5 * MINUTE,
+    capacity: 5,
+  },
   mfaVerification: {
     kind: 'token bucket',
     rate: 5,
@@ -44,7 +70,9 @@ export async function limitUserOperation(
     | 'resourceWrite'
     | 'accountSensitive'
     | 'organizationWrite'
-    | 'mfaVerification',
+    | 'mfaVerification'
+    | 'identityVerification'
+    | 'identityEmail',
   userId: string
 ) {
   const result = await limiter.limit(ctx, operation, { key: userId })
@@ -74,4 +102,48 @@ export async function limitAuthEmail(ctx: MutationCtx, email: string) {
         retryAfterMs: result.retryAfter,
       })
   }
+}
+
+export async function limitAuthRequest(
+  ctx: MutationCtx,
+  bucket: 'authSessionRead' | 'authTokenRead' | 'authEntry' | 'authOther',
+  key: string
+) {
+  const result = await limiter.limit(ctx, bucket, { key })
+  if (!result.ok)
+    throw new ConvexError({
+      code: 'RATE_LIMITED',
+      retryAfterMs: result.retryAfter,
+    })
+}
+
+export async function limitIdentityEmail(ctx: MutationCtx, userId: string) {
+  await limitUserOperation(ctx, 'identityEmail', userId)
+  const result = await limiter.limit(ctx, 'authEmailGlobal', { key: 'all' })
+  if (!result.ok)
+    throw new ConvexError({
+      code: 'RATE_LIMITED',
+      retryAfterMs: result.retryAfter,
+    })
+}
+
+export async function clearUserRateLimits(ctx: MutationCtx, userId: string) {
+  // Every configured bucket has one shard, so deletion is bounded to ten rows.
+  // Keep recipient/global anti-abuse limits independent of account recreation.
+  for (const operation of [
+    'resourceWrite',
+    'accountSensitive',
+    'organizationWrite',
+    'mfaVerification',
+    'identityVerification',
+    'identityEmail',
+  ] as const)
+    await limiter.reset(ctx, operation, { key: userId })
+  for (const operation of [
+    'authSessionRead',
+    'authTokenRead',
+    'authEntry',
+    'authOther',
+  ] as const)
+    await limiter.reset(ctx, operation, { key: `user:${userId}` })
 }

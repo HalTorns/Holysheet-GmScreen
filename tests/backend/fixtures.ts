@@ -33,6 +33,7 @@ export async function createAuthenticatedUser(
       input: {
         model: 'user',
         data: {
+          role: 'user',
           name: email.split('@')[0] ?? 'User',
           email,
           emailVerified: options.emailVerified ?? true,
@@ -86,4 +87,23 @@ export async function createPasskey(backend: Backend, userId: string) {
     }
   )
   return documentIdSchema.parse(passkey)._id
+}
+
+// Backend tests own proof consumption/binding. HTTP delivery is exercised in E2E.
+export async function confirmOperation(
+  backend: Backend,
+  user: { userId: string; sessionId: string },
+  operation: string
+) {
+  const args = {
+    userId: user.userId,
+    sessionId: user.sessionId,
+    operation,
+    digest: 'backend-fixture-proof',
+  }
+  await backend.mutation(components.betterAuth.identityConfirmation.issue, args)
+  await backend.mutation(
+    components.betterAuth.identityConfirmation.verify,
+    args
+  )
 }

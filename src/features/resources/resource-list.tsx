@@ -7,9 +7,11 @@ import { useState } from 'react'
 
 import { LoadingState } from '@/components/page-state'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { ResourceCard } from '@/features/resources/resource-card'
 import { ResourceDialog } from '@/features/resources/resource-form'
 import type { Resource } from '@/features/resources/types'
+import { useDebouncedSearch } from '@/hooks/use-debounced-search'
 
 const PAGE_SIZE = 12
 
@@ -20,9 +22,16 @@ export function ResourceList({
 }) {
   const canWrite =
     !organization || canWriteOrganizationResources(organization.role)
+  const [searchDraft, setSearchDraft] = useState('')
+  const search = useDebouncedSearch(searchDraft)
+  const [described, setDescribed] = useState(false)
   const { results, status, loadMore } = usePaginatedQuery(
     api.resources.list,
-    organization ? { organizationId: organization.id } : {},
+    {
+      search,
+      described,
+      ...(organization ? { organizationId: organization.id } : {}),
+    },
     { initialNumItems: PAGE_SIZE }
   )
   const [isEditorOpen, setIsEditorOpen] = useState(false)
@@ -59,6 +68,26 @@ export function ResourceList({
           </Button>
         )}
       </div>
+      <div className="mb-5 flex flex-wrap items-end gap-4">
+        <div className="form-field flex-1">
+          <label htmlFor="resource-search">Rechercher une ressource</label>
+          <Input
+            id="resource-search"
+            type="search"
+            value={searchDraft}
+            maxLength={100}
+            onChange={(event) => setSearchDraft(event.target.value)}
+          />
+        </div>
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            type="checkbox"
+            checked={described}
+            onChange={(event) => setDescribed(event.target.checked)}
+          />
+          Avec une description
+        </label>
+      </div>
       <div className="mb-6 flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>
           {results.length > 0
@@ -73,7 +102,11 @@ export function ResourceList({
       {status === 'LoadingFirstPage' ? (
         <LoadingState label="Chargement de vos ressources…" />
       ) : results.length === 0 ? (
-        <EmptyResources onCreate={create} canWrite={canWrite} />
+        search || described ? (
+          <p role="status">Aucune ressource ne correspond à ces critères.</p>
+        ) : (
+          <EmptyResources onCreate={create} canWrite={canWrite} />
+        )
       ) : (
         <div className="resource-grid">
           {results.map((resource) => (

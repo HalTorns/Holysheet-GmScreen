@@ -1,6 +1,6 @@
 # Authentification optionnelle
 
-Le défaut reste code email + passkeys privées, sans organisations, fournisseur social, MFA imposée ni administration de plateforme. Les sessions et les secrets chiffrés Better Auth restent dans Convex. Les plugins installés stabilisent le schéma ; les variables privées décident de l’ouverture des endpoints et de l’interface. Désactiver un module ne supprime aucune table.
+L’administration applicative et les pseudos sont intégrés par défaut ; voir [Comptes et formulaires](accounts.md). Le défaut d’authentification reste code email + passkeys privées, sans organisations, fournisseur social, MFA imposée ni administration de plateforme. Les sessions et les secrets chiffrés Better Auth restent dans Convex. Les plugins installés stabilisent le schéma ; les variables privées décident de l’ouverture des endpoints et de l’interface. Désactiver un module ne supprime aucune table.
 
 ## Activer les modules
 

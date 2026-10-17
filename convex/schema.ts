@@ -10,7 +10,11 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_owner', ['ownerId', 'organizationId'])
-    .index('by_organization', ['organizationId']),
+    .index('by_organization', ['organizationId'])
+    .searchIndex('search_title', {
+      searchField: 'title',
+      filterFields: ['ownerId', 'organizationId'],
+    }),
   securityEvents: defineTable({
     event: v.union(
       v.literal('resource.created'),

@@ -1,12 +1,17 @@
 import { createHmac } from 'node:crypto'
 
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { z } from 'zod'
 
 import { api } from '../../convex/_generated/api'
 import { allowSupportUser } from './backend-operator'
 import { verifyLocalRestore } from './backup'
 import {
+  deleteAccountWithClient,
+  identityMailbox,
+  finishIdentityConfirmation,
+  completeProfile,
   createEmail,
   getAuthenticatedClient,
   requestSignInCode,
@@ -41,6 +46,38 @@ function totp(secret: string) {
     .padStart(6, '0')
 }
 
+async function enrollMfa(page: Page) {
+  await page.goto('/app/security')
+  const mfaMailbox = await identityMailbox(page)
+  await page
+    .getByRole('button', { name: 'Activer la MFA', exact: true })
+    .click()
+  await finishIdentityConfirmation(page, mfaMailbox)
+  const secret = await page
+    .getByLabel('Clé de configuration de l’authentificateur')
+    .inputValue()
+  await page
+    .getByText('Afficher mes codes de récupération', { exact: true })
+    .click()
+  const backupCode = await page
+    .locator('#mfa-heading')
+    .locator('..')
+    .locator('li')
+    .first()
+    .textContent()
+  if (!backupCode) throw new Error('Missing recovery code.')
+  await page
+    .getByLabel('Code d’authentification', { exact: true })
+    .fill(totp(secret))
+  await page
+    .getByRole('button', { name: 'Confirmer l’activation', exact: true })
+    .click()
+  await expect(
+    page.getByRole('button', { name: 'Désactiver la MFA', exact: true })
+  ).toBeVisible()
+  return { secret, backupCode }
+}
+
 test('real TOTP enrollment guards existing and new sessions; a recovery code is consumed once', async ({
   page,
   browser,
@@ -53,32 +90,7 @@ test('real TOTP enrollment guards existing and new sessions; a recovery code is 
     const otherPage = await other.newPage()
     await signInWithEmail(otherPage, email)
     const pendingClient = await getAuthenticatedClient(other)
-    await page.goto('/app/security')
-    await page
-      .getByRole('button', { name: 'Activer la MFA', exact: true })
-      .click()
-    const secret = await page
-      .getByLabel('Clé de configuration de l’authentificateur')
-      .inputValue()
-    await page
-      .getByText('Afficher mes codes de récupération', { exact: true })
-      .click()
-    const backupCode = await page
-      .locator('#mfa-heading')
-      .locator('..')
-      .locator('li')
-      .first()
-      .textContent()
-    if (!backupCode) throw new Error('Missing recovery code.')
-    await page
-      .getByLabel('Code d’authentification', { exact: true })
-      .fill(totp(secret))
-    await page
-      .getByRole('button', { name: 'Confirmer l’activation', exact: true })
-      .click()
-    await expect(
-      page.getByRole('button', { name: 'Désactiver la MFA', exact: true })
-    ).toBeVisible()
+    const { secret, backupCode } = await enrollMfa(page)
     const restored = await verifyLocalRestore()
     for (const table of ['twoFactor', 'sessionAssurances', 'authAudit'])
       expect(
@@ -123,9 +135,78 @@ test('real TOTP enrollment guards existing and new sessions; a recovery code is 
     expect(repeated.ok()).toBe(false)
   } finally {
     const owner = await getAuthenticatedClient(page.context())
-    await owner.mutation(api.account.deleteAccount, { confirmation: 'DELETE' })
+    await deleteAccountWithClient(owner)
     await other.close()
     await third.close()
+  }
+})
+
+test('cancelling a failed MFA sign-in restores the browser session; success replaces it', async ({
+  page,
+}) => {
+  const email = createEmail()
+  await signInWithEmail(page, email)
+  const { secret } = await enrollMfa(page)
+  const previous = await getAuthenticatedClient(page.context())
+  let cleanup = previous
+  try {
+    const previousSession = z
+      .object({ session: z.object({ id: z.string() }) })
+      .parse(await (await page.request.get('/api/auth/get-session')).json())
+    const retryCode = await requestSignInCode(page.context(), email)
+    expect(
+      (
+        await page.request.post('/api/auth/sign-in/email-otp', {
+          headers: { Origin: SITE_URL },
+          data: { email, otp: retryCode },
+        })
+      ).status()
+    ).toBe(200)
+    await page.goto('/app')
+    await expect(page).toHaveURL(`${SITE_URL}/verify-mfa`)
+    const validTotp = totp(secret)
+    const wrongTotp = validTotp === '000000' ? '000001' : '000000'
+    await page
+      .getByLabel('Code d’authentification', { exact: true })
+      .fill(wrongTotp)
+    await page
+      .getByRole('button', { name: 'Vérifier le code', exact: true })
+      .click()
+    await expect(page.getByRole('alert')).toContainText('Code refusé')
+    const cancellation = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/auth/pending-sign-in/cancel'
+    )
+    await page.getByRole('button', { name: /Annuler/ }).click()
+    expect((await cancellation).status()).toBe(200)
+    await expect(page).toHaveURL(`${SITE_URL}/app`)
+    const resumedSession = z
+      .object({ session: z.object({ id: z.string() }) })
+      .parse(await (await page.request.get('/api/auth/get-session')).json())
+    expect(resumedSession.session.id).toBe(previousSession.session.id)
+    expect(await previous.query(api.auth.getCurrentUser, {})).not.toBeNull()
+    const successfulRetry = await requestSignInCode(page.context(), email)
+    expect(
+      (
+        await page.request.post('/api/auth/sign-in/email-otp', {
+          headers: { Origin: SITE_URL },
+          data: { email, otp: successfulRetry },
+        })
+      ).status()
+    ).toBe(200)
+    await page.goto('/verify-mfa')
+    await page
+      .getByLabel('Code d’authentification', { exact: true })
+      .fill(totp(secret))
+    await page
+      .getByRole('button', { name: 'Vérifier le code', exact: true })
+      .click()
+    await expect(page).toHaveURL(`${SITE_URL}/app`)
+    expect(await previous.query(api.auth.getCurrentUser, {})).toBeNull()
+    cleanup = await getAuthenticatedClient(page.context())
+  } finally {
+    if (await cleanup.query(api.auth.getCurrentUser, {}))
+      await deleteAccountWithClient(cleanup)
   }
 })
 
@@ -134,22 +215,7 @@ test('support uses an explicit operator grant, stays read-only and can return to
   browser,
 }) => {
   await signInWithEmail(page, createEmail())
-  await page.goto('/app/security')
-  await page
-    .getByRole('button', { name: 'Activer la MFA', exact: true })
-    .click()
-  const secret = await page
-    .getByLabel('Clé de configuration de l’authentificateur')
-    .inputValue()
-  await page
-    .getByLabel('Code d’authentification', { exact: true })
-    .fill(totp(secret))
-  await page
-    .getByRole('button', { name: 'Confirmer l’activation', exact: true })
-    .click()
-  await expect(
-    page.getByRole('button', { name: 'Désactiver la MFA', exact: true })
-  ).toBeVisible()
+  await enrollMfa(page)
   const admin = await getAuthenticatedClient(page.context())
   const actor = await admin.query(api.auth.getCurrentUser, {})
   if (!actor) throw new Error('Missing authenticated actor.')
@@ -215,8 +281,8 @@ test('support uses an explicit operator grant, stays read-only and can return to
     ).toBe(actor.id)
   } finally {
     allowSupportUser('')
-    await target.mutation(api.account.deleteAccount, { confirmation: 'DELETE' })
-    await admin.mutation(api.account.deleteAccount, { confirmation: 'DELETE' })
+    await deleteAccountWithClient(target)
+    await deleteAccountWithClient(admin)
     await other.close()
   }
 })
@@ -263,6 +329,7 @@ test('an emailed magic link creates a session once and never authenticates on re
   }
   await page.goto('/app')
   await expect(page).toHaveURL(`${SITE_URL}/app`)
+  await completeProfile(page)
   try {
     await page.getByRole('button', { name: 'Déconnexion', exact: true }).click()
     try {
@@ -279,9 +346,7 @@ test('an emailed magic link creates a session once and never authenticates on re
       .toBe(true)
   } finally {
     await signInWithEmail(page, email)
-    await (
-      await getAuthenticatedClient(page.context())
-    ).mutation(api.account.deleteAccount, { confirmation: 'DELETE' })
+    await deleteAccountWithClient(await getAuthenticatedClient(page.context()))
   }
 })
 

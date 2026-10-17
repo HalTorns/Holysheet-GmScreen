@@ -1,6 +1,17 @@
 import { ConvexError } from 'convex/values'
 
 const messages: Record<string, string> = {
+  IDENTITY_CONFIRMATION_REQUIRED:
+    'Confirmez votre identité pour autoriser cette action.',
+  USERNAME_TAKEN: 'Ce pseudo est déjà utilisé. Choisissez-en un autre.',
+  INVALID_USERNAME:
+    'Choisissez un pseudo de 2 à 32 caractères : lettres, chiffres, espaces, points, tirets ou underscores.',
+  LAST_ADMIN: 'Conservez au moins un administrateur actif.',
+  ADMIN_LIMIT: 'La limite de 100 administrateurs est atteinte.',
+  SELF_MODERATION: 'Gérez vos propres sessions depuis Mon compte.',
+  CONFLICT:
+    'Une autre modification a été enregistrée. Votre brouillon est conservé : consultez la version actuelle avant de réessayer.',
+
   MODULE_DISABLED:
     'Le mode organisations est désactivé pour cette application.',
   FORBIDDEN: 'Votre rôle ne permet pas cette action.',

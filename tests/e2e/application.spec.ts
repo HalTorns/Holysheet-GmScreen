@@ -6,8 +6,12 @@ import { z } from 'zod'
 
 import { api } from '../../convex/_generated/api'
 import {
+  deleteAccountWithClient,
   SITE_URL,
   addPasskey,
+  completeProfile,
+  identityMailbox,
+  finishIdentityConfirmation,
   createEmail,
   createResource,
   deleteAccount,
@@ -113,6 +117,7 @@ test('changer de compte réinitialise les brouillons et les données affichées 
       .toBe(1)
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.getByText(privateTitle, { exact: true })).toHaveCount(0)
+    await completeProfile(page)
     await expect(
       page.getByRole('button', { name: 'Nouvelle ressource', exact: true })
     ).toBeEnabled()
@@ -123,11 +128,8 @@ test('changer de compte réinitialise les brouillons et les données affichées 
       privateTitle
     )
   } finally {
-    if (second)
-      await second.mutation(api.account.deleteAccount, {
-        confirmation: 'DELETE',
-      })
-    await first.mutation(api.account.deleteAccount, { confirmation: 'DELETE' })
+    if (second) await deleteAccountWithClient(second)
+    await deleteAccountWithClient(first)
   }
 })
 
@@ -207,6 +209,7 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
     ).toBeNull()
     await expect(
       otherClient.mutation(api.resources.update, {
+        expectedUpdatedAt: 0,
         id: ownerResource._id,
         title: 'Modification interdite',
         description: '',
@@ -276,6 +279,7 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
     await authenticator.cdp.detach()
     authenticator = await installAuthenticator(page)
     await addPasskey(page, 'Passkey secondaire E2E')
+    const removeMailbox = await identityMailbox(page)
     await page
       .getByRole('button', {
         name: 'Supprimer la passkey Passkey principale E2E',
@@ -286,6 +290,7 @@ test('email réel, ressources privées, révocation de session et passkeys fonct
       .getByRole('dialog')
       .getByRole('button', { name: 'Supprimer la passkey', exact: true })
       .click()
+    await finishIdentityConfirmation(page, removeMailbox)
     await expect(
       page.getByText('Passkey principale E2E', { exact: true })
     ).toHaveCount(0)

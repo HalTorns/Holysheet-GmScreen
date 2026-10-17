@@ -16,7 +16,7 @@ Les clients Convex et QueryClient sont créés par requête dans `src/router.tsx
 
 ## Convex
 
-Définir `query`, `mutation` ou `action` avec `args` et `returns`. Une fonction privée commence par `requireUser(ctx)` ou `requireRecentUser(ctx)` depuis `convex/lib/auth.ts`, puis vérifie la propriété et les permissions de la ressource. Ces helpers imposent session vivante, MFA et restrictions du support. `ownerId` vient du serveur ; un identifiant client ne fait jamais autorité.
+Définir `query`, `mutation` ou `action` avec `args` et `returns`. Une fonction privée commence par `requireUser(ctx)` pour les opérations courantes ou `requireConfirmedUser(ctx, operation)` pour une mutation sensible depuis `convex/lib/auth.ts`, puis vérifie la propriété et les permissions de la ressource. Ces helpers imposent session vivante, MFA et restrictions du support. `ownerId` vient du serveur ; un identifiant client ne fait jamais autorité.
 
 Une lecture personnelle utilise l’index propriétaire + scope personnel ; une lecture collective vérifie une membership puis l’index organisation. Voir `convex/resources.ts` et `convex/lib/resources.ts`. Les mutations atomiques restent dans Convex. Limiter les listes/opérations et appliquer les quotas durables ; utiliser `internal*` pour les opérations non publiques. La pagination native reste dans l’application ; le composant local utilise un curseur indexé pour l’audit.
 
@@ -43,3 +43,5 @@ Lefthook lance lint-staged puis le typecheck avant commit. Garder les hooks acti
 `pnpm test:e2e:local` construit et teste son propre serveur sur un port libre ; `pnpm test:e2e:local organizations` et `pnpm test:e2e:local modules` vérifient les modes facultatifs en restaurant leurs variables. Ne pas réutiliser une application inconnue sur le port 3000. Les fournisseurs externes exigent une vérification avec leur propre configuration avant activation dans un produit.
 
 Exécuter les contrôles adaptés puis `git diff --check`. Commit/push seulement avec l’autorisation applicable ; rapporter les commandes et résultats réellement observés.
+
+Lire [Comptes et formulaires](accounts.md) pour le bootstrap admin, la migration des pseudos, les preuves sensibles et les composants `DraftGuard`, `SaveActions`, `ListNavigation`. `requireRecentUser` reste réservé au support technique. Ne pas remplacer la confirmation dans le parcours par une limite sur l’âge de connexion.

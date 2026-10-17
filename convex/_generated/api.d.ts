@@ -17,6 +17,7 @@ import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
+import type * as identityConfirmation from "../identityConfirmation.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_authHooks from "../lib/authHooks.js";
 import type * as lib_authModules from "../lib/authModules.js";
@@ -25,12 +26,18 @@ import type * as lib_environment from "../lib/environment.js";
 import type * as lib_modules from "../lib/modules.js";
 import type * as lib_organizationValidators from "../lib/organizationValidators.js";
 import type * as lib_organizations from "../lib/organizations.js";
+import type * as lib_pendingSignIn from "../lib/pendingSignIn.js";
+import type * as lib_profilePolicy from "../lib/profilePolicy.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_resources from "../lib/resources.js";
 import type * as lib_sessionAccess from "../lib/sessionAccess.js";
+import type * as lib_siteAdmin from "../lib/siteAdmin.js";
+import type * as lib_userAdminValidators from "../lib/userAdminValidators.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as organizations from "../organizations.js";
+import type * as profileNames from "../profileNames.js";
 import type * as resources from "../resources.js";
+import type * as userAdmin from "../userAdmin.js";
 
 import type {
   ApiFromModules,
@@ -48,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   emails: typeof emails;
   http: typeof http;
+  identityConfirmation: typeof identityConfirmation;
   "lib/auth": typeof lib_auth;
   "lib/authHooks": typeof lib_authHooks;
   "lib/authModules": typeof lib_authModules;
@@ -56,12 +64,18 @@ declare const fullApi: ApiFromModules<{
   "lib/modules": typeof lib_modules;
   "lib/organizationValidators": typeof lib_organizationValidators;
   "lib/organizations": typeof lib_organizations;
+  "lib/pendingSignIn": typeof lib_pendingSignIn;
+  "lib/profilePolicy": typeof lib_profilePolicy;
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/resources": typeof lib_resources;
   "lib/sessionAccess": typeof lib_sessionAccess;
+  "lib/siteAdmin": typeof lib_siteAdmin;
+  "lib/userAdminValidators": typeof lib_userAdminValidators;
   "lib/validators": typeof lib_validators;
   organizations: typeof organizations;
+  profileNames: typeof profileNames;
   resources: typeof resources;
+  userAdmin: typeof userAdmin;
 }>;
 
 /**

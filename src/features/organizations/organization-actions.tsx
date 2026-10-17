@@ -14,17 +14,18 @@ import { useConvex, useMutation } from 'convex/react'
 import type { FunctionReturnType } from 'convex/server'
 import { useState } from 'react'
 
+import { FormDialogContent as DialogContent } from '@/components/form-dialog-content'
 import { FormError } from '@/components/form-error'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useIdentityConfirmation } from '@/features/auth/identity-confirmation'
 
 import { useOrganizationOperation } from './use-organization-operation'
 
@@ -46,8 +47,8 @@ export function OrganizationActions({
         <div>
           <h2 id="organization-data-heading">Organisation et données</h2>
           <p>
-            Les actions sensibles demandent une connexion récente. Votre espace
-            personnel est indépendant de cette organisation.
+            La suppression demande une confirmation d’identité dans ce parcours.
+            Votre espace personnel est indépendant de cette organisation.
           </p>
         </div>
       </div>
@@ -323,6 +324,7 @@ function DeleteOrganizationForm({
   onPendingChange: (pending: boolean) => void
 }) {
   const remove = useMutation(api.organizations.remove)
+  const confirmIdentity = useIdentityConfirmation()
   const navigate = useNavigate()
   const hydrated = useHydrated()
   const operation = useOrganizationOperation()
@@ -339,6 +341,8 @@ function DeleteOrganizationForm({
       onPendingChange(true)
       try {
         await operation.run(async () => {
+          if (!(await confirmIdentity(`organization.delete:${organizationId}`)))
+            return
           await remove({ organizationId, confirmation: 'DELETE' })
           await navigate({ to: '/app/organizations' })
         })

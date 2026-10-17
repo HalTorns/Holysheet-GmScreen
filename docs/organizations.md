@@ -42,7 +42,7 @@ Les propriétaires et administrateurs peuvent également renommer l’organisati
 
 Les noms des membres sont visibles dans l’organisation ; les adresses email des autres membres et invitations ne sont exposées qu’aux propriétaires/administrateurs. Les invitations n’accordent pas directement le rôle propriétaire : promouvoir un membre existant après acceptation et vérification de son email.
 
-La création, la gestion des invitations/rôles/membres, l’export partagé et la suppression demandent une session récente. Les écritures d’organisation ont un quota par compte ; les ressources gardent leur quota existant. Le socle borne à 20 organisations par compte, 100 membres et 100 invitations par organisation, et 10 invitations en attente par destinataire. Les constantes et libellés sont dans `shared/organizations.ts` ; les vérifications effectives restent côté Convex.
+La création, la gestion des invitations/rôles/membres et l’export partagé demandent une session valide sans limite de cinq minutes. La suppression consomme une confirmation d’identité à usage unique liée à la session et à cette organisation ; le propriétaire confirme depuis le dialogue sans perdre sa saisie. Les écritures d’organisation ont un quota par compte ; les ressources gardent leur quota existant. Le socle borne à 20 organisations par compte, 100 membres et 100 invitations par organisation, et 10 invitations en attente par destinataire. Les constantes et libellés sont dans `shared/organizations.ts` ; les vérifications effectives restent côté Convex.
 
 ## Invitations
 
@@ -57,7 +57,7 @@ L’acceptation revalide les droits actuels de l’invitant. Retirer un gestionn
 ## Frontières et données
 
 - `convex/betterAuth/organizations.ts` gère les tables Better Auth `organization`, `member`, `invitation` dans des transactions Convex. `organizationAccess.ts` porte les invariants de membership et de dernier propriétaire.
-- `convex/organizations.ts` expose les opérations applicatives après validation de la session, activation, quotas et authentification récente.
+- `convex/organizations.ts` expose les opérations applicatives après validation de la session, activation, quotas et permissions courantes ; la suppression exige une preuve d’identité liée à son opération.
 - Les routes HTTP natives `/api/auth/organization/*` sont volontairement fermées, y compris lorsque le module est activé. Utiliser l’API Convex du projet ; ajouter `organizationClient()` ne crée pas un deuxième chemin autorisé.
 - `resources.organizationId` définit l’espace partagé. Sans ce champ, l’accès reste personnel. Le serveur valide chaque organisation demandée et chaque rôle courant ; `session.activeOrganizationId` n’est pas une autorité.
 - `resources.by_owner` inclut le scope pour paginer seulement les ressources personnelles ; `by_organization` sert les ressources communes. Les anciennes ressources sans champ supplémentaire restent personnelles.

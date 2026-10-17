@@ -22,6 +22,8 @@ import { Route as AuthenticatedAppSecurityRouteImport } from './routes/_authenti
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedAppOrganizationsIndexRouteImport } from './routes/_authenticated/app/organizations/index'
 import { Route as AuthenticatedAppOrganizationsOrganizationIdRouteImport } from './routes/_authenticated/app/organizations/$organizationId'
+import { Route as AuthenticatedAppUsersIndexRouteImport } from './routes/_authenticated/app/users/index'
+import { Route as AuthenticatedAppUsersUserIdRouteImport } from './routes/_authenticated/app/users/$userId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -90,6 +92,18 @@ const AuthenticatedAppOrganizationsOrganizationIdRoute =
     path: '/app/organizations/$organizationId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAppUsersIndexRoute =
+  AuthenticatedAppUsersIndexRouteImport.update({
+    id: '/app/users/',
+    path: '/app/users/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAppUsersUserIdRoute =
+  AuthenticatedAppUsersUserIdRouteImport.update({
+    id: '/app/users/$userId',
+    path: '/app/users/$userId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,7 +117,9 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
+  '/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
   '/app/organizations/': typeof AuthenticatedAppOrganizationsIndexRoute
+  '/app/users/': typeof AuthenticatedAppUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,7 +133,9 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
+  '/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsIndexRoute
+  '/app/users': typeof AuthenticatedAppUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,7 +151,9 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
+  '/_authenticated/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
   '/_authenticated/app/organizations/': typeof AuthenticatedAppOrganizationsIndexRoute
+  '/_authenticated/app/users/': typeof AuthenticatedAppUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,7 +169,9 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/app/'
     | '/app/organizations/$organizationId'
+    | '/app/users/$userId'
     | '/app/organizations/'
+    | '/app/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -163,7 +185,9 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/app'
     | '/app/organizations/$organizationId'
+    | '/app/users/$userId'
     | '/app/organizations'
+    | '/app/users'
   id:
     | '__root__'
     | '/'
@@ -178,7 +202,9 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/_authenticated/app/'
     | '/_authenticated/app/organizations/$organizationId'
+    | '/_authenticated/app/users/$userId'
     | '/_authenticated/app/organizations/'
+    | '/_authenticated/app/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -285,6 +311,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppOrganizationsOrganizationIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/app/users/': {
+      id: '/_authenticated/app/users/'
+      path: '/app/users'
+      fullPath: '/app/users/'
+      preLoaderRoute: typeof AuthenticatedAppUsersIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/users/$userId': {
+      id: '/_authenticated/app/users/$userId'
+      path: '/app/users/$userId'
+      fullPath: '/app/users/$userId'
+      preLoaderRoute: typeof AuthenticatedAppUsersUserIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -293,7 +333,9 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAppSecurityRoute: typeof AuthenticatedAppSecurityRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppOrganizationsOrganizationIdRoute: typeof AuthenticatedAppOrganizationsOrganizationIdRoute
+  AuthenticatedAppUsersUserIdRoute: typeof AuthenticatedAppUsersUserIdRoute
   AuthenticatedAppOrganizationsIndexRoute: typeof AuthenticatedAppOrganizationsIndexRoute
+  AuthenticatedAppUsersIndexRoute: typeof AuthenticatedAppUsersIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -302,8 +344,10 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppOrganizationsOrganizationIdRoute:
     AuthenticatedAppOrganizationsOrganizationIdRoute,
+  AuthenticatedAppUsersUserIdRoute: AuthenticatedAppUsersUserIdRoute,
   AuthenticatedAppOrganizationsIndexRoute:
     AuthenticatedAppOrganizationsIndexRoute,
+  AuthenticatedAppUsersIndexRoute: AuthenticatedAppUsersIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

@@ -1,6 +1,6 @@
 # Boilerplate TanStack Start + Convex
 
-Socle TypeScript pour une application web avec SSR, données temps réel et authentification sans mot de passe. Le parcours de référence est complet : connexion par code email, ajout de passkeys, sessions révocables et ressources privées persistées dans Convex.
+Socle TypeScript pour une application web avec SSR, données temps réel et authentification sans mot de passe. Le socle inclut pseudos, administration applicative, confirmation des actions sensibles et formulaires protégés contre les conflits. Le parcours de référence est complet : connexion par code email, ajout de passkeys, sessions révocables et ressources privées persistées dans Convex.
 
 ## Démarrer en local
 
@@ -66,6 +66,7 @@ Pour vérifier le serveur construit et sa CSP stricte sans viser une autre appli
 - [Créer une application depuis le template privé](docs/new-project.md)
 - [Adapter le socle à un nouveau projet](docs/adopting.md)
 - [Choisir le mode personnel ou organisations au démarrage](docs/project-start.md)
+- [Comptes, administration et formulaires réutilisables](docs/accounts.md)
 - [Sécurité et limites du socle](docs/security.md)
 - [Développement, tests et CI](docs/development.md)
 - [Résultats de vérification locale](docs/verification.md)

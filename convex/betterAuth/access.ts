@@ -4,7 +4,7 @@ import { ConvexError, v } from 'convex/values'
 import { z } from '../../shared/zod'
 import type { Doc } from './_generated/dataModel'
 import { mutation, query } from './_generated/server'
-import type { QueryCtx } from './_generated/server'
+import type { QueryCtx, MutationCtx } from './_generated/server'
 
 export const exportAudit = query({
   args: {
@@ -13,7 +13,13 @@ export const exportAudit = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(v.object({ event: v.string(), createdAt: v.number() })),
+    page: v.array(
+      v.object({
+        event: v.string(),
+        actorId: v.string(),
+        createdAt: v.number(),
+      })
+    ),
     isDone: v.boolean(),
     continueCursor: v.string(),
   }),
@@ -69,6 +75,7 @@ export const exportAudit = query({
     return {
       page: page.map((row) => ({
         event: row.event,
+        actorId: row.actorId,
         createdAt: row._creationTime,
       })),
       isDone: rows.length <= args.paginationOpts.numItems,
@@ -87,18 +94,27 @@ export const sessionAccessValidator = v.object({
   impersonatedBy: v.union(v.string(), v.null()),
 })
 
-function isBanned(user: Doc<'user'>) {
+export function isBanned(user: Doc<'user'>) {
   return (
     user.banned === true && (!user.banExpires || user.banExpires > Date.now())
   )
 }
 
-async function sessionAccess(
+export async function sessionAccess(
   ctx: QueryCtx,
   session: Doc<'session'>,
   user: Doc<'user'>
 ) {
-  if (session.expiresAt <= Date.now() || isBanned(user)) return null
+  const cutoff = await ctx.db
+    .query('sessionRevocations')
+    .withIndex('by_user', (q) => q.eq('userId', user._id))
+    .unique()
+  if (
+    session.expiresAt <= Date.now() ||
+    isBanned(user) ||
+    (cutoff && session.createdAt <= cutoff.revokedAt)
+  )
+    return null
   if (session.impersonatedBy) {
     const link = await ctx.db
       .query('impersonations')
@@ -202,6 +218,8 @@ export const verifySessionFactor = mutation({
       verifiedAt: Date.now(),
       expiresAt: session.expiresAt,
     }
+    if (previous?.previousSessionId)
+      await deletePreviousSession(ctx, previous.previousSessionId, args.userId)
     if (previous) await ctx.db.replace('sessionAssurances', previous._id, value)
     else await ctx.db.insert('sessionAssurances', value)
     await ctx.db.insert('authAudit', {
@@ -282,5 +300,125 @@ export const findUser = query({
     const userId = ctx.db.normalizeId('user', id)
     const user = userId ? await ctx.db.get('user', userId) : null
     return user ? { id: user._id, name: user.name, email: user.email } : null
+  },
+})
+
+// Only the server hook supplies IDs obtained from verified session cookies.
+export const replaceSession = mutation({
+  args: { previousId: v.string(), sessionId: v.string(), userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const oldId = ctx.db.normalizeId('session', args.previousId)
+    const newId = ctx.db.normalizeId('session', args.sessionId)
+    const previous = oldId ? await ctx.db.get('session', oldId) : null
+    const current = newId ? await ctx.db.get('session', newId) : null
+    if (
+      !previous ||
+      !current ||
+      previous._id === current._id ||
+      previous.userId !== args.userId ||
+      current.userId !== args.userId ||
+      previous.impersonatedBy ||
+      current.impersonatedBy
+    )
+      return null
+    const userId = ctx.db.normalizeId('user', args.userId)
+    const user = userId ? await ctx.db.get('user', userId) : null
+    const access = user ? await sessionAccess(ctx, current, user) : null
+    if (!access) return null
+    if (!access.mfaVerified) {
+      // A successful first factor must not retire a verified session before
+      // the new session independently proves its own second factor.
+      const pending = await ctx.db
+        .query('sessionAssurances')
+        .withIndex('by_session', (q) => q.eq('sessionId', current._id))
+        .unique()
+      const predecessor = await ctx.db
+        .query('sessionAssurances')
+        .withIndex('by_session', (q) => q.eq('sessionId', previous._id))
+        .unique()
+      // Repeated first-factor attempts must still retire the original verified
+      // session after MFA succeeds. Discard the intermediate pending session.
+      const previousSessionId = predecessor?.previousSessionId ?? previous._id
+      if (predecessor?.previousSessionId)
+        await deletePreviousSession(ctx, previous._id, args.userId)
+      const value = {
+        sessionId: current._id,
+        userId: args.userId,
+        previousSessionId,
+        verifiedAt: 0,
+        expiresAt: current.expiresAt,
+      }
+      if (pending) await ctx.db.replace('sessionAssurances', pending._id, value)
+      else await ctx.db.insert('sessionAssurances', value)
+      return null
+    }
+    await deletePreviousSession(ctx, previous._id, args.userId)
+    return null
+  },
+})
+
+async function deletePreviousSession(
+  ctx: MutationCtx,
+  previousId: Doc<'session'>['_id'],
+  userId: string
+) {
+  const previous = await ctx.db.get('session', previousId)
+  if (!previous || previous.userId !== userId || previous.impersonatedBy) return
+  const proof = await ctx.db
+    .query('sessionAssurances')
+    .withIndex('by_session', (q) => q.eq('sessionId', previousId))
+    .unique()
+  if (proof) await ctx.db.delete('sessionAssurances', proof._id)
+  await ctx.db.delete('session', previousId)
+}
+
+// The HTTP endpoint also requires possession of a signed, flow-bound backup
+// cookie. The pending session/link alone must never grant an MFA assurance.
+export const cancelPendingSignIn = mutation({
+  args: {
+    userId: v.string(),
+    sessionId: v.string(),
+    previousId: v.optional(v.string()),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId('session', args.sessionId)
+    const userId = ctx.db.normalizeId('user', args.userId)
+    const current = id ? await ctx.db.get('session', id) : null
+    const user = userId ? await ctx.db.get('user', userId) : null
+    const currentAccess =
+      current && user && current.userId === user._id
+        ? await sessionAccess(ctx, current, user)
+        : null
+    if (
+      !current ||
+      !user ||
+      !currentAccess ||
+      currentAccess.mfaVerified ||
+      currentAccess.impersonatedBy
+    )
+      throw new ConvexError({ code: 'UNAUTHENTICATED' })
+    const pending = await ctx.db
+      .query('sessionAssurances')
+      .withIndex('by_session', (q) => q.eq('sessionId', current._id))
+      .unique()
+    const previousId = args.previousId
+      ? ctx.db.normalizeId('session', args.previousId)
+      : null
+    const previous = previousId ? await ctx.db.get('session', previousId) : null
+    const access =
+      previous && user && previous.userId === user._id
+        ? await sessionAccess(ctx, previous, user)
+        : null
+    const restored = Boolean(
+      previous &&
+      pending?.previousSessionId === previous._id &&
+      access?.mfaVerified &&
+      !access.impersonatedBy
+    )
+    if (pending) await ctx.db.delete('sessionAssurances', pending._id)
+    await ctx.db.delete('session', current._id)
+    return restored
   },
 })

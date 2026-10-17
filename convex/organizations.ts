@@ -3,7 +3,11 @@ import { v } from 'convex/values'
 
 import { components, internal } from './_generated/api'
 import { mutation, query } from './_generated/server'
-import { requireRecentUser, requireUser } from './lib/auth'
+import {
+  requireAccountUser,
+  requireConfirmedUser,
+  requireUser,
+} from './lib/auth'
 import { requireOrganizationsEnabled } from './lib/modules'
 import { requireOrganizationPermission } from './lib/organizations'
 import {
@@ -63,7 +67,7 @@ export const create = mutation({
   returns: v.string(),
   handler: async (ctx, { name }) => {
     requireOrganizationsEnabled()
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     const organizationId = await ctx.runMutation(
       components.betterAuth.organizations.create,
@@ -87,7 +91,7 @@ export const invite = mutation({
   returns: v.string(),
   handler: async (ctx, input) => {
     requireOrganizationsEnabled()
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     const id = await ctx.runMutation(
       components.betterAuth.organizations.invite,
@@ -107,7 +111,7 @@ export const rename = mutation({
   returns: v.null(),
   handler: async (ctx, input) => {
     requireOrganizationsEnabled()
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     await ctx.runMutation(components.betterAuth.organizations.rename, {
       ...input,
@@ -142,7 +146,7 @@ export const cancelInvitation = mutation({
   returns: v.null(),
   handler: async (ctx, input) => {
     requireOrganizationsEnabled()
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     return await ctx.runMutation(
       components.betterAuth.organizations.cancelInvitation,
@@ -160,7 +164,7 @@ export const changeRole = mutation({
   returns: v.null(),
   handler: async (ctx, input) => {
     requireOrganizationsEnabled()
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     await ctx.runMutation(components.betterAuth.organizations.changeRole, {
       ...input,
@@ -180,7 +184,7 @@ export const removeMember = mutation({
   returns: v.null(),
   handler: async (ctx, input) => {
     requireOrganizationsEnabled()
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     await ctx.runMutation(components.betterAuth.organizations.removeMember, {
       ...input,
@@ -200,7 +204,9 @@ export const remove = mutation({
   returns: v.null(),
   handler: async (ctx, { organizationId }) => {
     requireOrganizationsEnabled()
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
+    await requireOrganizationPermission(ctx, organizationId, user._id, 'own')
+    await requireConfirmedUser(ctx, `organization.delete:${organizationId}`)
     await limitUserOperation(ctx, 'organizationWrite', user._id)
     await ctx.runMutation(components.betterAuth.organizations.remove, {
       organizationId,
@@ -218,7 +224,7 @@ export const exportResources = query({
   args: { organizationId: v.string(), paginationOpts: paginationOptsValidator },
   returns: resourcePageValidator,
   handler: async (ctx, { organizationId, paginationOpts }) => {
-    const user = await requireRecentUser(ctx)
+    const user = await requireAccountUser(ctx)
     await requireOrganizationPermission(ctx, organizationId, user._id, 'manage')
     return await listOrganizationResources(ctx, organizationId, paginationOpts)
   },

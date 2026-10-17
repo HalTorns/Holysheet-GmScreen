@@ -10,7 +10,6 @@ import { organization } from 'better-auth/plugins/organization'
 import { twoFactor } from 'better-auth/plugins/two-factor'
 
 import { appConfig } from '../shared/app-config'
-import { RECENT_AUTH_MAX_AGE_SECONDS } from '../shared/validation'
 import authConfig from './auth.config'
 
 export type AuthSettings = {
@@ -68,29 +67,47 @@ export function buildAuthOptions(
       ...(modules.google ? { google: modules.google } : {}),
       ...(modules.github ? { github: modules.github } : {}),
     },
-    user: { deleteUser: { enabled: false }, changeEmail: { enabled: false } },
+    user: {
+      deleteUser: { enabled: false },
+      changeEmail: { enabled: false },
+      additionalFields: {
+        profileVersion: {
+          type: 'number',
+          required: false,
+          input: false,
+          returned: false,
+        },
+        adminVersion: {
+          type: 'number',
+          required: false,
+          input: false,
+          returned: false,
+        },
+        nameKey: {
+          type: 'string',
+          required: false,
+          input: false,
+          returned: false,
+        },
+      },
+    },
     session: {
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
-      freshAge: RECENT_AUTH_MAX_AGE_SECONDS,
+      // Sensitive operations use operation-bound proofs, including passkey registration.
+      freshAge: 0,
       cookieCache: { enabled: false },
     },
+    // Quotas run after live cookie validation in authHooks, with isolated
+    // authenticated/anonymous identities and renewable per-operation budgets.
+    // Retain the existing database table when generating the stable auth schema.
     rateLimit: {
-      enabled: true,
+      enabled: settings === SCHEMA_AUTH_SETTINGS,
       storage: 'database',
-      window: 60,
-      max: 120,
-      customRules: {
-        // Public verification keys are also fetched by Convex. A shared bucket
-        // here lets anonymous reads prevent every user from validating a JWT.
-        '/convex/jwks': false,
-        '/sign-in/email-otp': { window: 60, max: 60 },
-        '/passkey/verify-authentication': { window: 60, max: 60 },
-      },
     },
     advanced: {
       // No trusted network perimeter is assumed, including direct Convex HTTP access.
-      // Better Auth then uses a shared per-path bucket; user/email quotas are separate.
+      // Application quotas do not trust client-supplied forwarding headers.
       ipAddress: { ipAddressHeaders: [] },
       useSecureCookies: settings.siteUrl.startsWith('https://'),
       defaultCookieAttributes: { httpOnly: true, sameSite: 'lax' },

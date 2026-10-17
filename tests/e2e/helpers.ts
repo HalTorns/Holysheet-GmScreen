@@ -5,6 +5,8 @@ import type { BrowserContext, Page } from '@playwright/test'
 import { ConvexHttpClient } from 'convex/browser'
 import { z } from 'zod'
 
+import { api } from '../../convex/_generated/api'
+
 export const SITE_URL =
   process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
 const MAILPIT_URL = 'http://127.0.0.1:8025'
@@ -123,6 +125,7 @@ export async function signInWithEmail(
   await codeField.fill(await waitForVerificationCode(email, previousMessages))
   await page.getByRole('button', { name: 'Se connecter', exact: true }).click()
   await expect(page).toHaveURL(`${SITE_URL}/app`)
+  await completeProfile(page)
   await expect(
     page.getByRole('button', { name: 'Nouvelle ressource', exact: true })
   ).toBeEnabled()
@@ -181,6 +184,7 @@ export async function installAuthenticator(page: Page) {
 }
 
 export async function addPasskey(page: Page, name: string): Promise<void> {
+  const mailbox = await identityMailbox(page)
   await page
     .getByRole('button', { name: 'Ajouter une passkey', exact: true })
     .click()
@@ -189,6 +193,7 @@ export async function addPasskey(page: Page, name: string): Promise<void> {
   await page
     .getByRole('button', { name: 'Enregistrer la passkey', exact: true })
     .click()
+  await finishIdentityConfirmation(page, mailbox)
   await expect(page.getByText(name, { exact: true })).toBeVisible()
 }
 
@@ -217,6 +222,7 @@ export async function exportAccountData(page: Page) {
 }
 
 export async function deleteAccount(page: Page): Promise<void> {
+  const mailbox = await identityMailbox(page)
   await page.goto('/app/security')
   await page
     .getByRole('button', { name: 'Supprimer mon compte', exact: true })
@@ -231,5 +237,77 @@ export async function deleteAccount(page: Page): Promise<void> {
       exact: true,
     })
     .click()
+  await finishIdentityConfirmation(page, mailbox)
   await expect(page).toHaveURL(`${SITE_URL}/`)
+}
+
+export async function completeProfile(page: Page) {
+  const client = await getAuthenticatedClient(page.context())
+  if (!(await client.query(api.auth.getCurrentUser, {}))?.requiresName) return
+  await expect(
+    page.getByRole('heading', { name: 'Comment doit-on vous appeler ?' })
+  ).toBeVisible()
+  await page
+    .getByLabel('Pseudo', { exact: true })
+    .fill(`Test-${randomUUID().slice(0, 16)}`)
+  await page.getByRole('button', { name: 'Continuer', exact: true }).click()
+  try {
+    await expect(
+      page.getByRole('heading', { name: 'Comment doit-on vous appeler ?' })
+    ).toHaveCount(0)
+  } catch {
+    const messages = await page
+      .locator('[role=alert], .field-error')
+      .allTextContents()
+    throw new Error(
+      `Le choix du pseudo n’a pas abouti : ${messages.join(' | ') || 'aucune erreur affichée'}`
+    )
+  }
+}
+export async function identityMailbox(page: Page) {
+  const client = await getAuthenticatedClient(page.context())
+  const user = await client.query(api.auth.getCurrentUser, {})
+  if (!user) throw new Error('Missing authenticated fixture')
+  return { email: user.email, previous: new Set(await readMailbox(user.email)) }
+}
+export async function finishIdentityConfirmation(
+  page: Page,
+  mailbox: { email: string; previous: Set<string> }
+) {
+  const code = await waitForVerificationCode(mailbox.email, mailbox.previous)
+  await page
+    .getByLabel('Code de confirmation d’identité', { exact: true })
+    .fill(code)
+  await page
+    .getByRole('button', { name: 'Confirmer et continuer', exact: true })
+    .click()
+  await expect(
+    page.getByRole('heading', { name: 'Confirmer votre identité', exact: true })
+  ).toHaveCount(0)
+}
+async function confirmClient(client: ConvexHttpClient, operation: string) {
+  const user = await client.query(api.auth.getCurrentUser, {})
+  if (!user) throw new Error('Missing authenticated fixture')
+  const previous = new Set(await readMailbox(user.email))
+  await client.action(api.identityConfirmation.request, { operation })
+  const code = await waitForVerificationCode(user.email, previous)
+  if (
+    !(await client.action(api.identityConfirmation.verify, { operation, code }))
+  )
+    throw new Error('Identity confirmation failed')
+}
+export async function deleteAccountWithClient(client: ConvexHttpClient) {
+  await confirmClient(client, 'account.delete')
+  await client.mutation(api.account.deleteAccount, { confirmation: 'DELETE' })
+}
+
+export async function deleteOrganizationWithClient(
+  client: ConvexHttpClient,
+  organizationId: string
+) {
+  await confirmClient(client, `organization.delete:${organizationId}`)
+  await client.mutation(api.organizations.remove, {
+    organizationId,
+    confirmation: 'DELETE',
+  })
 }

@@ -5,8 +5,8 @@ import { parseEnv } from 'node:util'
 import { expect, test } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
-import { api } from '../../convex/_generated/api'
 import {
+  deleteAccountWithClient,
   createEmail,
   createResource,
   getAuthenticatedClient,
@@ -86,9 +86,6 @@ test('le dashboard lit les données locales et ferme sa session admin sans persi
     ).toBeVisible()
   } finally {
     await adminContext.close()
-    if (client)
-      await client.mutation(api.account.deleteAccount, {
-        confirmation: 'DELETE',
-      })
+    if (client) await deleteAccountWithClient(client)
   }
 })

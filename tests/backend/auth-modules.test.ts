@@ -163,3 +163,92 @@ test('support access is read-only, revocable and expires even if Better Auth ext
     target.client.query(api.resources.list, listArgs)
   ).rejects.toThrow('UNAUTHENTICATED')
 })
+
+// The transport test owns cookie replacement; this case owns the MFA boundary:
+// a correct first factor is still a pending login, with no inherited assurance.
+test('same-browser replacement waits for the new session to verify its own factor', async () => {
+  const backend = createBackendTest()
+  const user = await createAuthenticatedUser(
+    backend,
+    'replace-mfa@example.test'
+  )
+  const factor = idSchema.parse(
+    await backend.mutation(components.betterAuth.adapter.create, {
+      input: {
+        model: 'twoFactor',
+        data: {
+          userId: user.userId,
+          secret: 'encrypted-fixture',
+          backupCodes: 'encrypted-fixture',
+          verified: true,
+        },
+      },
+    })
+  )._id
+  await backend.mutation(components.betterAuth.adapter.updateOne, {
+    input: {
+      model: 'user',
+      where: [{ field: '_id', value: user.userId }],
+      update: { twoFactorEnabled: true },
+    },
+  })
+  await backend.mutation(components.betterAuth.access.verifySessionFactor, {
+    userId: user.userId,
+    sessionId: user.sessionId,
+    factorId: factor,
+  })
+  const sessionId = idSchema.parse(
+    await backend.mutation(components.betterAuth.adapter.create, {
+      input: {
+        model: 'session',
+        data: {
+          userId: user.userId,
+          token: crypto.randomUUID(),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          expiresAt: Date.now() + 3_600_000,
+        },
+      },
+    })
+  )._id
+  const pending = backend.withIdentity({ ...user.identity, sessionId })
+  await backend.mutation(components.betterAuth.access.replaceSession, {
+    userId: user.userId,
+    previousId: user.sessionId,
+    sessionId,
+  })
+  expect(await pending.query(api.auth.getCurrentUser, {})).toBeNull()
+  expect(await user.client.query(api.auth.getCurrentUser, {})).not.toBeNull()
+  // A second first-factor attempt in the same browser must carry forward the
+  // original verified predecessor, without inheriting its factor assurance.
+  const retryId = idSchema.parse(
+    await backend.mutation(components.betterAuth.adapter.create, {
+      input: {
+        model: 'session',
+        data: {
+          userId: user.userId,
+          token: crypto.randomUUID(),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          expiresAt: Date.now() + 3_600_000,
+        },
+      },
+    })
+  )._id
+  const retry = backend.withIdentity({ ...user.identity, sessionId: retryId })
+  await backend.mutation(components.betterAuth.access.replaceSession, {
+    userId: user.userId,
+    previousId: sessionId,
+    sessionId: retryId,
+  })
+  expect(await retry.query(api.auth.getCurrentUser, {})).toBeNull()
+  expect(await user.client.query(api.auth.getCurrentUser, {})).not.toBeNull()
+  await backend.mutation(components.betterAuth.access.verifySessionFactor, {
+    userId: user.userId,
+    sessionId: retryId,
+    factorId: factor,
+  })
+  expect(await retry.query(api.auth.getCurrentUser, {})).not.toBeNull()
+  expect(await pending.query(api.auth.getCurrentUser, {})).toBeNull()
+  expect(await user.client.query(api.auth.getCurrentUser, {})).toBeNull()
+})
