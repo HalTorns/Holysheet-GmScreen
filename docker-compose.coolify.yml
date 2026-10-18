@@ -49,6 +49,21 @@ services:
       POSTGRES_URL: postgresql://convex:${POSTGRES_PASSWORD:?Set a persistent hex password}@postgres:5432
       # PostgreSQL is restricted to the private network on this Docker host.
       DO_NOT_REQUIRE_SSL: '1'
+      # Optional object storage. Empty region/buckets keep convex-data storage.
+      # Fill the endpoint, region, credentials and all five buckets to use Garage.
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      AWS_REGION: ${AWS_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      S3_STORAGE_EXPORTS_BUCKET: ${S3_STORAGE_EXPORTS_BUCKET:-}
+      S3_STORAGE_SNAPSHOT_IMPORTS_BUCKET: ${S3_STORAGE_SNAPSHOT_IMPORTS_BUCKET:-}
+      S3_STORAGE_MODULES_BUCKET: ${S3_STORAGE_MODULES_BUCKET:-}
+      S3_STORAGE_FILES_BUCKET: ${S3_STORAGE_FILES_BUCKET:-}
+      S3_STORAGE_SEARCH_BUCKET: ${S3_STORAGE_SEARCH_BUCKET:-}
+      # Garage: set these three compatibility options to true.
+      AWS_S3_FORCE_PATH_STYLE: ${AWS_S3_FORCE_PATH_STYLE:-false}
+      AWS_S3_DISABLE_CHECKSUMS: ${AWS_S3_DISABLE_CHECKSUMS:-false}
+      AWS_S3_DISABLE_SSE: ${AWS_S3_DISABLE_SSE:-false}
       DISABLE_BEACON: 'true'
       DISABLE_METRICS_ENDPOINT: 'true'
       REDACT_LOGS_TO_CLIENT: 'true'

@@ -42,7 +42,7 @@ Une liste est paginée ; une mutation s’exécute dans une transaction Convex. 
 
 ## Données et interface
 
-Convex persiste ses données dans PostgreSQL 18.6 en développement local et dans le Compose prévu pour Coolify. Les accès métier et l’authentification continuent de passer par Convex ; le volume Convex conserve les fichiers, modules et indexes. La [décision de stockage](decisions/storage.md) et le [guide de déploiement](deployment.md) décrivent la migration depuis SQLite et la séparation des environnements.
+Convex persiste ses données dans PostgreSQL 18.6 en développement local et dans le Compose prévu pour Coolify. Les accès métier et l’authentification continuent de passer par Convex ; le volume Convex conserve par défaut les fichiers, modules et indexes. En production, le Compose peut déléguer ce stockage objet à Garage/S3 sans remplacer PostgreSQL. La [décision de stockage](decisions/storage.md) et le [guide de déploiement](deployment.md) décrivent les options, la migration depuis SQLite et la séparation des environnements.
 
 TanStack Query et son intégration Convex fournissent le chargement SSR et la cohérence des données. Ne pas recopier les résultats dans `useState`. L’état local contient le dialogue ouvert, les champs en cours de saisie et les interactions de présentation.
 

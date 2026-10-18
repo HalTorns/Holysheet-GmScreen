@@ -104,6 +104,37 @@ L’image SSR utilise Node 24 compatible avec le contrat du projet, un build mul
 
 Le healthcheck du site vérifie son serveur et un fichier statique ; les fonctions et variables Convex doivent ensuite être publiées pour les pages authentifiées. Le Compose est une préparation de déploiement. TLS, domaines, règles du proxy, sauvegardes hors serveur et parcours réels en production restent à valider sur Coolify lors de la publication.
 
+### Stockage objet optionnel : Garage / S3
+
+Pour une configuration étape par étape, suivre le [petit guide Garage et Coolify](garage-coolify.md), qui distingue projet neuf et migration d’une instance existante.
+
+Le service `backend` du Compose Coolify peut utiliser un serveur S3 compatible existant, comme Garage dans le homelab. PostgreSQL conserve les documents et métadonnées ; S3 accueille les exports, imports de snapshots, modules, fichiers et indexes de recherche de Convex. Les accès applicatifs continuent de passer par Convex.
+
+Sans configuration S3, les variables restent vides et le backend utilise le volume `convex-data`. L’image épinglée active S3 lorsque `AWS_REGION` et les **cinq** noms de buckets sont non vides. Une configuration partielle de ces six valeurs conserve le stockage local avec un avertissement ; renseigner aussi l’endpoint et les deux identifiants pour une activation utilisable. Les options de compatibilité seules n’activent pas S3.
+
+Renseigner dans Coolify les variables suivantes **au runtime du backend**, en conservant les clés hors des build args et de `VITE_*` :
+
+| Variable | Valeur pour Garage |
+| --- | --- |
+| `S3_ENDPOINT_URL` | Endpoint API S3, par exemple `https://s3.example.com`, joignable depuis le backend ; inclure le protocole et le port éventuel |
+| `AWS_REGION` | Valeur exacte de `s3_region` dans Garage, souvent `garage` |
+| `AWS_ACCESS_KEY_ID` | Clé d’accès dédiée à ce projet/environnement |
+| `AWS_SECRET_ACCESS_KEY` | Secret de cette clé |
+| `S3_STORAGE_EXPORTS_BUCKET` | Par exemple `monprojet-convex-exports` |
+| `S3_STORAGE_SNAPSHOT_IMPORTS_BUCKET` | Par exemple `monprojet-convex-imports` |
+| `S3_STORAGE_MODULES_BUCKET` | Par exemple `monprojet-convex-modules` |
+| `S3_STORAGE_FILES_BUCKET` | Par exemple `monprojet-convex-files` |
+| `S3_STORAGE_SEARCH_BUCKET` | Par exemple `monprojet-convex-search` |
+| `AWS_S3_FORCE_PATH_STYLE` | `true`, pour adresser `endpoint/bucket/objet` |
+| `AWS_S3_DISABLE_CHECKSUMS` | `true`, pour les uploads multipart compatibles avec Garage |
+| `AWS_S3_DISABLE_SSE` | `true`, Garage ne prenant pas en charge les en-têtes de chiffrement SSE-S3 utilisés par défaut par Convex |
+
+Les trois options valent `false` par défaut et restent configurables pour d’autres fournisseurs S3. Le Compose transmet explicitement l’endpoint : renseigner celui du fournisseur pour toute configuration S3 active. Créer les cinq buckets privés avant activation et donner à la clé du projet les droits de lecture/écriture, suppression et multipart nécessaires sur ces buckets. Garage gère ces permissions via sa clé et ses buckets. Utiliser des buckets distincts par projet et environnement, puis redéployer le backend dans Coolify pour appliquer la configuration.
+
+L’endpoint est utilisé par les requêtes serveur et les URLs présignées générées par Convex ; il doit aussi être joignable par les consommateurs de ces URLs. Le volume `convex-data` est conservé, mais les objets S3 demandent leur propre sauvegarde cohérente avec PostgreSQL et la configuration. Voir [sauvegarde physique](backup-restore.md#sauvegarde-physique-auto-hébergée).
+
+**Instance existante : changer les variables ne migre pas les données.** Pour passer du stockage local à S3, ou revenir au stockage local, préparer un export Convex incluant les fichiers et une nouvelle instance vide configurée avec le stockage cible, puis importer et vérifier la restauration avant toute bascule. Conserver la source et ses volumes ; le Compose ne réalise ni migration ni réinitialisation. [Procédure officielle Convex](https://github.com/convex/convex-backend/blob/5c7cb5bc7db457290f1769f95f1d1340912f7fd7/self-hosted/advanced/s3_storage.md), [connexion à Garage](https://garagehq.deuxfleurs.fr/documentation/connect/cli/), [compatibilité S3 Garage](https://garagehq.deuxfleurs.fr/documentation/reference-manual/s3-compatibility/).
+
 ### Configuration de la cible publique
 
 Pour la production, déployer l’image backend officielle verrouillée sur un stockage persistant, puis configurer un reverse proxy HTTPS pour les deux origines API et actions HTTP. Adapter les origines publiques du backend à ces domaines ; le WebSocket doit traverser le proxy. Ne pas exposer le dashboard ou les accès d’administration sans protection réseau et authentification adaptées.
