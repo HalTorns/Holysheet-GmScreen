@@ -6,6 +6,8 @@ Socle TypeScript pour une application web avec SSR, données temps réel et auth
 
 Pour un nouveau produit, créer un dépôt **privé depuis le template** : suivre [la procédure nouveau projet](docs/new-project.md), qui garde secrets, données et configuration propres à chaque application.
 
+Pour démarrer avec un LLM, placer `PRD.md` à la racine du nouveau dépôt, puis copier [le prompt de démarrage](docs/start-prompt.md). Il guide la lecture des consignes, le setup OrbStack/Docker et la réalisation du premier parcours produit.
+
 Avant le premier domaine métier, suivre [le démarrage produit](docs/project-start.md) : renseigner [le brief](docs/product.md), décider de la propriété des données, choisir les modules nécessaires et définir une première fonctionnalité complète. [La carte des outils](docs/agent-patterns.md#choisir-les-outils-du-socle) relie chaque besoin aux outils et exemples déjà présents.
 
 Prérequis : Node.js 26.11.0 (versions prises en charge : `>=24.5 <27`), pnpm 11.8.0, Docker avec Compose et moteur Docker démarré.
