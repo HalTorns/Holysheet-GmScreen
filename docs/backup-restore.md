@@ -6,12 +6,17 @@ Une sauvegarde utilisable comprend les ressources **et** les données du composa
 
 Les exports de données Convex ne contiennent pas le code, les variables d’environnement ni les fonctions planifiées en attente. Une restauration ne relance donc pas implicitement tous les nettoyages ou travaux perdus ; les réconcilier avec les données restaurées. [Périmètre des sauvegardes](https://docs.convex.dev/database/backup-restore).
 
+Les suppressions de comptes et d’organisations conservent désormais une demande dans la table applicative `cleanupJobs`, créée dans la transaction qui ferme l’accès. Cette table fait partie des données à exporter/importer. Le cron `cleanup.resumePending` reprend toutes les cinq minutes au plus 20 demandes arrivées à échéance ; chaque traitement nettoie des lots bornés et retire la demande seulement à la fin. Une demande ne conserve l’ID et, pour un compte, l’email nécessaire au nettoyage des invitations que pendant ce travail. Des exécutions répétées restent idempotentes.
+
+Cette reprise nécessite le code et le cron de cette version ainsi que la table `cleanupJobs` dans l’archive. Une ancienne archive sans ces demandes ne permet pas de reconstituer automatiquement les suppressions commencées : terminer ces travaux sur la source avant l’export final, ou prévoir une réconciliation opérateur explicite. Les autres tâches différées et effets externes du produit ont leur propre protocole de reprise.
+
 ## Export local ou auto-hébergé
 
 Depuis le checkout configuré pour la cible locale dans `.env.local` :
 
 ```sh
-pnpm exec convex export --include-file-storage --path /private/tmp/boilerplate-snapshot.zip
+pnpm doctor
+pnpm exec convex export --include-file-storage --path /private/tmp/boilerplate-snapshot.zip --env-file .env.local
 unzip -l /private/tmp/boilerplate-snapshot.zip
 ```
 
@@ -43,14 +48,14 @@ L’exercice exécuté le 12 octobre 2026 a restauré et comparé **17 tables**,
 
 1. Provisionner une cible isolée, vide, avec la version de backend et le commit correspondant à la sauvegarde. Ne pas écraser le backend de développement utilisé par une autre personne.
 2. Restaurer sa configuration depuis le coffre. Adapter email et URLs à la cible de test, pour empêcher un envoi réel accidentel. Les secrets nécessaires au déchiffrement de l’auth doivent être disponibles.
-3. Sélectionner cette cible explicitement dans la configuration CLI puis importer l’archive :
+3. Préparer hors Git un fichier privé `convex.restore.env` (permissions `600`) avec l’URL et la clé de cette cible, vérifier son identité, puis importer l’archive avec ce fichier explicitement désigné :
 
    ```sh
-   pnpm exec convex import /private/tmp/boilerplate-snapshot.zip
+   pnpm exec convex import /private/tmp/boilerplate-snapshot.zip --env-file /chemin/prive/convex.restore.env
    ```
 
 4. Vérifier comptes, nombre de ressources, relations et propriété avec un échantillon fictif connu. Vérifier une reconnexion email, l’isolation des comptes et la révocation. La connexion avec une passkey existante exige un environnement compatible avec son RP ID ; une origine de staging arbitraire ne suffit pas.
-5. Réconcilier les tâches différées et nettoyer les sessions/OTP restaurés si leur réactivation n’est pas souhaitée. Enregistrer la date, la durée et le résultat de l’exercice.
+5. Vérifier la reprise des demandes `cleanupJobs` avec le cron déployé ; une demande n’est terminée qu’après disparition des données personnelles ou des données de l’organisation supprimée, et retrait de sa ligne. Réconcilier les autres tâches différées et nettoyer les sessions/OTP restaurés si leur réactivation n’est pas souhaitée. Enregistrer la date, la durée et le résultat de l’exercice.
 
 Pour une cible déjà remplie, `--replace` remplace les tables importées et `--replace-all` peut supprimer/vider d’autres tables. Ces opérations sont destructrices : faire une sauvegarde supplémentaire, identifier la cible et obtenir l’autorisation applicable avant de les exécuter. Le runbook ne les utilise pas par défaut. [CLI import](https://docs.convex.dev/cli/reference/import).
 

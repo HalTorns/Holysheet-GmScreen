@@ -2,6 +2,21 @@ import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
 export default defineSchema({
+  cleanupJobs: defineTable(
+    v.union(
+      v.object({
+        kind: v.literal('account'),
+        userId: v.string(),
+        email: v.string(),
+        retryAt: v.number(),
+      }),
+      v.object({
+        kind: v.literal('organization'),
+        organizationId: v.string(),
+        retryAt: v.number(),
+      })
+    )
+  ).index('by_retry_at', ['retryAt']),
   resources: defineTable({
     ownerId: v.string(),
     organizationId: v.optional(v.string()),

@@ -11,3 +11,4 @@ allowBuilds:
   core-js: false
 patchedDependencies:
   '@convex-dev/better-auth@0.12.5': patches/@convex-dev__better-auth@0.12.5.patch
+  playwright-core@1.64.0: patches/playwright-core@1.64.0.patch

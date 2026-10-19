@@ -2,17 +2,29 @@
 
 ## Documentation actuelle
 
-Utiliser Context7 MCP avant de coder contre une bibliothèque, un framework, un SDK, une API, une CLI ou un service cloud. Commencer par `resolve-library-id`, sélectionner l’identifiant pertinent puis appeler `query-docs` sur un concept précis. Utiliser une version spécifique lorsqu’elle est demandée. Préférer les sources officielles pour les compléments. Cette règle ne concerne pas la logique métier, les concepts généraux, les revues et refactorings sans changement d’API.
+Lire les versions de `package.json`, du lockfile et les correctifs de `docs/upgrades.md` avant de coder contre une dépendance. Utiliser Context7 MCP : `resolve-library-id`, puis `query-docs` sur un concept précis compatible avec la version installée. Si cette version n’est pas indexée, vérifier les types/sources installés et les docs officielles versionnées ; signaler l’écart. Une documentation plus récente n’autorise pas une mise à jour implicite. Cette règle ne concerne pas la logique métier, les concepts généraux, les revues et refactorings sans changement d’API.
+
+## Lire selon la tâche
+
+| Travail | Documents à lire |
+| --- | --- |
+| Nouveau produit | `docs/new-project.md`, `docs/project-start.md`, puis compléter `docs/product.md` et `docs/decisions/access-model.md` dans le nouveau projet |
+| Fonctionnalité ou reprise d’un produit | `docs/product.md`, s’il est renseigné, `docs/agent-patterns.md`, `docs/adopting.md` et les décisions du domaine |
+| Auth, comptes ou organisations | `docs/accounts.md`, `docs/auth-modules.md`, `docs/organizations.md` selon la surface touchée |
+| Intégration optionnelle | `docs/modules.md`, puis le guide du module retenu |
+| Exploitation ou dépendances | `docs/development.md`, `docs/deployment.md`, `docs/backup-restore.md` ou `docs/upgrades.md` selon le changement |
+
+Les guides courants et le code font autorité. `docs/review.md`, `docs/organizations-review.md` et `docs/verification.md` sont des comptes rendus historiques, pas des consignes pour implémenter le comportement actuel. Le brief produit contient les choix métier ; les règles de ce socle restent dans les guides spécialisés.
 
 ## Architecture
 
 Lire `README.md`, `docs/architecture.md` et `docs/security.md` avant une modification structurante.
 
-Au démarrage d’un nouveau produit, lire `docs/project-start.md` avant le premier domaine. Proposer une recommandation motivée : données individuelles → mode personnel ; propriété collective, invitations et droits d’équipe → organisations ; besoins mixtes → scopes distincts. Un SaaS ou un abonnement seul ne justifie pas les organisations. Consigner le choix dans `docs/decisions/access-model.md` du nouveau projet, conserver le défaut personnel si aucun besoin partagé n’est établi et respecter les choix explicites de l’utilisateur. Cette recommandation n’ajoute pas une étape systématique d’approbation ; préserver le mode et les données d’un projet existant jusqu’à une demande de changement.
+Avant le premier domaine d’un nouveau produit, suivre `docs/project-start.md` : cadrer le MVP, recommander personnel/organisations selon la propriété des données, consigner les décisions et choisir une première fonctionnalité complète. Conserver le défaut personnel sans besoin partagé établi. Avancer avec les informations disponibles, noter les hypothèses et ne demander que les informations qui changent réellement la solution. Préserver le mode et les données d’un projet existant jusqu’à une demande de changement.
 
 Pour adapter le produit ou ajouter/remplacer un domaine, lire `docs/adopting.md`. La configuration publique est dans `shared/app-config.ts`, la navigation dans `src/config/navigation.ts` ; aucun de ces fichiers n’autorise un accès backend. Intégrer les nouvelles données personnelles à l’export de compte, au nettoyage borné et aux fixtures de restauration.
 
-- Le backend métier est Convex. Les fonctions serveur TanStack Start gèrent le SSR et les intégrations qui en ont besoin ; elles ne remplacent pas les contrôles d’accès Convex.
+- Le backend métier est Convex ; PostgreSQL est sa persistance interne, sans accès SQL métier direct. Les fonctions serveur TanStack Start gèrent le SSR et les intégrations qui en ont besoin ; elles ne remplacent pas les contrôles d’accès Convex. Choisir les outils et exemples du dépôt dans `docs/agent-patterns.md` avant d’ajouter une dépendance.
 - Pour une fonction privée, valider la session via le helper d’authentification du projet puis contrôler les droits sur la ressource. Ne jamais considérer un identifiant client ou un garde de route comme une autorisation.
 - Utiliser les IDs stables pour la propriété ; l’adresse email est modifiable.
 - Valider les entrées et retours des fonctions publiques. Paginer les listes, indexer les accès et borner les opérations coûteuses.
@@ -28,7 +40,7 @@ Pour adapter le produit ou ajouter/remplacer un domaine, lire `docs/adopting.md`
 - `VITE_*` est public. Ne jamais exposer une clé de déploiement/admin, un cookie de session Better Auth, un OTP ou un secret dans Vite ou un retour SSR. Aucun token de session ou JWT dans une URL, un log ou un stockage navigateur persistant. Seul le module Magic Link autorise son jeton de vérification haché, valable cinq minutes et consommé une fois dans son URL email ; ne jamais journaliser ou persister cette URL.
 - Le JWT Convex de courte durée est un bearer destiné au navigateur authentifié. Son passage SSR via `initialToken` est permis uniquement pour la requête de cet utilisateur, avec une réponse `Cache-Control: private, no-store`. Ne pas le partager entre requêtes.
 - Ne pas lire ni afficher les secrets existants pour diagnostiquer un problème. Vérifier leur présence, leur longueur et leur portée avec des sorties masquées.
-- Ne pas journaliser les OTP, cookies, tokens de session ni clés de déploiement. Garder les traces, vidéos, captures et snapshots ARIA automatiques E2E désactivés dans les parcours d’auth ; conserver `PLAYWRIGHT_NO_COPY_PROMPT=1` dans le lanceur.
+- Ne pas journaliser les OTP, cookies, tokens de session ni clés de déploiement. Garder les traces, vidéos, captures et snapshots ARIA automatiques E2E désactivés dans les parcours d’auth ; conserver `PLAYWRIGHT_NO_COPY_PROMPT=1` et le patch Playwright décrit dans `docs/upgrades.md`, vérifié par le test de confidentialité au vrai runner.
 - Préserver les protections CSRF et origines. Pas de `disableCSRFCheck`, `disableOriginCheck`, origine globale ou wildcard d’hébergeur pour faire passer une intégration.
 - La surface HTTP Better Auth utilise les cookies signés et refuse `Authorization` avant les hooks des plugins (JWKS public excepté). Préserver ce garde : une conversion bearer tardive contournerait les contrôles préalables de session et de confirmation. Les JWT des appels métier directs à Convex restent distincts.
 - Pas de cache de session supplémentaire sans décision explicite sur la révocation. Les opérations courantes utilisent la session valide sans limite de cinq minutes. Les actions sensibles consomment une preuve serveur à usage unique liée à la session et à l’opération, obtenue dans le parcours sans perdre le formulaire ; lire `docs/accounts.md`. Le support technique conserve ses protections de session récente.
@@ -67,6 +79,6 @@ pnpm test:e2e:local modules
 
 Exécuter les vérifications adaptées à la modification, puis `git diff --check`. Rapporter les preuves réellement exécutées et les éventuelles limitations. Ne pas annoncer un déploiement, une restauration, une CI distante ou un test réussi sans résultat observable.
 
-Le setup est exclusivement local : refuser les sélecteurs Convex distants avant toute mutation, conserver les variables personnalisées et contrôler la propriété Docker du checkout. Utiliser `pnpm services:up`, `pnpm services:down` et `pnpm services:status`, qui désignent l’identité persistante du projet ; ne pas contourner ces protections avec une commande Compose générique. `pnpm doctor` fournit un diagnostic local en lecture seule.
+Le setup et `pnpm backend:dev` / `pnpm backend:push` sont exclusivement locaux : refuser les sélecteurs distants, conserver les variables personnalisées et contrôler la propriété Docker du checkout. Ces commandes backend refusent les arguments supplémentaires. La production suit `docs/deployment.md` avec une cible explicite. Utiliser `pnpm services:up`, `pnpm services:down` et `pnpm services:status` ; ne pas contourner les protections avec une commande Compose générique. `pnpm doctor` fournit un diagnostic local en lecture seule.
 
 Ne pas publier, pousser, fusionner ou réinitialiser les données sans autorisation applicable. Une restauration `--replace` et `docker compose down -v` sont destructrices ; ne jamais les utiliser comme dépannage de routine.

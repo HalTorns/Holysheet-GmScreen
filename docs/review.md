@@ -1,5 +1,7 @@
 # Revue du socle — 12 octobre 2026
 
+> **Historique, non prescriptif.** Ce rapport décrit la version revue le 12 octobre 2026. Ses outils, règles d’authentification, limites et résultats ne décrivent pas nécessairement le code actuel. Pour travailler sur le socle, suivre [AGENTS.md](../AGENTS.md), [les patterns](agent-patterns.md), [les comptes](accounts.md) et [la sécurité](security.md). Les actions sensibles actuelles utilisent une preuve ponctuelle liée à la session et à l’opération ; la session récente reste réservée au support.
+
 La revue porte sur l’ensemble du socle local : architecture SSR et cache, auth et autorisations Convex, formulaires, accessibilité, tests, dépendances, setup Docker, CI et restauration. Trois revues indépendantes ont examiné les standards/opérations, les exigences d’adaptation et le frontend/tests ; la revue principale a vérifié les frontières de sécurité et les corrections.
 
 L’exigence de référence est une base cohérente et sécurisée, « facile à faire changer en fonction des projets futurs ». Les problèmes ci-dessous ont été corrigés. Les services locaux existants et leurs secrets ont été conservés.

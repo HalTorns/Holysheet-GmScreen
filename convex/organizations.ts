@@ -212,7 +212,7 @@ export const remove = mutation({
       organizationId,
       actorId: user._id,
     })
-    await ctx.scheduler.runAfter(0, internal.cleanup.deletedOrganization, {
+    await ctx.runMutation(internal.cleanup.deletedOrganization, {
       organizationId,
     })
     await ctx.db.insert('securityEvents', { event: 'organization.deleted' })

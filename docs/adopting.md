@@ -24,7 +24,7 @@ Les écrans restent écrits en français. `locale` configure les dates et `langu
 
 Suivre [la procédure template privé](new-project.md) pour créer le dépôt, initialiser des secrets et données indépendants et ouvrir les services de développement dans OrbStack.
 
-Avant le premier domaine, suivre [le guide de choix du modèle d’accès](project-start.md). Le développeur ou l’agent recommande le mode à partir de la propriété individuelle ou collective des données, puis consigne le choix et ses preuves dans `docs/decisions/access-model.md` du nouveau projet. Un SaaS sans espace d’équipe conserve le mode personnel ; les organisations servent les invitations, rôles par équipe et données qui survivent au départ de leur créateur.
+Avant le premier domaine, suivre [le démarrage produit](project-start.md) : renseigner [le brief](product.md), délimiter le MVP, définir les domaines et choisir la première fonctionnalité complète. Consigner le modèle d’accès dans `docs/decisions/access-model.md`. [La carte des outils](agent-patterns.md#choisir-les-outils-du-socle) et ses exemples guident l’implémentation. Le mode personnel reste le défaut sans besoin collectif établi.
 
 Créer un dépôt et des environnements dédiés à partir des fichiers versionnés du socle. Les `.env.local`, `.env.docker`, volumes Docker et archives de sauvegarde appartiennent au projet d’origine ; ne pas les copier dans le nouveau produit. Exécuter `pnpm install --frozen-lockfile` et `pnpm setup` dans son checkout, puis adapter l’identité publique.
 
@@ -52,7 +52,7 @@ Chaque nouveau domaine personnel doit être intégré aux opérations de compte.
 | Contrat | Code à examiner lors de l’ajout ou du remplacement d’un domaine |
 | --- | --- |
 | Export de ses propres données | `convex/account.ts`, validateurs dans `convex/lib/validators.ts`, collecte et fichier dans `src/features/account/data-section.tsx` |
-| Suppression après fermeture du compte | `convex/cleanup.ts` : index par propriétaire, lots bornés et reprise planifiée jusqu’à la fin |
+| Suppression après fermeture du compte | `convex/cleanup.ts` : index par propriétaire et lots bornés ; `cleanupJobs` dans `convex/schema.ts` et reprise par `convex/crons.ts` |
 | Accès refusé dès la suppression | `convex/lib/auth.ts`, `convex/account.ts` : invalider l’utilisateur/session avant le nettoyage asynchrone |
 | Effets externes et objets stockés | Actions de nettoyage du domaine, droit sur les objets, idempotence, reprise des échecs |
 | Preuves d’isolation et de nettoyage | `tests/backend/account.test.ts`, tests du domaine, parcours E2E d’export/suppression |
@@ -60,7 +60,7 @@ Chaque nouveau domaine personnel doit être intégré aux opérations de compte.
 
 L’export actuel pagine les ressources. Avec plusieurs domaines, chaque collection doit avoir sa pagination et sa progression ; ne pas charger toutes les tables dans une seule query. Pour un volume important, prévoir un export en tâche bornée avec téléchargement privé plutôt qu’une accumulation illimitée dans le navigateur.
 
-La suppression du compte ferme l’accès immédiatement puis nettoie les données par lots. Ajouter le nouveau domaine aux lots, gérer ses effets externes et tester un utilisateur dépassant la taille d’un lot. Pour des données partagées, décider explicitement du transfert, de l’anonymisation ou de la conservation et refléter ce choix dans le texte de confirmation. La suppression de l’auth seule ne supprime pas les tables applicatives.
+La suppression du compte ferme l’accès immédiatement et crée une demande durable `cleanupJobs` dans la même transaction, puis nettoie les données par lots. La demande est supprimée après le dernier lot ; le cron reprend les demandes inachevées même si les tâches planifiées ont été perdues lors d’un import. Ajouter le nouveau domaine aux lots et conserver leur idempotence, gérer les effets externes et tester un utilisateur dépassant la taille d’un lot. Pour des données partagées, décider du transfert, de l’anonymisation ou de la conservation et refléter ce choix dans le texte de confirmation. La suppression de l’auth seule ne supprime pas les tables applicatives.
 
 Une sauvegarde n’est pas un export utilisateur. Le test de restauration doit contenir des données représentatives du domaine et vérifier leur présence après import, tout en préservant les secrets et la source. Ajouter un fichier non vide à cet exercice si le produit utilise du stockage ; le socle ne prouve actuellement que les tables et les fichiers effectivement présents dans le snapshot.
 

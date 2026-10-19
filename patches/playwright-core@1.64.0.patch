@@ -1,0 +1,36 @@
+diff --git a/lib/coreBundle.js b/lib/coreBundle.js
+index 784c72f35ba86abda9d937b092f51078b559f4e3..d3a6043eba9fe82f0a21501532cf51e1f4e0bf1d 100644
+--- a/lib/coreBundle.js
++++ b/lib/coreBundle.js
+@@ -25607,6 +25607,7 @@ var init_frames = __esm({
+         }
+       }
+       async _expectInternal(progress2, selector, options, lastIntermediateResult, noAbort) {
++        const omitAriaSnapshots = !!process.env.PLAYWRIGHT_NO_COPY_PROMPT;
+         const progressLog = (text2) => progress2.log(text2);
+         if (noAbort)
+           progress2 = nullProgress;
+@@ -25617,10 +25618,12 @@ var init_frames = __esm({
+         let matches = options.isNot;
+         let missingReceived = false;
+         const resolved = await progress2.race(this.selectors.callOnSelector({ selector: effectiveSelector, strict: !isArray, mainWorld, markTargets: "all" }, async ({ injected, elements, frameVisible }, options2) => {
++          if (options2.omitAriaSnapshots)
++            injected.ariaSnapshotForExpectFailure = () => void 0;
+           const isArray2 = options2.expression === "to.have.count" || options2.expression.endsWith(".array");
+-          const log2 = isArray2 ? `  locator resolved to ${elements.length} element${elements.length === 1 ? "" : "s"}` : `  locator resolved to ${injected.previewNode(elements[0])}`;
++          const log2 = isArray2 ? `  locator resolved to ${elements.length} element${elements.length === 1 ? "" : "s"}` : `  locator resolved to ${options2.omitAriaSnapshots ? `<${elements[0].localName}>` : injected.previewNode(elements[0])}`;
+           return { log: log2, ...await injected.expect(elements[0], options2, elements, frameVisible) };
+-        }, options));
++        }, { ...options, omitAriaSnapshots }));
+         if (resolved) {
+           received = resolved.result.received;
+           matches = resolved.result.matches;
+@@ -25649,7 +25652,7 @@ var init_frames = __esm({
+             matches = options.isNot;
+             missingReceived = true;
+           }
+-          if (matches === options.isNot && !isArray) {
++          if (matches === options.isNot && !isArray && !omitAriaSnapshots) {
+             const context = await progress2.race(this.context(mainWorld ? "main" : "utility"));
+             const injected = await progress2.race(context.injectedScript());
+             const ariaSnapshot = await progress2.race(injected.evaluate((injected2) => {

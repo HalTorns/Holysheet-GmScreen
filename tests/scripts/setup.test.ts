@@ -55,7 +55,7 @@ if (args.includes('publish=' + process.env.TEST_PORT_NUMBER) && process.env.TEST
 if (args.includes('inspect')) console.log(process.env.TEST_COMPOSE_OWNER || process.cwd())
 `
   await Promise.all(
-    ['docker', 'pnpm'].map((name) =>
+    ['docker', 'pnpm', 'convex'].map((name) =>
       writeFile(join(binaries, name), fakeCommand, { mode: 0o700 })
     )
   )
@@ -109,6 +109,88 @@ async function commands(path: string): Promise<string> {
     return ''
   }
 }
+
+async function backendCommand(
+  local: Awaited<ReturnType<typeof fixture>>,
+  mode: 'dev' | 'push',
+  environment: Record<string, string> = {},
+  args: string[] = []
+) {
+  const manifest = z
+    .object({ scripts: z.record(z.string(), z.string()) })
+    .parse(
+      JSON.parse(await readFile(join(projectRoot, 'package.json'), 'utf-8'))
+    )
+  const script = manifest.scripts[`backend:${mode}`]
+  if (!script) throw new Error('Missing backend command')
+  // Execute the actual package script; only external Docker/CLI processes are fake.
+  return spawnSync(
+    '/bin/sh',
+    ['-c', `${script} "$@"`, 'backend-test', ...args],
+    {
+      cwd: local.directory,
+      env: { ...local.environment, ...environment },
+      encoding: 'utf-8',
+      timeout: 5000,
+    }
+  )
+}
+
+test.each(['dev', 'push'] as const)(
+  'backend:%s refuses inherited remote selectors before invoking Convex',
+  async (mode) => {
+    const local = await fixture()
+    expect(setup(local).status).toBe(0)
+    await writeFile(local.log, '')
+    const result = await backendCommand(local, mode, {
+      CONVEX_DEPLOY_KEY: 'development-only-remote-selection',
+    })
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('remote Convex configuration')
+    expect(await commands(local.log)).toBe('')
+  }
+)
+
+test.each(['dev', 'push'] as const)(
+  'backend:%s pins the owned local deployment and rejects target overrides',
+  async (mode) => {
+    const local = await fixture()
+    expect(setup(local).status).toBe(0)
+    await writeFile(local.log, '')
+    const rejected = await backendCommand(local, mode, {}, ['--prod'])
+    expect(rejected.status).toBe(1)
+    expect(await commands(local.log)).toBe('')
+    const accepted = await backendCommand(local, mode)
+    expect(accepted.status, accepted.stderr).toBe(0)
+    const invocations = (await commands(local.log))
+      .split('\n')
+      .filter(Boolean)
+      .map((line) =>
+        z
+          .object({
+            args: z.array(z.string()),
+            localUrl: z.string().optional(),
+            cloudSelected: z.boolean(),
+          })
+          .parse(JSON.parse(line))
+      )
+    const invocation = invocations.find(({ args: commandArgs }) =>
+      commandArgs.includes('convex')
+    )
+    expect(invocation).toMatchObject({
+      localUrl: 'http://127.0.0.1:3210',
+      cloudSelected: false,
+    })
+    expect(invocation?.args).toEqual([
+      'exec',
+      'convex',
+      'dev',
+      ...(mode === 'push' ? ['--once'] : []),
+      '--env-file',
+      join(await realpath(local.directory), '.env.local'),
+    ])
+  }
+)
 
 test.each([
   ['process', 'CONVEX_DEPLOY_KEY'],
@@ -208,7 +290,12 @@ test('une configuration Docker copiée depuis un autre checkout est refusée ava
   expect(await commands(copy.log)).toBe('')
 })
 
-test.each(['test-organizations.mjs', 'dashboard.mjs', 'migrate-postgres.mjs'])(
+test.each([
+  'test-organizations.mjs',
+  'dashboard.mjs',
+  'migrate-postgres.mjs',
+  'backend-local.mjs',
+])(
   'le lanceur %s refuse un checkout copié avant tout accès privé',
   async (script) => {
     const original = await fixture()
@@ -218,7 +305,10 @@ test.each(['test-organizations.mjs', 'dashboard.mjs', 'migrate-postgres.mjs'])(
       await copyFile(join(original.directory, name), join(copy.directory, name))
     const result = spawnSync(
       process.execPath,
-      [join(copy.directory, 'scripts', script)],
+      [
+        join(copy.directory, 'scripts', script),
+        ...(script === 'backend-local.mjs' ? ['push'] : []),
+      ],
       {
         cwd: copy.directory,
         env: copy.environment,

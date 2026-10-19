@@ -12,6 +12,8 @@ Chaque nouveau checkout reçoit un projet Compose distinct dans `.env.docker`, l
 
 `pnpm setup` refuse un sélecteur Convex distant dans le shell, `.env` ou `.env.local` avant toute mutation. Il conserve les variables propres au projet et leurs lignes existantes dans `.env.local`, puis configure uniquement les valeurs gérées du socle local. Les commandes Docker passent un fichier et un nom de projet explicites ; utiliser les wrappers plutôt qu’un `docker compose` sans configuration.
 
+`pnpm backend:dev` et `pnpm backend:push` passent par `scripts/backend-local.mjs` : refus des sélecteurs distants et options supplémentaires, vérification de l’identité Docker/PostgreSQL et des ports, puis invocation de Convex avec le fichier `.env.local` explicitement désigné et un environnement local. Le watcher relaie son interruption au CLI. Une publication distante suit [deployment.md](deployment.md), sans modifier ces commandes locales.
+
 ## Contrats de test
 
 Les tests backend Convex protègent les validations, droits de propriétaire, sessions et quotas avec des cas autorisés et interdits. Les E2E protègent les risques de transport et de cycle de vie : SSR anonyme, code réellement envoyé, cookies, CRUD persistant, isolation via API directe, révocation entre navigateurs, cérémonie WebAuthn virtuelle, export privé et suppression de compte. Le test de restauration crée des données et une passkey réelles avant l’exercice sur un backend jetable.
@@ -30,7 +32,7 @@ Les suites utilisent les quotas d’authentification réels. Laisser au moins un
 
 Pour vérifier le build SSR et la CSP avec nonce, arrêter Vite, lancer `pnpm build` puis `PLAYWRIGHT_PRODUCTION=1 pnpm test:e2e`. Le lanceur démarre alors `pnpm start`. Le test de sécurité vérifie le refus d’une origine étrangère, l’hydratation sous CSP et le blocage d’un script injecté sans nonce.
 
-Traces réseau, vidéo, captures et instantanés ARIA automatiques d’échec sont désactivés pour éviter d’archiver cookies et codes saisis. Le lanceur définit `PLAYWRIGHT_NO_COPY_PROMPT=1` : Playwright 1.64 produit autrement un `error-context.md` contenant les valeurs des champs, même avec les traces et captures désactivées. Vérifier ce mécanisme lors d’une montée de version. Pour un diagnostic visuel, utiliser des données fictives et des captures ciblées après authentification ; ne pas publier de trace d’auth brute.
+Traces réseau, vidéo et captures sont désactivées pour éviter d’archiver cookies et codes saisis. Le lanceur définit `PLAYWRIGHT_NO_COPY_PROMPT=1` et le [correctif Playwright](upgrades.md#confidentialité-des-échecs-playwright) bloque aussi les snapshots ARIA automatiques des assertions : le flag seul ne ferme pas ce second chemin dans 1.64.0. Un `error-context.md` peut encore contenir le code et les erreurs du test ; son existence seule ne prouve pas une capture de page. Le test `tests/scripts/playwright-privacy.test.ts` provoque deux échecs réels avec une valeur synthétique et vérifie son absence des sorties et artefacts. Vérifier ce contrat lors d’une montée de version. Pour un diagnostic visuel, utiliser des données fictives et des captures ciblées après authentification ; ne pas publier de trace d’auth brute ni faire d’assertion dont le message expose un OTP/token.
 
 ## CI
 

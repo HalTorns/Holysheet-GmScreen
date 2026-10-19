@@ -1,5 +1,7 @@
 # Revue du module organisations — 13 octobre 2026
 
+> **Historique, non prescriptif.** Ce rapport conserve les constats et preuves de la revue du 13 octobre 2026. Les consignes actuelles sont dans [AGENTS.md](../AGENTS.md), [organisations](organizations.md) et [le démarrage produit](project-start.md). Ses résultats ne certifient pas une modification ultérieure.
+
 ## Périmètre et méthode
 
 Revue de l’API Convex publique, du composant Better Auth Local Install, des indexes, des quatre rôles, des scopes personnel/partagé, des invitations, des exports, de la suppression de compte/organisation, des interfaces, des tests et du lanceur local. Le besoin de référence est celui du starter : organisations optionnelles, personnel par défaut, isolation et permissions dans les deux modes, puis recommandation du modèle adapté au démarrage d’un nouveau projet.

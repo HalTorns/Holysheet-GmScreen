@@ -1,8 +1,8 @@
 # Configurer Garage pour Convex dans Coolify
 
-Ce guide relie le backend Convex au Garage déjà installé dans le homelab. PostgreSQL conserve les données ; Garage stocke les fichiers, modules, indexes, imports et exports. Aucun conteneur Garage supplémentaire n’est nécessaire.
+Ce guide relie le backend Convex à un service Garage existant. PostgreSQL conserve les données ; Garage stocke les fichiers, modules, indexes, imports et exports. Utiliser une clé et des buckets dédiés au produit et à l’environnement. Les domaines ci-dessous sont des exemples à remplacer par ceux de la cible.
 
-**Ton instance actuelle contient déjà des comptes : utilise une nouvelle ressource Coolify avec des volumes vides pour la migration.** Garde la ressource actuelle et ses volumes. Ajouter les variables S3 sur cette instance ne déplace pas ses objets. Pour un futur projet neuf, les étapes d’export/import sont inutiles. [Migration du stockage Convex](https://github.com/convex/convex-backend/blob/5c7cb5bc7db457290f1769f95f1d1340912f7fd7/self-hosted/advanced/s3_storage.md).
+**Si la source contient déjà des comptes, données ou objets, utiliser une nouvelle ressource Coolify avec des volumes vides pour la migration.** Conserver la source et ses volumes. Ajouter les variables S3 sur une instance ne déplace pas ses objets. Pour un projet neuf, les étapes d’export/import sont inutiles. [Migration du stockage Convex](https://github.com/convex/convex-backend/blob/5c7cb5bc7db457290f1769f95f1d1340912f7fd7/self-hosted/advanced/s3_storage.md).
 
 ## 1. Repérer les paramètres Garage
 
@@ -106,7 +106,7 @@ L’export ne contient ni le code ni les variables/secrets applicatifs : l’ét
 1. Sur la cible, vérifier les logs backend : absence d’erreurs S3 de signature, région, accès ou bucket manquant. Un service sain seul ne prouve pas un accès S3 fonctionnel.
 2. Réaliser un export Convex de la cible avec `--include-file-storage` et `--env-file /chemin/prive/convex.s3.env`, vers un nouveau ZIP privé. Vérifier son ouverture et la présence d’objets dans `monprojet-prod-convex-exports` avec l’outil Garage habituel.
 3. Si l’application possède des fichiers, tester aussi un upload puis un téléchargement ; sinon, cette vérification restera à faire lors de l’ajout du module.
-4. Pour la migration, transférer les domaines à la cible : site `app.nathandigidev.fr`, API `convex.nathandigidev.fr`, actions HTTP `convex-http.nathandigidev.fr`. Rétablir les origines finales `VITE_*` et `SITE_URL`, avec `PASSKEY_RP_ID=app.nathandigidev.fr`. Reconstruire/redéployer après changement des `VITE_*`, puis vérifier connexion email, passkey existante, ressources et actions sensibles avant de rouvrir le trafic.
+4. Pour la migration, transférer **les domaines existants du produit** à la cible. Exemples à remplacer : site `app.example.com`, API `convex.example.com`, actions HTTP `convex-http.example.com`. Rétablir les origines finales `VITE_*` et `SITE_URL` avec le RP ID existant (par exemple `PASSKEY_RP_ID=app.example.com`). Ne pas changer le RP ID en recopiant un exemple. Reconstruire/redéployer après changement des `VITE_*`, puis vérifier connexion email, passkey existante, ressources et actions sensibles avant de rouvrir le trafic.
 5. Sauvegarder ensemble PostgreSQL, les cinq buckets et la configuration. Garage en fonctionnement ne remplace pas une sauvegarde indépendante.
 
 Pour les projets sans S3, laisser endpoint, région, clés et buckets vides : le volume local continue d’être utilisé. Après une migration et de nouvelles écritures sur S3, revenir au stockage local demande une nouvelle migration ; retirer les variables ne transfère aucune donnée.

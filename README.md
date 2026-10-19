@@ -6,6 +6,8 @@ Socle TypeScript pour une application web avec SSR, données temps réel et auth
 
 Pour un nouveau produit, créer un dépôt **privé depuis le template** : suivre [la procédure nouveau projet](docs/new-project.md), qui garde secrets, données et configuration propres à chaque application.
 
+Avant le premier domaine métier, suivre [le démarrage produit](docs/project-start.md) : renseigner [le brief](docs/product.md), décider de la propriété des données, choisir les modules nécessaires et définir une première fonctionnalité complète. [La carte des outils](docs/agent-patterns.md#choisir-les-outils-du-socle) relie chaque besoin aux outils et exemples déjà présents.
+
 Prérequis : Node.js 26.11.0 (versions prises en charge : `>=24.5 <27`), pnpm 11.8.0, Docker avec Compose et moteur Docker démarré.
 
 ```sh
@@ -35,7 +37,7 @@ Pendant les changements backend, lancer `pnpm backend:dev` dans un second termin
 | Commande | Usage |
 | --- | --- |
 | `pnpm dev` | Frontend avec rechargement |
-| `pnpm backend:dev` | Surveiller et déployer les modifications Convex |
+| `pnpm backend:dev` | Surveiller et déployer les modifications Convex locales |
 | `pnpm backend:push` | Déployer les fonctions locales une fois |
 | `pnpm dashboard` | Ouvrir le dashboard admin Convex local |
 | `pnpm doctor` | Vérifier configuration et santé des services |
@@ -49,6 +51,8 @@ Pendant les changements backend, lancer `pnpm backend:dev` dans un second termin
 | `pnpm services:down` | Arrêter les conteneurs en conservant les volumes |
 
 Avant le premier E2E : `pnpm exec playwright install chromium`. Les tests requièrent un backend initialisé par `pnpm setup` et démarrent le frontend automatiquement.
+
+Les commandes `backend:dev` et `backend:push` vérifient la cible locale et la propriété Docker, désignent explicitement `.env.local` et refusent les arguments supplémentaires. Pour une publication distante, suivre [la procédure dédiée](docs/deployment.md).
 
 Pour vérifier le serveur construit et sa CSP stricte sans viser une autre application : `pnpm test:e2e:local` choisit un port libre, construit son serveur et restaure l’origine backend. Ajouter `organizations` ou `modules` pour ces parcours optionnels. La CI exécute les suites directement sur son propre serveur de production et le build de `pnpm check`.
 
@@ -65,18 +69,20 @@ Pour vérifier le serveur construit et sa CSP stricte sans viser une autre appli
 - [Architecture et conventions](docs/architecture.md)
 - [Créer une application depuis le template privé](docs/new-project.md)
 - [Adapter le socle à un nouveau projet](docs/adopting.md)
-- [Choisir le mode personnel ou organisations au démarrage](docs/project-start.md)
+- [Structurer le produit, choisir les droits et livrer le premier parcours](docs/project-start.md)
+- [Brief produit à renseigner dans le nouveau projet](docs/product.md)
+- [Outils, exemples et matrice de validation pour les agents](docs/agent-patterns.md)
 - [Comptes, administration et formulaires réutilisables](docs/accounts.md)
 - [Sécurité et limites du socle](docs/security.md)
 - [Développement, tests et CI](docs/development.md)
-- [Résultats de vérification locale](docs/verification.md)
-- [Revue complète et corrections](docs/review.md)
+- [Historique des vérifications locales](docs/verification.md)
+- [Revue historique du socle et corrections](docs/review.md)
 - [Déploiement cloud et auto-hébergé](docs/deployment.md)
 - [Sauvegarde et restauration](docs/backup-restore.md)
 - [Mises à jour compatibles](docs/upgrades.md)
 - [Modules optionnels](docs/modules.md)
 - [Organisations et rôles optionnels](docs/organizations.md)
-- [Revue de l’isolation et des permissions](docs/organizations-review.md)
+- [Revue historique de l’isolation et des permissions](docs/organizations-review.md)
 
 Les organisations et rôles sont intégrés mais désactivés par défaut. Activer `ORGANIZATIONS_ENABLED=true` dans Convex pour ajouter des espaces partagés avec propriétaires, administrateurs, membres et lecteurs. L’espace personnel reste disponible. Le [guide du module](docs/organizations.md) décrit permissions, invitations et cycle de vie des données.
 

@@ -40,6 +40,8 @@ Le [module organisations](organizations.md) conserve le mode personnel par défa
 
 Une liste est paginée ; une mutation s’exécute dans une transaction Convex. Réserver les actions aux effets externes. Un appel email ou paiement ne doit pas faire partie d’une mutation rejouable ; prévoir idempotence et reprise pour ces effets.
 
+La suppression d’un compte ou d’une organisation ferme ses accès et enregistre une demande `cleanupJobs` dans la même transaction. Les lots de `convex/cleanup.ts` retirent cette demande à la fin ; un cron relance les demandes inachevées, y compris après une restauration sans tâches planifiées. Garder ce contrat pour chaque domaine ajouté ; le [guide de sauvegarde](backup-restore.md) précise la limite des anciennes archives.
+
 ## Données et interface
 
 Convex persiste ses données dans PostgreSQL 18.6 en développement local et dans le Compose prévu pour Coolify. Les accès métier et l’authentification continuent de passer par Convex ; le volume Convex conserve par défaut les fichiers, modules et indexes. En production, le Compose peut déléguer ce stockage objet à Garage/S3 sans remplacer PostgreSQL. La [décision de stockage](decisions/storage.md) et le [guide de déploiement](deployment.md) décrivent les options, la migration depuis SQLite et la séparation des environnements.

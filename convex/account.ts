@@ -120,7 +120,7 @@ export const deleteAccount = mutation({
     await ctx.runMutation(components.betterAuth.lifecycle.deleteUser, {
       userId: user._id,
     })
-    await ctx.scheduler.runAfter(0, internal.cleanup.deletedAccount, {
+    await ctx.runMutation(internal.cleanup.deletedAccount, {
       userId: user._id,
       email: user.email,
     })

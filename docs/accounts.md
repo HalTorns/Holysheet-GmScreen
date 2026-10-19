@@ -47,6 +47,8 @@ La génération ne doit modifier que le schéma prévu (`nameKey`, `profileVersi
 
 L’export personnel inclut le pseudo, le rôle, la suspension et la date de coupure des sessions, ainsi que les métadonnées des actions comme acteur/cible sans identité d’un tiers. Les preuves de confirmation, codes, facteurs secrets et jetons ne sont jamais exportés. Suppression et expiration nettoient les nouvelles tables par lots. La restauration compare toutes les tables du snapshot ; la fixture réelle couvre profil, audit, coupure de sessions et confirmation en attente.
 
+La fermeture du compte enregistre atomiquement une demande de nettoyage `cleanupJobs`, contenant l’ID et l’email nécessaires aux lots. Le cron reprend les demandes inachevées après restauration ou échec d’une tâche ; le dernier lot efface la demande et ses métadonnées. Les anciennes archives sans cette table demandent une réconciliation opérateur. Voir [sauvegarde/restauration](backup-restore.md).
+
 ## Confirmation d’identité dans le parcours
 
 Les lectures et exports personnels, le pseudo, la gestion courante des sessions et des organisations, et l’administration n’imposent aucune reconnexion après cinq minutes. Une session conserve son expiration normale et reste révocable immédiatement.

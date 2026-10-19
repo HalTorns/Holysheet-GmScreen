@@ -1,5 +1,27 @@
 # Vérifications du socle
 
+> **Historique des preuves, non prescriptif.** Chaque entrée décrit les commandes et résultats observés à sa date et dans son périmètre. Un ancien succès ne valide pas le checkout courant ou la production. Pour choisir les contrôles actuels, suivre [la matrice agents](agent-patterns.md#choisir-les-vérifications) et [development.md](development.md).
+
+## Corrections d’audit et démarrage produit — 19 octobre 2026
+
+Périmètre : modifications locales issues de l’audit du commit `2e0b94d`. Le démarrage formalise brief, MVP, domaines, propriété des données, modules retenus et première fonctionnalité complète. Les consignes agents désignent les outils/exemples du dépôt, les versions installées et les validations adaptées ; les rapports antérieurs sont explicitement historiques et les exemples Garage sont génériques.
+
+Les scripts backend locaux refusent les cibles distantes, les options supplémentaires et un checkout copié avant l’appel CLI. Les suppressions créent une demande durable dans la même transaction que la fermeture d’accès, puis le cron reprend les travaux inachevés. Le correctif Playwright ferme les snapshots ARIA et les aperçus HTML automatiques des assertions sous le flag de confidentialité.
+
+| Vérification | Résultat observé |
+| --- | --- |
+| Régressions des commandes backend | Quatre cas ont échoué avec les anciens scripts ; refus des sélecteurs/options puis sélection locale vérifiés après correction, ainsi que le refus d’un checkout copié |
+| Reprise après perte du scheduler | Deux tests au point d’entrée réel de suppression, compte et organisation : échec avant enregistrement transactionnel ; reprise de 205 ressources après copie des données applicatives sans tâches planifiées, avec préservation des données étrangères |
+| Confidentialité Playwright | Valeur synthétique exposée avant patch ; le cas avec attribut HTML `value` a aussi échoué après fermeture des seuls snapshots ARIA. Le vrai runner vérifie désormais deux échecs intentionnels sans cette valeur dans les sorties ou artefacts, puis efface le dossier jetable |
+| Backend local | `pnpm backend:push` réussi, index `cleanupJobs.by_retry_at` appliqué ; `pnpm backend:dev` lancé jusqu’au signal de disponibilité puis interrompu |
+| Qualité finale | `pnpm check` réussi : types, lint, formatage, Knip, **83 tests backend/unitaires/scripts**, **4 tests Browser Mode**, build SSR |
+| E2E personnel | `pnpm test:e2e:local` : **19 réussis**, 8 réservés aux suites optionnelles, 1.6m |
+| E2E organisations | Dernière passe `pnpm test:e2e:local organizations` : **19 réussis**, 8 réservés aux suites optionnelles, 1.8m |
+
+La première passe organisations a rencontré un timeout dans le choix initial du pseudo, avant le scénario de changement de compte. Trois répétitions ciblées avec les organisations actives, puis la relance complète ont réussi. Aucun délai ni garde d’authentification n’a été assoupli et le parcours n’a pas été modifié pour contourner cet échec ; sa cause reste indéterminée.
+
+Trois relectures indépendantes ont examiné standards/documentation, conformité à la demande et backend/sécurité/tests, sans constat actionnable restant ; le patch de confidentialité a été relu séparément. La reprise sans scheduler est prouvée au niveau métier ; l’E2E de restauration reste propriétaire de l’import réel des tables et du composant d’auth. Les suites modules, les échanges SaaS et la production n’ont pas été validés à nouveau dans ce passage. La protection réseau publique reste à configurer et vérifier sur l’hébergement selon [deployment.md](deployment.md).
+
 ## Revue approfondie des comptes et sessions — 17 octobre 2026
 
 Périmètre : 96 fichiers modifiés ou ajoutés, incluant les fichiers générés. Trois revues indépendantes ont examiné les règles du dépôt, le cahier des charges et la sécurité/backend/tests ; l’intégration navigateur a été relue séparément. Les constats ci-dessous sont corrigés et aucun blocage confirmé ne reste dans ce périmètre.

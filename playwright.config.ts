@@ -5,7 +5,7 @@ const port = new URL(baseURL).port || '3000'
 const production =
   !process.env.PLAYWRIGHT_DEVELOPMENT &&
   Boolean(process.env.CI || process.env.PLAYWRIGHT_PRODUCTION)
-// Playwright's automatic failure snapshot can include live OTP input values.
+// The pinned core patch also applies this flag to matcher-level ARIA snapshots.
 process.env.PLAYWRIGHT_NO_COPY_PROMPT = '1'
 
 export default defineConfig({

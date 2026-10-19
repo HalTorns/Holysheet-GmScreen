@@ -20,6 +20,8 @@
 
 La CI de validation du dépôt n’a besoin d’aucun secret externe. Configurer un pipeline de publication séparé après choix de l’hébergeur ; aucune publication automatique n’est incluse.
 
+`pnpm backend:dev` et `pnpm backend:push` sont réservés au backend local du checkout et refusent les sélecteurs distants ainsi que les options supplémentaires. Utiliser la procédure de publication ci-dessous avec son environnement explicitement dédié ; ne pas désactiver les gardes locales pour publier.
+
 `ORGANIZATIONS_ENABLED` est une variable backend optionnelle, `false` par défaut. `true` active les espaces partagés et rôles selon le [guide organisations](organizations.md). Elle n’est jamais un flag `VITE_*`. Les tables du module sont déployées dans les deux modes ; le frontend lit la capacité effective et les fonctions Convex la vérifient à chaque appel.
 
 ## Convex Cloud
@@ -145,10 +147,16 @@ Utiliser les variables `CONVEX_SELF_HOSTED_*` uniquement pour la CLI/pipeline de
 
 Les hooks d’authentification ignorent les en-têtes d’IP clients et déterminent l’identité après validation de la session. Les budgets renouvelables de lecture de session et de jeton sont distincts (120/minute chacun) et isolent chaque compte du trafic anonyme. Les entrées de connexion disposent de 60/minute, les autres endpoints de 120/minute. Les limites email restent 3 codes/destinataire/5 minutes, 3 essais par OTP et 100 envois/minute pour l’instance. La confirmation sensible possède ses propres budgets authentifiés. Adapter les débits à la charge réelle en préservant cette séparation ; voir [Comptes](accounts.md).
 
+Tous les visiteurs sans session partagent la même partition `anonymous` : le bucket d’entrée a une capacité de 60 et se recharge de 60 jetons par minute **pour l’ensemble de ces visiteurs**. Une source peut épuiser ce budget et gêner les autres connexions. Ce plafond protège la charge globale ; il doit être complété par une protection de disponibilité à l’entrée avant une ouverture publique.
+
 Pour un quota par IP de confiance, il faut d’abord une entrée réseau qui écrase les en-têtes clients et interdit le contournement vers les routes HTTP Convex. Un proxy frontend seul ne suffit pas tant que ces routes sont joignables directement. Documenter cette frontière, tester des en-têtes falsifiés et les appels directs, puis configurer uniquement l’en-tête réellement contrôlé. Garder les protections CSRF et origines actives.
+
+Consigner dans une décision du produit la frontière retenue, le débit attendu et le comportement sous abus. Pour l’adaptateur Arcjet déjà intégré, suivre [les variables et attestations requises](observability.md#arcjet--périmètre-attesté), y compris le garde Convex `AUTH_PROXY_REQUIRED`. Le Compose conserve Arcjet désactivé tant que le proxy, ses secrets et le chemin direct n’ont pas été vérifiés ; un flag seul ne fournit pas cette garantie. Ne pas remplacer le quota commun par un identifiant ou des forwarded headers librement choisis par le client.
 
 ## Vérification d’ouverture
 
 Sur la cible réelle, tester un visiteur anonyme, un compte neuf par email, une passkey, logout/login, révocation d’un autre appareil et deux comptes ne pouvant pas lire/modifier les ressources de l’autre. Examiner les cookies effectivement reçus, les refus d’origines non approuvées et les 429. Tester aussi le rendu SSR après reload et la connexion WebSocket.
 
 Ajouter alertes email/auth, sauvegardes hors serveur et un exercice de restauration avant l’ouverture publique. Les contrôles locaux prouvent le code ; ils ne prouvent pas les règles du proxy ni les permissions du fournisseur.
+
+Enregistrer les preuves de cible : deux visiteurs indépendants sous trafic abusif d’une seule source, attestations falsifiées refusées, route HTTP Convex directe protégée, restauration des données et reprise des demandes de nettoyage. Désigner le responsable, la rétention des sauvegardes et les objectifs de perte et de durée de récupération. Le healthcheck statique du site est un contrôle de vie ; surveiller aussi `/api/health` et un parcours applicatif synthétique pour la disponibilité métier.

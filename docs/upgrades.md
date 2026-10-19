@@ -27,6 +27,18 @@ Deux avertissements ont été observés localement au premier renouvellement, pu
 
 ## Procédure
 
+### Confidentialité des échecs Playwright
+
+Playwright 1.64.0 capture un snapshot ARIA lors de certains échecs d’assertion, même si traces, captures et vidéo sont désactivées. `PLAYWRIGHT_NO_COPY_PROMPT=1` ferme le snapshot global de fin de test, mais pas les snapshots attachés aux matchers. Une valeur de champ peut ainsi entrer dans `error-context.md`.
+
+`patches/playwright-core@1.64.0.patch`, appliqué par pnpm, étend ce flag aux captures automatiques des assertions pour éléments présents ou absents. Il limite également l’aperçu automatique d’un élément à sa balise : les attributs HTML d’un champ contrôlé peuvent contenir sa valeur. Les résultats des assertions restent inchangés ; ces diagnostics sont neutralisés. Le flag reste activé dans `playwright.config.ts`. Les fichiers d’erreur génériques peuvent toujours exister : ne pas inclure de secrets dans les valeurs comparées, les sélecteurs ou les messages des tests.
+
+`tests/scripts/playwright-privacy.test.ts` lance le vrai runner dans un dossier jetable, remplit un champ et son attribut HTML `value` avec une valeur synthétique puis provoque deux échecs d’assertion. Il vérifie les raisons des échecs et l’absence de la valeur dans stdout/stderr et les artefacts, avant de tout supprimer. Cette preuve a échoué avant le patch, puis a aussi révélé le chemin d’aperçu HTML après la fermeture des seuls snapshots ARIA. Chromium doit être installé avant `pnpm check`, comme en CI.
+
+À chaque montée de Playwright, examiner le chemin des captures et le patch, puis relancer cette preuve. Supprimer le patch lorsque la version non corrigée respecte ce contrat ; ne pas le reporter aveuglément sur un autre bundle. [Sources des artefacts Playwright](https://github.com/microsoft/playwright/blob/main/packages/playwright/src/index.ts).
+
+### Mettre à jour les dépendances
+
 1. Lire changelogs et migrations officielles, confirmer la matrice de compatibilité et les changements de données.
 2. Créer une branche, modifier les versions explicitement et actualiser le lockfile avec pnpm 11.8.0. Garder la CLI `auth` alignée avec Better Auth et le plugin passkey pour que le schéma soit généré par la version réellement exécutée.
 3. Lancer `pnpm auth:generate` après chaque évolution de la configuration ou version d’auth. Examiner les tables, indexes et suppressions proposées.

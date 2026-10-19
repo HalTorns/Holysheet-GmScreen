@@ -9,7 +9,7 @@ Le schéma organisations Better Auth est toujours déployé dans le composant Lo
 Dans le backend local du checkout :
 
 ```sh
-pnpm exec convex env set ORGANIZATIONS_ENABLED true
+pnpm exec convex env set ORGANIZATIONS_ENABLED true --env-file .env.local
 ```
 
 Recharger l’application : le lien Organisations apparaît dans l’espace authentifié. Le frontend lit `capabilities.get` ; aucun `VITE_*` ni paramètre de navigation n’autorise une opération.
@@ -17,7 +17,7 @@ Recharger l’application : le lien Organisations apparaît dans l’espace auth
 Pour revenir au mode personnel :
 
 ```sh
-pnpm exec convex env set ORGANIZATIONS_ENABLED false
+pnpm exec convex env set ORGANIZATIONS_ENABLED false --env-file .env.local
 ```
 
 La désactivation ferme les opérations et lectures partagées, mais conserve les organisations et leurs données. Elle ne convertit pas les ressources partagées en données personnelles. L’export de compte conserve les appartenances existantes et la protection du dernier propriétaire reste active à la suppression du compte. Organiser les transferts ou suppressions avant de désactiver durablement un produit déjà utilisé en équipe.
@@ -65,6 +65,8 @@ L’acceptation revalide les droits actuels de l’invitant. Retirer un gestionn
 Le compte exporte son profil, ses ressources personnelles, ses appartenances et invitations reçues. L’export d’une organisation est distinct et réservé aux gestionnaires : une appartenance ne donne pas la propriété personnelle de toutes les données partagées.
 
 La suppression d’un compte retire ses memberships atomiquement, en protégeant chaque dernier propriétaire. Ses ressources personnelles sont supprimées ; les ressources communes sont conservées et l’identifiant de leur auteur anonymisé. Les invitations émises/reçues sont nettoyées par lots. La suppression d’une organisation ferme l’accès dès la transaction initiale, puis nettoie membres, invitations, ressources et événements associés par lots bornés.
+
+Ces suppressions créent une demande durable `cleanupJobs` dans la transaction initiale. Le cron reprend les demandes inachevées après perte des tâches planifiées, notamment après une restauration logique ; la demande est retirée à la fin du nettoyage. Voir [le contrat de restauration](backup-restore.md#ce-qui-doit-être-récupérable).
 
 ## Tests et adaptation
 
