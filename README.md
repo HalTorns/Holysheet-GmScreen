@@ -41,6 +41,7 @@ Pendant les changements backend, lancer `pnpm backend:dev` dans un second termin
 | `pnpm dev` | Frontend avec rechargement |
 | `pnpm backend:dev` | Surveiller et déployer les modifications Convex locales |
 | `pnpm backend:push` | Déployer les fonctions locales une fois |
+| `pnpm backend:deploy` | Vérifier les types puis publier depuis `operations` sur Coolify |
 | `pnpm dashboard` | Ouvrir le dashboard admin Convex local |
 | `pnpm doctor` | Vérifier configuration et santé des services |
 | `pnpm auth:generate` | Régénérer le schéma Better Auth Local Install |

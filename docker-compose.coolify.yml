@@ -2,6 +2,23 @@
 # Configure domains for site (:3000) and backend (:3210 and :3211).
 # Keep dashboard without a public domain. Its random loopback port is for SSH tunnels.
 services:
+  operations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: operations
+    restart: unless-stopped
+    init: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    environment:
+      CONVEX_SELF_HOSTED_URL: http://backend:3210
+      # Runtime only. Empty during bootstrap; backend:deploy requires the key.
+      CONVEX_SELF_HOSTED_ADMIN_KEY: ${CONVEX_SELF_HOSTED_ADMIN_KEY:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    # No ports, domain, volumes or Docker socket. Inherits the CLI healthcheck.
   site:
     build:
       context: .

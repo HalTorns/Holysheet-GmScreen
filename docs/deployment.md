@@ -15,8 +15,8 @@
 | `RESEND_API_KEY` | Variables Convex privées | Clé dédiée aux emails transactionnels |
 | `MAILPIT_URL` | Variables Convex locales | `http://mailpit:8025` dans le réseau Compose |
 | `CONVEX_DEPLOY_KEY` | CI de déploiement cloud uniquement | Clé de la cible choisie |
-| `CONVEX_SELF_HOSTED_URL` | CLI auto-hébergée uniquement | URL d’administration/API du backend |
-| `CONVEX_SELF_HOSTED_ADMIN_KEY` | CLI / dashboard admin privé | Jamais dans l’application ; saisie locale réservée au dashboard |
+| `CONVEX_SELF_HOSTED_URL` | CLI auto-hébergée uniquement | `http://backend:3210` dans `operations` ; URL HTTPS pour une CLI externe |
+| `CONVEX_SELF_HOSTED_ADMIN_KEY` | Runtime privé de `operations` / dashboard admin privé | Jamais dans `site`, un build arg, `VITE_*`, une image ou les logs |
 
 La CI de validation du dépôt n’a besoin d’aucun secret externe. Configurer un pipeline de publication séparé après choix de l’hébergeur ; aucune publication automatique n’est incluse.
 
@@ -52,6 +52,7 @@ La mise en ligne dispose maintenant de [`docker-compose.coolify.yml`](../docker-
 | Service visé | Développement sur cette machine | Production Coolify |
 | --- | --- | --- |
 | Site TanStack Start | `pnpm dev` sur le Mac | Conteneur du serveur SSR construit |
+| Publication des fonctions | `pnpm backend:push` local | `pnpm backend:deploy` dans le conteneur privé `operations` |
 | Backend Convex | Conteneur OrbStack, API 3210 et actions HTTP 3211 | Conteneur avec deux origines HTTPS et WebSocket |
 | Dashboard Convex | Conteneur OrbStack sur le port 6791 | Accès d’administration protégé, par exemple via VPN ou tunnel |
 | PostgreSQL | PostgreSQL 18.6 dans OrbStack | Même image PostgreSQL 18.6, réseau privé et volume persistant |
@@ -88,19 +89,37 @@ Pour cette intégration, `POSTGRES_URL` est privé, ne contient pas le nom de ba
 
    Ajouter les deux domaines au backend en ciblant leur port respectif. Les ports suffixés sont les ports internes du proxy, pas les ports des URLs publiques. Vérifier DNS, TLS et WebSocket sur cette cible.
 
-4. Garder `postgres` sans domaine et sans port publié. Son réseau `database` est privé ; seul le backend y est également connecté. Les deux volumes nommés conservent PostgreSQL et le stockage Convex. Le nom d’instance `convex-production` et sa base `convex_production` sont liés dans le Compose ; modifier les deux ensemble uniquement pour une nouvelle instance.
+4. Garder `operations` et `postgres` sans domaine et sans port publié. `operations` joint le backend par `http://backend:3210` sur le réseau Compose, sans passer par le domaine public. Son utilisateur `node` n’a pas de privilèges root, ni volume ou socket Docker. Le réseau `database` de PostgreSQL est privé ; seul le backend y est également connecté. Les deux volumes nommés conservent PostgreSQL et le stockage Convex. Le nom d’instance `convex-production` et sa base `convex_production` sont liés dans le Compose ; modifier les deux ensemble uniquement pour une nouvelle instance.
 5. Garder `dashboard` sans domaine public. Son port est publié sur loopback avec un numéro attribué par Docker. Depuis une session SSH sur le serveur, dans le répertoire Compose de cette ressource, repérer ce port avec `docker compose port dashboard 6791`, puis utiliser un tunnel SSH : `ssh -L 6792:127.0.0.1:PORT_DISTANT utilisateur@serveur`. Ouvrir `http://localhost:6792`. La clé admin reste saisie manuellement ; sa génération dans le terminal privé du backend suit le guide officiel et sa sortie doit rester hors logs partagés.
-6. Déployer les fonctions Convex séparément : le build du site ne déploie pas le backend et n’utilise aucune clé admin. Dans un checkout de publication dédié au commit choisi, créer deux fichiers privés (permissions `600`, hors Git) :
+6. Configurer les variables backend d’auth/email séparément de la publication des fonctions. Dans un checkout de publication dédié au commit choisi, créer deux fichiers privés (permissions `600`, hors Git) :
 
    - `convex.production.env` : `CONVEX_SELF_HOSTED_URL` vers l’API HTTPS et `CONVEX_SELF_HOSTED_ADMIN_KEY` de cette nouvelle instance.
    - `backend.production.env` : `SITE_URL`, `PASSKEY_RP_ID`, `BETTER_AUTH_SECRET`, `AUTH_EMAIL_PROVIDER=resend`, `AUTH_EMAIL_FROM`, `RESEND_API_KEY` et les flags privés réellement souhaités. Le secret Better Auth est indépendant des secrets Docker. Lire les guides des modules avant leur activation.
 
    ```sh
    pnpm exec convex env set --from-file /chemin/prive/backend.production.env --env-file /chemin/prive/convex.production.env
-   pnpm exec convex deploy --env-file /chemin/prive/convex.production.env
    ```
 
-   Ces commandes visent explicitement la production et nécessitent l’autorisation de publier. Elles ne doivent pas être ajoutées à `pnpm setup` ou aux scripts de développement. Aucun import des données locales vers la production n’est automatique.
+   Cette commande vise explicitement la production et nécessite l’autorisation de publier. Elle ne doit pas être ajoutée à `pnpm setup` ou aux scripts de développement. Aucun import des données locales vers la production n’est automatique. Publier ensuite les fonctions depuis `operations`, selon la procédure ci-dessous.
+
+### Publier les fonctions depuis Coolify
+
+L’image `operations` contient les sources Convex, frontend et partagées, les tests et configurations inclus dans le `tsconfig.json` racine, ainsi que les dépendances de développement. Son installation pnpm et ses patches sont partagés avec le build du site pour réutiliser le cache Docker. Les copies Docker sont explicites ; fichiers privés, `.env`, sauvegardes et configuration locale ne sont pas embarqués. Le processus `sleep infinity` laisse le conteneur disponible pour le terminal et les hooks. Le healthcheck hérité de l’image exécute réellement `pnpm exec convex --version` : il vérifie le démarrage local de la CLI, sans réseau ni publication, même si la clé n’est pas encore configurée.
+
+1. Ajouter `CONVEX_SELF_HOSTED_ADMIN_KEY` dans **Environment Variables** de la ressource Coolify. Utiliser la clé de cette instance de production, obtenue par le parcours d’administration privé existant. Activer **Available at Runtime**, désactiver **Available at Buildtime**, conserver l’injection automatique de build args désactivée et ne pas partager cette clé avec les previews. Le Compose la transmet uniquement à `operations` ; ne pas ajouter de `env_file` global ou d’injection de toutes les variables dans `site`. Ne pas afficher la clé, l’environnement complet ou une configuration Compose interpolée dans les logs.
+2. Effectuer un premier **Redeploy** pour construire l’image et créer `operations` au commit voulu. Sur une instance neuve, la clé peut rester vide pendant ce premier déploiement afin de démarrer le backend ; l’ajouter ensuite puis redéployer pour la charger au runtime. Vérifier que `operations` devient **healthy**. Le démarrage des conteneurs ne publie aucune fonction par lui-même.
+3. Ouvrir **Terminal → operations**, se connecter au conteneur de la nouvelle version et lancer depuis `/app` :
+
+   ```sh
+   pnpm backend:deploy
+   ```
+
+   La commande exige les deux variables `CONVEX_SELF_HOSTED_*` au runtime, refuse les sélecteurs cloud, les arguments supplémentaires et un checkout contenant `.env` ou `.env.local`. Elle ne lit aucun secret local. Elle lance `pnpm ts` (`tsc --noEmit` avec le `tsconfig.json` racine), puis seulement si ce contrôle réussit, `convex deploy --yes --typecheck disable`. Il n’existe pas de `convex/tsconfig.json` dans ce projet : `--typecheck enable` imposerait un contrôle inadapté. Aucune installation, aucun Chromium, test complet ou build frontend n’est exécuté par cette commande ; ils restent en CI. Le code de sortie d’un échec est conservé.
+
+4. Pour automatiser les publications suivantes, dans **Configuration → General**, saisir **Post-deployment command** : `pnpm backend:deploy`, puis **Container Name** (service cible) : `operations`. Enregistrer. Coolify exécute cette commande via `sh -c` dans le nouveau conteneur après le déploiement. Si l’interface demande le nom complet du conteneur, sélectionner celui du service `operations` affiché par cette ressource.
+5. Après chaque publication, vérifier le résultat du hook dans les **Deployment Logs**, puis les parcours applicatifs. **Coolify peut marquer le déploiement réussi même si le hook a échoué** : un conteneur healthy et un statut de déploiement vert ne prouvent pas la publication Convex. Le hook ne fournit pas de rollback atomique du frontend et du backend ; prévoir des changements compatibles entre les deux versions.
+
+Ces actions publient sur la production et nécessitent l’autorisation correspondante. Le développement continue exclusivement via `pnpm setup`, `pnpm backend:dev` et `pnpm backend:push` ; ne pas leur transmettre les secrets de production. [Commandes de déploiement Coolify](https://coolify.io/docs/applications/configuration/general), [terminal Coolify](https://coolify.io/docs/applications/operations/overview), [CLI Convex](https://docs.convex.dev/cli/reference/deploy).
 
 L’image SSR utilise Node 24 compatible avec le contrat du projet, un build multi-stage et un utilisateur sans droits root. `.dockerignore` exclut secrets, sauvegardes et sorties locales du contexte de build. Les changements de `VITE_*` exigent de reconstruire le site. Sentry SSR peut être configuré au runtime ; Arcjet reste désactivé tant que la frontière proxy de confiance n’a pas été validée.
 

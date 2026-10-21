@@ -18,6 +18,7 @@
     "services:status": "node scripts/services.mjs status",
     "backend:dev": "node scripts/backend-local.mjs dev",
     "backend:push": "node scripts/backend-local.mjs push",
+    "backend:deploy": "node scripts/backend-deploy.mjs",
     "auth:generate": "node scripts/generate-auth.mjs",
     "ts": "tsc --noEmit",
     "lint": "oxlint --type-aware",
