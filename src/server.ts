@@ -16,7 +16,7 @@ function securityHeaders(nonce: string, requestId: string) {
   const telemetryOrigins = [
     env.VITE_POSTHOG_KEY ? env.VITE_POSTHOG_HOST : '',
     env.VITE_SENTRY_DSN ? new URL(env.VITE_SENTRY_DSN).origin : '',
-    development && env.VITE_SPOTLIGHT_ENABLED ? 'http://localhost:8969' : '',
+    development && env.VITE_SPOTLIGHT_ENABLED ? env.VITE_SPOTLIGHT_URL : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -28,7 +28,7 @@ function securityHeaders(nonce: string, requestId: string) {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self'",
-      `connect-src 'self' ${convexOrigin} ${convexSocketOrigin} ${telemetryOrigins}${development ? ` ${new URL(env.VITE_SITE_URL).origin.replace(/^http/, 'ws')} ws://127.0.0.1:${new URL(env.VITE_SITE_URL).port || '3000'}` : ''}`,
+      `connect-src 'self' ${convexOrigin} ${convexSocketOrigin} ${telemetryOrigins}${development ? ` ${new URL(env.VITE_SITE_URL).origin.replace(/^http/, 'ws')} ws://127.0.0.1:${new URL(env.VITE_SITE_URL).port || '80'}` : ''}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

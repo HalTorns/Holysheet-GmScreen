@@ -3,6 +3,7 @@ import type { ConvexHttpClient } from 'convex/browser'
 import { z } from 'zod'
 
 import { api } from '../../convex/_generated/api'
+import { backendSiteUrl } from '../../scripts/local-config.mjs'
 import { holdAuthTokenBudget } from './backend-operator'
 import {
   deleteAccountWithClient,
@@ -133,9 +134,7 @@ test('les clés publiques JWT restent disponibles sous des lectures anonymes ré
   request,
 }) => {
   for (let index = 0; index < 125; index++) {
-    const response = await request.get(
-      'http://127.0.0.1:3211/api/auth/convex/jwks'
-    )
+    const response = await request.get(`${backendSiteUrl}/api/auth/convex/jwks`)
     expect(response.status()).toBe(200)
     const payload = publicJwksSchema.parse(await response.json())
     for (const key of payload.keys)

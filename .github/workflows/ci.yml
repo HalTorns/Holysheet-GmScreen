@@ -50,7 +50,7 @@ jobs:
       - name: Initialiser PostgreSQL 18, Convex, dashboard et Mailpit locaux
         run: pnpm setup
       - name: Vérifier la configuration locale sans afficher les secrets
-        run: pnpm doctor
+        run: pnpm run doctor
       - name: Installer Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Vérifier types, Oxlint, Oxfmt, Knip, Vitest navigateur et build

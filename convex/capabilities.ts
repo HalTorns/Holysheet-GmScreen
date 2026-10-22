@@ -10,6 +10,7 @@ export const get = query({
     organizations: v.boolean(),
     magicLink: v.boolean(),
     mfa: v.boolean(),
+    credentials: v.boolean(),
     socialProviders: v.array(v.union(v.literal('google'), v.literal('github'))),
   }),
   handler: () => {
@@ -21,6 +22,7 @@ export const get = query({
       organizations: organizationsEnabled(),
       magicLink: modules.AUTH_MAGIC_LINK_ENABLED,
       mfa: modules.AUTH_MFA_ENABLED,
+      credentials: modules.AUTH_CREDENTIALS_ENABLED,
       socialProviders,
     }
   },

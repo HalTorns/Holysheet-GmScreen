@@ -1,5 +1,7 @@
 import { join } from 'node:path'
 
+import { hashPassword } from 'better-auth/crypto'
+
 import {
   assertLocalDeploymentSelection,
   assertDockerPortsOwnership,
@@ -80,6 +82,29 @@ export function holdAuthTokenBudget(userId: string) {
       },
       count: 140,
       reserve: true,
+    }),
+  ])
+}
+
+export async function addPasswordCredential(userId: string, password: string) {
+  const now = Date.now()
+  runLocalOperator([
+    'run',
+    '--component',
+    'betterAuth',
+    'adapter:create',
+    JSON.stringify({
+      input: {
+        model: 'account',
+        data: {
+          userId,
+          accountId: userId,
+          providerId: 'credential',
+          password: await hashPassword(password),
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
     }),
   ])
 }

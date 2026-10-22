@@ -5,6 +5,7 @@ import { parseEnv } from 'node:util'
 import { expect, test } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
+import { dashboardUrl } from '../../scripts/local-config.mjs'
 import {
   deleteAccountWithClient,
   createEmail,
@@ -12,8 +13,6 @@ import {
   getAuthenticatedClient,
   signInWithEmail,
 } from './helpers'
-
-const dashboardUrl = 'http://127.0.0.1:6791'
 
 test('le dashboard lit les données locales et ferme sa session admin sans persistance', async ({
   page,

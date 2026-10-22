@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
-const port = new URL(baseURL).port || '3000'
+import { siteUrl } from './scripts/local-config.mjs'
+
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? siteUrl
+const port = new URL(baseURL).port || '80'
 const production =
   !process.env.PLAYWRIGHT_DEVELOPMENT &&
   Boolean(process.env.CI || process.env.PLAYWRIGHT_PRODUCTION)

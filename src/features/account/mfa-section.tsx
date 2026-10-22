@@ -16,6 +16,7 @@ export function MfaSection() {
     backupCodes: string[]
   } | null>(null)
   const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   if (!capabilities?.mfa || access?.isImpersonating) return null
@@ -24,11 +25,14 @@ export function MfaSection() {
     setMessage(null)
     try {
       if (!(await confirmIdentity('mfa.enable'))) return
-      const result = await authClient.twoFactor.enable({})
+      const result = await authClient.twoFactor.enable(
+        access?.hasPassword ? { password } : {}
+      )
       if (result.error || !result.data) {
         setMessage('Activation refusée. Réessayez.')
         return
       }
+      setPassword('')
       setSetup({
         totpURI: result.data.totpURI,
         backupCodes: result.data.backupCodes,
@@ -70,7 +74,9 @@ export function MfaSection() {
     setMessage(null)
     try {
       if (!(await confirmIdentity('mfa.disable'))) return
-      const result = await authClient.twoFactor.disable({})
+      const result = await authClient.twoFactor.disable(
+        access?.hasPassword ? { password } : {}
+      )
       if (result.error) {
         setMessage(
           'Désactivation refusée. Réessayez après confirmation de votre identité.'
@@ -91,6 +97,19 @@ export function MfaSection() {
         Ajoutez un code TOTP indépendant de votre boîte email. Conservez les
         codes de récupération dans un emplacement privé.
       </p>
+      {access?.hasPassword && !setup && (
+        <div className="mt-4 grid gap-2">
+          <label htmlFor="mfa-password">Mot de passe actuel</label>
+          <Input
+            id="mfa-password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            disabled={pending}
+          />
+        </div>
+      )}
       {setup ? (
         <div className="mt-5 grid gap-4">
           <label htmlFor="totp-uri">

@@ -1,6 +1,7 @@
 import type * as SentrySdk from '@sentry/tanstackstart-react'
 import { privateTelemetryOptions } from '@shared/telemetry'
 
+import { env } from '@/env'
 import { serverEnv } from '@/env.server'
 
 let sdk: Promise<typeof SentrySdk | null> | undefined
@@ -12,7 +13,7 @@ export function serverMonitoring() {
       Sentry.init({
         ...privateTelemetryOptions,
         ...(serverEnv.SENTRY_DSN ? { dsn: serverEnv.SENTRY_DSN } : {}),
-        spotlight: spotlight ? 'http://localhost:8969/stream' : false,
+        spotlight: spotlight ? `${env.VITE_SPOTLIGHT_URL}/stream` : false,
         environment: import.meta.env.DEV ? 'development' : 'production',
         integrations: (defaults) =>
           defaults.filter(

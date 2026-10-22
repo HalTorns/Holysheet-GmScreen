@@ -2,6 +2,24 @@
 
 ## Boucle locale
 
+### Ports par checkout
+
+Les ports hôte sont résolus par `scripts/local-config.mjs`, validés (entiers de 1 à 65535, distincts) et conservés dans `.env.docker`. Les défauts restent : application `3000`, API Convex `3210`, HTTP Convex `3211`, dashboard `6791`, Mailpit `8025`, Spotlight `8969`. PostgreSQL ne publie aucun port.
+
+Avant le premier setup d’un second checkout, créer `.env.docker` avec uniquement les ports souhaités, ou les fournir à la commande initiale :
+
+```sh
+LOCAL_APP_PORT=3400 LOCAL_CONVEX_PORT=3410 LOCAL_CONVEX_SITE_PORT=3411 LOCAL_DASHBOARD_PORT=6991 LOCAL_MAILPIT_PORT=8225 LOCAL_SPOTLIGHT_PORT=9169 pnpm setup
+```
+
+Le setup complète ce fichier avec une identité et des secrets propres au checkout. Les exécutions suivantes reprennent ses ports sans réexporter les variables. Une variable de shell contradictoire est refusée pour éviter de cibler accidentellement un autre service. Ne pas copier `.env.docker` ni `.env.local` d’un projet : la propriété du checkout, des conteneurs et des ports publiés est contrôlée avant démarrage. Le contrôle examine les bindings TCP hôte réels de Docker, y compris ceux des conteneurs sans label Compose ; deux conteneurs peuvent partager leurs ports internes avec des ports hôte distincts. Un conflit ne provoque aucun arrêt de l’autre projet. Pour déplacer les ports d’un checkout déjà configuré, arrêter ses services avec `pnpm services:down`, modifier les ports dans `.env.docker` et les URLs correspondantes dans `.env.local`, puis relancer `pnpm setup` ; conserver identités, secrets et volumes.
+
+Le navigateur et la CLI utilisent les **ports hôte** : `VITE_CONVEX_URL` / `CONVEX_SELF_HOSTED_URL` pour l’API, `VITE_CONVEX_SITE_URL` pour HTTP, `VITE_SITE_URL` pour SSR. Le dashboard reçoit aussi l’URL hôte de l’API. Vite, Playwright, doctor et les outils opérateur partagent cette résolution. Le lanceur E2E choisit son propre port frontend libre et restaure ensuite l’origine backend.
+
+Les conteneurs conservent leurs **ports internes** (`3210`, `3211`, `6791`, `8025`, `8969`). Mailpit reste accessible depuis Convex à `http://mailpit:8025`. Pour un issuer HTTP loopback local, `convex/auth.config.ts` garde l’issuer externe fourni par `CONVEX_SITE_URL`, mais récupère JWKS sur `http://127.0.0.1:3211/api/auth/convex/jwks` depuis le backend lui-même. Aucune nouvelle variable privée n’est requise au premier déploiement ou à la restauration. Les issuers de production et leur transport restent inchangés. Ce chemin local suppose le backend Docker du dépôt et son port interne fixe.
+
+`VITE_SPOTLIGHT_URL` est une URL publique locale, produite par le setup à partir du port Spotlight. Elle configure le SDK navigateur, le SDK SSR et la CSP lorsque Spotlight est activé.
+
 Après `pnpm setup`, lancer `pnpm dev` et, pendant les changements backend, `pnpm backend:dev` dans un second terminal. Les modifications de schéma Better Auth nécessitent `pnpm auth:generate` avant le déploiement des fonctions.
 
 Le frontend utilise `http://localhost:3000`. Mailpit affiche les emails sur le port 8025 et reçoit les envois via REST depuis le conteneur Convex. Le port SMTP n’est pas nécessaire au socle. Les données Convex sont persistées dans PostgreSQL 18.6 (`postgres-data`) ; fichiers, modules et indexes restent dans `convex-data`. Ces volumes sont conservés lors d’un arrêt normal ; les emails Mailpit sont temporaires. Le dashboard Convex tourne sur `http://127.0.0.1:6791` : `pnpm dashboard` facilite la connexion admin locale sur Mac. Voir [le démarrage d’un nouveau projet](new-project.md) pour la connexion, l’isolation et le passage d’un projet à l’autre.

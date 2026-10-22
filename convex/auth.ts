@@ -49,6 +49,7 @@ export function createAuthOptions(
     },
     {
       adminIds: modules?.AUTH_ADMIN_ENABLED ? modules.ADMIN_USER_IDS : [],
+      credentials: modules?.AUTH_CREDENTIALS_ENABLED ?? false,
       ...(modules?.AUTH_GOOGLE_ENABLED &&
       modules.GOOGLE_CLIENT_ID &&
       modules.GOOGLE_CLIENT_SECRET
@@ -112,6 +113,7 @@ export const getAccessState = query({
     v.object({
       requiresMfa: v.boolean(),
       mfaEnabled: v.boolean(),
+      hasPassword: v.boolean(),
       isImpersonating: v.boolean(),
       isAdmin: v.boolean(),
       isSupport: v.boolean(),
@@ -125,9 +127,26 @@ export const getAccessState = query({
     const access = await getSessionAccess(ctx, identity.sessionId, user._id)
     if (!access) return null
     const modules = getAuthModules()
+    const credential: unknown = await ctx.runQuery(
+      components.betterAuth.adapter.findOne,
+      {
+        model: 'account',
+        where: [
+          { field: 'providerId', value: 'credential' },
+          { field: 'userId', value: user._id, connector: 'AND' },
+        ],
+      }
+    )
     return {
       requiresMfa: !access.mfaVerified,
       mfaEnabled: user.twoFactorEnabled === true,
+      hasPassword: Boolean(
+        credential &&
+        typeof credential === 'object' &&
+        'password' in credential &&
+        typeof credential.password === 'string' &&
+        credential.password
+      ),
       isImpersonating: Boolean(access.impersonatedBy),
       isAdmin:
         user.role === 'admin' && access.mfaVerified && !access.impersonatedBy,

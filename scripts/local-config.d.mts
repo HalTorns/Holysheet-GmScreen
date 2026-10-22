@@ -18,3 +18,13 @@ export function run(
     env?: Record<string, string>
   }
 ): string
+
+export const backendUrl: string
+export const backendSiteUrl: string
+export const siteUrl: string
+export const dashboardUrl: string
+export const mailpitUrl: string
+export const spotlightUrl: string
+export function localPorts(
+  configuration?: Record<string, string>
+): Record<string, string>

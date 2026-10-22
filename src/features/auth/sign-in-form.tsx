@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { authErrorMessage } from '@/features/auth/errors'
 import { authClient } from '@/lib/auth-client'
 
+import { CredentialsSignIn } from './credentials-sign-in'
 import type { LoginCapabilities } from './optional-sign-in'
 import { OptionalSignIn } from './optional-sign-in'
 
@@ -123,9 +124,12 @@ function RequestCodeForm({
       </form>
       <div className="auth-divider">ou, si vous en avez déjà une</div>
       <PasskeySignInButton />
+      {capabilities.credentials && <CredentialsSignIn />}
       <OptionalSignIn capabilities={capabilities} />
       <p className="field-hint mt-6 text-center">
-        Aucun mot de passe à retenir.
+        {capabilities.credentials
+          ? 'Le code email reste disponible.'
+          : 'Aucun mot de passe à retenir.'}
         <br />
         Votre adresse e-mail reste privée.
       </p>

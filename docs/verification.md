@@ -2,6 +2,71 @@
 
 > **Historique des preuves, non prescriptif.** Chaque entrée décrit les commandes et résultats observés à sa date et dans son périmètre. Un ancien succès ne valide pas le checkout courant ou la production. Pour choisir les contrôles actuels, suivre [la matrice agents](agent-patterns.md#choisir-les-vérifications) et [development.md](development.md).
 
+## Revue approfondie des corrections d’adoption — 22 octobre 2026
+
+Contrat relu : les trois corrections d’adoption, sans logique métier importée, comparées au commit de base `e265fa9`. Relecture des appels privés, du proxy HTTP, des cookies, des hooks Better Auth 1.6.22 installés, des fixtures opérateur, des bindings Docker et du pipeline CI. Les versions, le lockfile et le schéma d’auth généré restent inchangés.
+
+| Constat corrigé pendant la revue | Correction et preuve |
+| --- | --- |
+| Le filtre Docker `publish` vise le port conteneur, ce qui manquait les conflits sur ports hôte personnalisés et bloquait des checkouts pourtant distincts | `scripts/local-config.mjs` inspecte uniquement les bindings TCP hôte et le label projet. Trois régressions ont échoué avant correction : conflit hôte personnalisé avec/sans label Compose, et coexistence sur des ports hôte distincts. Le cas propriétaire reste accepté. Les bindings réels des projets locaux ont confirmé le comportement, sans mutation |
+| Le port HTTP standard `80` est supprimé par `URL.port`, puis converti en `0` par Vite | `vite.config.ts` conserve explicitement `80` pour dev et preview ; chargement réel de la configuration en échec avant correction, puis réussi |
+| Un issuer HTTP loopback sans port explicite ne bénéficiait pas du transport JWKS Docker | `convex/auth.config.ts` reconnaît aussi ces origines canoniques sans modifier l’issuer, l’audience ou l’algorithme. Deux cas ont échoué avant correction ; les quatre cas de `tests/backend/auth-config.test.ts`, dont l’issuer HTTPS de production, passent |
+| La CI pouvait appeler la commande intégrée pnpm au lieu du diagnostic du dépôt | `.github/workflows/ci.yml` appelle explicitement `pnpm run doctor` |
+
+L’adaptation du plugin MFA demeure limitée au matcher de `/sign-in/email`. Les contrôles de mot de passe, les endpoints de vérification, les quotas et les schémas du plugin restent présents. Les sessions primaires ne reçoivent aucune assurance héritée : lectures et écritures privées restent refusées jusqu’à vérification du facteur exact. Le flag MFA désactivé ne libère pas les comptes enrôlés. La révocation et le remplacement/restauration de session restent contrôlés côté serveur. `getAccessState` retourne seulement `hasPassword`, jamais le hash. Le refus d’`Authorization` précède toujours les plugins et JWKS reste public. Aucun cache de session, contournement CSRF/origines, endpoint de test ou dépendance supplémentaire n’a été introduit.
+
+La documentation du cookie d’annulation précise désormais que c’est le jeton de la session précédente qui ne passe jamais dans le JSON de ce parcours ; elle ne généralise pas cette propriété aux réponses natives du SDK Better Auth.
+
+| Validation locale sur le diff corrigé | Résultat |
+| --- | --- |
+| `pnpm check` | **108 tests backend/scripts**, **4 Browser Mode**, types, lint, format, Knip et build réussis |
+| Tests scripts ciblés | **33 réussis** ; fixture Docker conforme à la sémantique réelle des ports publiés |
+| `pnpm test:e2e:local` | **19 réussis**, 12 optionnels ignorés |
+| `pnpm test:e2e:local modules` | **9 réussis** ; une exécution directe du script modules a également réussi |
+| `pnpm backup:verify` | **27 tables**, **0 fichier**, comparaison canonique et préservation des fichiers d’environnement source réussies sur une cible vierge |
+| Browser Mode analytics dans le chemin accentué avec espaces | **1 réussi**, provider simulé observé, brouillon préservé et aucun transport analytics utilisé |
+| `pnpm test:e2e:local spotlight` | **1 réussi**, livraison réelle de l’exception expurgée au sidecar local sur le port hôte personnalisé `9169` |
+| `pnpm test:e2e:local observability` | **1 réussi**, SDK sous CSP de production avec endpoints SaaS interceptés par le test |
+| `pnpm run doctor` | Configuration et services du checkout isolé validés |
+| `git diff --check` | Réussi |
+
+Une première suite personnelle a rencontré une erreur serveur ponctuelle dans la fixture de restauration. Le test ciblé puis la suite personnelle complète ont réussi sans changement du test ni des données. Le préambule CLI modules a également échoué une fois avant les scénarios ; une instrumentation temporaire limitée aux noms d’opérations, statuts et catégories d’erreur a été utilisée sans afficher de valeur privée. L’exécution diagnostique puis le lanceur complet ont réussi ; l’instrumentation est retirée. Ces causes intermittentes ne sont pas établies, et aucun délai, retry ou garde de production n’a été assoupli pour obtenir les succès.
+
+**Revue finale : conformité à la demande PASS ; standards du dépôt PASS.** Aucun défaut actionnable restant identifié dans ce périmètre. Les preuves ci-dessus sont locales ; la CI distante est vérifiée séparément après le push. Les limites de restauration de fichiers non vides, de reconnexion depuis archive et de production/SaaS réels restent celles de l’entrée d’adoption ci-dessous.
+
+## Corrections d’adoption — 22 octobre 2026
+
+Périmètre : ports hôte configurables par checkout, transport JWKS Docker distinct de l’issuer, credentials optionnels compatibles avec les assurances MFA du socle et mocks analytics canoniques. Le défaut passwordless reste actif ; aucune logique métier extérieure ni dépendance supplémentaire n’a été ajoutée.
+
+Les essais Docker ont utilisé une copie isolée du checkout dans un chemin contenant accents et espaces, avec un PostgreSQL et un backend neufs : application `3400`, API hôte `3410`, HTTP hôte `3411`, dashboard `6991`, Mailpit `8225`, Spotlight `9169`. Les ports internes Convex restent `3210/3211`. Aucun fichier de secrets d’un projet existant n’a été copié dans cette cible.
+
+| Vérification | Résultat observé |
+| --- | --- |
+| Reproductions avant correction | Le setup ignorait les ports personnalisés ; le handler credentials réel renvoyait le challenge natif du plugin sans session primaire ; Browser Mode chargeait le vrai module `env` dans le chemin accentué malgré le mock relatif. Ces trois boucles passent après correction |
+| `pnpm auth:generate` | Réussi ; aucun diff du schéma généré ni du lockfile |
+| `pnpm check` final | Réussi : TypeScript, lint, format, Knip, **101 tests backend/scripts**, **4 tests Browser Mode**, build SSR |
+| `pnpm setup`, `pnpm backend:push`, `pnpm run doctor` isolés | Réussis, y compris premier déploiement sans nouvelle variable privée requise par `auth.config.ts` |
+| `pnpm test:e2e:local` | **19 réussis**, 11 optionnels ignorés à cette exécution ; serveur construit, connexion et lectures privées après SSR sur ports hôte distincts des ports internes, OTP/passkeys, révocation, dashboard, JWKS public et restauration |
+| `pnpm test:e2e:local modules` | **9 réussis** : OTP et credentials, TOTP valide/incorrect, lectures ET écritures privées refusées avant challenge, récupération consommée une fois, abandon/restauration puis remplacement de session, support, lien email, pont privé/JWKS, mot de passe courant ET preuve d’identité pour gérer la MFA |
+| Assurance backend | Le test existant étendu refuse aussi les écritures quand le flag MFA est désactivé ; la rotation du facteur rejette l’ancienne assurance. Le test HTTP credentials exerce le vrai handler et le plugin installés |
+| Formulaire credentials avant hydratation | Nouvelle preuve SSR sans JavaScript : échec sur le formulaire initial sans méthode POST ; succès avec POST et contrôles désactivés avant hydratation. Le test de gestion MFA attend la réponse HTTP et le rechargement après rotation du cookie avant le nettoyage |
+| Browser Mode dans le chemin accentué | Vrai Chromium, brouillon conservé avant/après chargement différé et erreur du tracker ; marqueur du provider simulé observé, aucun fetch, beacon ou XHR du tracker. Aucun changement de production destiné uniquement au test |
+| `pnpm backup:verify` autonome | Réussi : **27 tables**, **0 fichier stocké**, déploiement vierge puis import/réexport et comparaison canonique sur ports jetables distincts. Fichiers d’environnement source préservés ; seules les ressources créées par cette restauration ont été retirées |
+| Configuration JWT | Issuer loopback externe conservé et JWKS interne vérifiés ; issuer HTTPS et transport JWKS de production inchangés au chargement de la configuration |
+| Préservation Docker | Les **8 conteneurs** des deux projets préexistants gardent IDs, dates de démarrage et montages ; leurs **4 volumes** restent présents. Aucune commande de mutation n’a ciblé l’autre projet |
+| `git diff --check` | Réussi |
+
+Une première exécution modules a échoué pendant le nettoyage du scénario de désactivation, avant l’attente explicite de fin de rotation du cookie. La relance ciblée puis la suite complète ont réussi avec cette synchronisation. Un préambule CLI a également échoué une fois avec sa sortie privée masquée ; sa cause n’est pas établie. Doctor, déploiement local et relance complète ont ensuite réussi sans assouplir de garde. Les avertissements Nitro `aborted`/`ECONNRESET` et bundler `MODULE_LEVEL_DIRECTIVE` déjà documentés restent visibles.
+
+Limites : aucun fournisseur SaaS ni déploiement distant exercé ; aucune restauration de stockage non vide, reconnexion depuis une archive, compatibilité RP ID distant ou durabilité hors hôte prouvée. La préservation des projets initiaux repose sur l’absence de mutation ciblée et la comparaison Docker, pas sur une comparaison de leurs données métier en cours d’utilisation. Le mode credentials ne fournit pas de parcours UI de provisionnement/récupération du mot de passe. Le schéma et les versions sont inchangés. Aucun commit ni push effectué.
+
+Fichiers modifiés dans ce passage :
+
+- **Configuration, scripts et exécution** : `.env.example`, `docker-compose.yml`, `package.json`, `playwright.config.ts`, `scripts/account-operator.mjs`, `scripts/doctor.mjs`, `scripts/local-config.d.mts`, `scripts/local-config.mjs`, `scripts/setup-local.mjs`, `scripts/test-auth-modules.mjs`, `scripts/verify-restore.mjs`, `src/env.ts`, `src/features/observability/sentry.client.ts`, `src/features/observability/sentry.server.ts`, `src/server.ts`, `src/vite-env.d.ts`, `vite.config.ts`.
+- **Authentification et interface** : `convex/auth.config.ts`, `convex/auth.ts`, `convex/authOptions.ts`, `convex/capabilities.ts`, `convex/lib/authHooks.ts`, `convex/lib/authModules.ts`, `src/features/account/mfa-section.tsx`, `src/features/auth/credentials-sign-in.tsx`, `src/features/auth/sign-in-form.tsx`.
+- **Tests et fixtures opérateur** : `tests/backend/auth-modules.test.ts`, `tests/backend/auth-transport.test.ts`, `tests/browser/analytics.test.tsx`, `tests/e2e/application.spec.ts`, `tests/e2e/auth-modules.spec.ts`, `tests/e2e/backend-operator.ts`, `tests/e2e/dashboard.spec.ts`, `tests/e2e/helpers.ts`, `tests/e2e/security.spec.ts`, `tests/e2e/spotlight.spec.ts`, `tests/scripts/setup.test.ts`.
+- **Documentation** : `docs/accounts.md`, `docs/auth-modules.md`, `docs/development.md`, `docs/upgrades.md`, `docs/verification.md`.
+
 ## Corrections d’audit et démarrage produit — 19 octobre 2026
 
 Périmètre : modifications locales issues de l’audit du commit `2e0b94d`. Le démarrage formalise brief, MVP, domaines, propriété des données, modules retenus et première fonctionnalité complète. Les consignes agents désignent les outils/exemples du dépôt, les versions installées et les validations adaptées ; les rapports antérieurs sont explicitement historiques et les exemples Garage sont génériques.

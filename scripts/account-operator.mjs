@@ -3,6 +3,7 @@ import { ConvexHttpClient } from 'convex/browser'
 import { internal } from '../convex/_generated/api.js'
 import {
   assertLocalDeploymentSelection,
+  backendUrl,
   assertDockerPortsOwnership,
   prepareDockerEnvironment,
   readEnvironment,
@@ -13,7 +14,7 @@ assertDockerPortsOwnership(prepareDockerEnvironment())
 const configuration = readEnvironment('.env.local')
 if (!configuration.CONVEX_SELF_HOSTED_ADMIN_KEY)
   throw new Error('Configuration opérateur locale manquante.')
-const client = new ConvexHttpClient('http://127.0.0.1:3210')
+const client = new ConvexHttpClient(backendUrl)
 client.setAdminAuth(configuration.CONVEX_SELF_HOSTED_ADMIN_KEY)
 const command = process.argv[2]
 if (command === 'grant') {

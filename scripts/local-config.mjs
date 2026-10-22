@@ -12,8 +12,46 @@ import { dirname, join } from 'node:path'
 import { parseEnv } from 'node:util'
 
 export const projectRoot = realpathSync(dirname(import.meta.dirname))
-export const backendUrl = 'http://127.0.0.1:3210'
-export const dashboardUrl = 'http://127.0.0.1:6791'
+const defaultPorts = {
+  LOCAL_APP_PORT: '3000',
+  LOCAL_CONVEX_PORT: '3210',
+  LOCAL_CONVEX_SITE_PORT: '3211',
+  LOCAL_DASHBOARD_PORT: '6791',
+  LOCAL_MAILPIT_PORT: '8025',
+  LOCAL_SPOTLIGHT_PORT: '8969',
+}
+
+export function localPorts(configuration = readEnvironment('.env.docker')) {
+  const ports = Object.fromEntries(
+    Object.entries(defaultPorts).map(([name, fallback]) => {
+      const value = configuration[name] ?? process.env[name] ?? fallback
+      if (!/^[1-9][0-9]{0,4}$/.test(value) || Number(value) > 65_535)
+        throw new Error(
+          `Invalid local port: ${name}. Use an integer from 1 to 65535.`
+        )
+      if (
+        configuration[name] &&
+        process.env[name] &&
+        configuration[name] !== process.env[name]
+      )
+        throw new Error(
+          `Conflicting local port: ${name}. Edit .env.docker and rerun setup; shell overrides cannot retarget existing services.`
+        )
+      return [name, value]
+    })
+  )
+  if (new Set(Object.values(ports)).size !== Object.values(ports).length)
+    throw new Error('Local host ports must be distinct.')
+  return ports
+}
+
+const ports = localPorts()
+export const siteUrl = `http://localhost:${ports.LOCAL_APP_PORT}`
+export const backendUrl = `http://127.0.0.1:${ports.LOCAL_CONVEX_PORT}`
+export const backendSiteUrl = `http://127.0.0.1:${ports.LOCAL_CONVEX_SITE_PORT}`
+export const dashboardUrl = `http://127.0.0.1:${ports.LOCAL_DASHBOARD_PORT}`
+export const mailpitUrl = `http://127.0.0.1:${ports.LOCAL_MAILPIT_PORT}`
+export const spotlightUrl = `http://localhost:${ports.LOCAL_SPOTLIGHT_PORT}`
 const cloudSelectors = [
   'CONVEX_DEPLOYMENT',
   'CONVEX_DEPLOY_KEY',
@@ -144,10 +182,15 @@ function assertContainerOwnership(name) {
 
 export function prepareDockerEnvironment() {
   const current = readEnvironment('.env.docker')
-  if (!Object.keys(current).length) {
+  const ports = localPorts(current)
+  if (
+    !Object.keys(current).some((name) => !Object.hasOwn(defaultPorts, name))
+  ) {
     const name = `boilerplate-${randomBytes(6).toString('hex')}`
     const password = randomBytes(32).toString('hex')
     return {
+      ...current,
+      ...ports,
       COMPOSE_PROJECT_NAME: name,
       LOCAL_PROJECT_DIRECTORY: projectRoot,
       INSTANCE_NAME: name,
@@ -182,7 +225,7 @@ export function prepareDockerEnvironment() {
         'The local Docker project identity is invalid. No services were changed.'
       )
     assertContainerOwnership(current.COMPOSE_PROJECT_NAME)
-    return current
+    return { ...current, ...ports }
   }
   // Preserve the original volume only when Docker attests this checkout owns it.
   const legacyOwned = assertContainerOwnership('boilerplate-v2')
@@ -206,6 +249,7 @@ export function prepareDockerEnvironment() {
     )
   return {
     ...current,
+    ...ports,
     COMPOSE_PROJECT_NAME: legacyOwned
       ? 'boilerplate-v2'
       : `boilerplate-${randomBytes(6).toString('hex')}`,
@@ -234,6 +278,7 @@ export function composeArguments(configuration, arguments_) {
 export function composeEnvironment(configuration) {
   return {
     ...process.env,
+    ...localPorts(configuration),
     COMPOSE_PROJECT_NAME: configuration.COMPOSE_PROJECT_NAME,
     LOCAL_POSTGRES_PASSWORD: configuration.LOCAL_POSTGRES_PASSWORD ?? '',
     LOCAL_POSTGRES_DATABASE:
@@ -264,30 +309,44 @@ export function assertPostgresConfiguration(configuration) {
     )
 }
 
+function publishedDockerBindings() {
+  const ids = run('docker', ['ps', '--format', '{{.ID}}'], { capture: true })
+    .split('\n')
+    .filter(Boolean)
+  if (!ids.length) return []
+  // Inspect only public port bindings and the project label, never container
+  // environment/configuration: those may contain deployment and auth secrets.
+  const format =
+    '{"ports":{{json .NetworkSettings.Ports}},"project":{{json (index .Config.Labels "com.docker.compose.project")}}}'
+  return run('docker', ['inspect', '--format', format, ...ids], {
+    capture: true,
+  })
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+}
+
 export function assertDockerPortsOwnership(configuration) {
-  for (const port of [
-    '3210',
-    '3211',
-    '6791',
-    '8025',
-    ...(configuration.LOCAL_SPOTLIGHT_ENABLED === 'true' ? ['8969'] : []),
-  ]) {
-    const projects = run(
-      'docker',
-      [
-        'ps',
-        '--filter',
-        `publish=${port}`,
-        '--format',
-        '{{.Label "com.docker.compose.project"}}',
-      ],
-      { capture: true }
-    )
-      .split('\n')
-      .filter(Boolean)
-    if (projects.some((name) => name !== configuration.COMPOSE_PROJECT_NAME))
-      throw new Error(
-        `Local port ${port} is already published by another Docker project. Stop that project's services before starting this checkout; no services were changed.`
-      )
+  const ports = localPorts(configuration)
+  const expected = new Set([
+    ports.LOCAL_CONVEX_PORT,
+    ports.LOCAL_CONVEX_SITE_PORT,
+    ports.LOCAL_DASHBOARD_PORT,
+    ports.LOCAL_MAILPIT_PORT,
+    ...(configuration.LOCAL_SPOTLIGHT_ENABLED === 'true'
+      ? [ports.LOCAL_SPOTLIGHT_PORT]
+      : []),
+  ])
+  for (const container of publishedDockerBindings()) {
+    if (container.project === configuration.COMPOSE_PROJECT_NAME) continue
+    for (const [protocol, bindings] of Object.entries(container.ports ?? {})) {
+      if (!protocol.endsWith('/tcp')) continue
+      for (const binding of bindings ?? []) {
+        if (expected.has(binding.HostPort))
+          throw new Error(
+            `Local port ${binding.HostPort} is already published by another Docker project. Choose distinct host ports for this checkout; no services were changed.`
+          )
+      }
+    }
   }
 }

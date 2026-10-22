@@ -25,6 +25,12 @@ Better Auth 1.6.22 lance la purge des anciennes lignes `rateLimit` en arrière-p
 
 Deux avertissements ont été observés localement au premier renouvellement, puis aucun pendant la même fenêtre. Le chemin upstream explique ce scénario, mais les logs ne permettent pas d’attribuer formellement chaque occurrence. Vérifier ce comportement lors d’une mise à jour ; ne pas désactiver les quotas ou masquer globalement les avertissements pour le supprimer.
 
+### Protocole credentials et MFA
+
+`convex/authOptions.ts` conserve le plugin twoFactor 1.6.22 mais adapte son matcher `hooks.after` uniquement pour `/sign-in/email`. Le hook upstream (`dist/plugins/two-factor/index.mjs`) supprime sinon la session primaire et impose un cookie de challenge incompatible avec nos assurances liées à une session vivante. Ne pas supprimer les contrôles `shouldRequirePassword`/`validatePassword` ni les endpoints du plugin. Revoir cette adaptation à chaque changement de version et exécuter `pnpm test:e2e:local modules` : session en attente, refus privés, TOTP, récupération à usage unique, annulation/remplacement et double exigence mot de passe/preuve d’identité.
+
+Les documentations Context7 consultées pour ce correctif indexaient Better Auth 1.6.23 et Vitest 4.1.6, sans versions exactes 1.6.22/4.1.11. Les hooks, vérifications et mocks ont donc été confirmés dans les sources installées ; les versions du lockfile restent inchangées.
+
 ## Procédure
 
 ### Confidentialité des échecs Playwright

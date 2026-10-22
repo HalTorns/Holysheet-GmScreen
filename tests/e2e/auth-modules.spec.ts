@@ -5,7 +5,8 @@ import type { Page } from '@playwright/test'
 import { z } from 'zod'
 
 import { api } from '../../convex/_generated/api'
-import { allowSupportUser } from './backend-operator'
+import { backendSiteUrl, mailpitUrl } from '../../scripts/local-config.mjs'
+import { allowSupportUser, addPasswordCredential } from './backend-operator'
 import { verifyLocalRestore } from './backup'
 import {
   deleteAccountWithClient,
@@ -46,9 +47,11 @@ function totp(secret: string) {
     .padStart(6, '0')
 }
 
-async function enrollMfa(page: Page) {
+async function enrollMfa(page: Page, password?: string) {
   await page.goto('/app/security')
   const mfaMailbox = await identityMailbox(page)
+  if (password)
+    await page.getByLabel('Mot de passe actuel', { exact: true }).fill(password)
   await page
     .getByRole('button', { name: 'Activer la MFA', exact: true })
     .click()
@@ -78,137 +81,209 @@ async function enrollMfa(page: Page) {
   return { secret, backupCode }
 }
 
-test('real TOTP enrollment guards existing and new sessions; a recovery code is consumed once', async ({
-  page,
-  browser,
-}) => {
-  const email = createEmail()
-  await signInWithEmail(page, email)
-  const other = await browser.newContext({ baseURL: SITE_URL })
-  const third = await browser.newContext({ baseURL: SITE_URL })
-  try {
-    const otherPage = await other.newPage()
-    await signInWithEmail(otherPage, email)
-    const pendingClient = await getAuthenticatedClient(other)
-    const { secret, backupCode } = await enrollMfa(page)
-    const restored = await verifyLocalRestore()
-    for (const table of ['twoFactor', 'sessionAssurances', 'authAudit'])
+for (const method of ['otp', 'credentials'] as const) {
+  test(`${method}: real TOTP enrollment guards existing and new sessions; a recovery code is consumed once`, async ({
+    page,
+    browser,
+  }) => {
+    const email = createEmail()
+    await signInWithEmail(page, email)
+    const password =
+      method === 'credentials' ? 'synthetic-e2e-credential-password' : undefined
+    if (password) {
+      const owner = await getAuthenticatedClient(page.context())
+      const user = await owner.query(api.auth.getCurrentUser, {})
+      if (!user) throw new Error('Missing credential fixture owner.')
+      await addPasswordCredential(user.id, password)
+    }
+    const other = await browser.newContext({ baseURL: SITE_URL })
+    const third = await browser.newContext({ baseURL: SITE_URL })
+    try {
+      const otherPage = await other.newPage()
+      await signInWithEmail(otherPage, email)
+      const pendingClient = await getAuthenticatedClient(other)
+      const { secret, backupCode } = await enrollMfa(page, password)
+      const restored = await verifyLocalRestore()
+      for (const table of ['twoFactor', 'sessionAssurances', 'authAudit'])
+        expect(
+          restored.tables[`_components/betterAuth/${table}`]
+        ).toBeGreaterThan(0)
+      await expect(
+        pendingClient.query(api.resources.list, listArgs)
+      ).rejects.toThrow()
+      await expect(
+        pendingClient.mutation(api.resources.create, {
+          title: 'Denied pending MFA',
+          description: '',
+        })
+      ).rejects.toThrow()
+      await otherPage.goto('/app')
+      await expect(otherPage).toHaveURL(`${SITE_URL}/verify-mfa`)
+      await otherPage
+        .getByLabel('Code d’authentification', { exact: true })
+        .fill(totp(secret))
+      await otherPage
+        .getByRole('button', { name: 'Vérifier le code', exact: true })
+        .click()
+      await expect(otherPage).toHaveURL(`${SITE_URL}/app`)
+      const code = password ? undefined : await requestSignInCode(third, email)
       expect(
-        restored.tables[`_components/betterAuth/${table}`]
-      ).toBeGreaterThan(0)
-    await expect(
-      pendingClient.query(api.resources.list, listArgs)
-    ).rejects.toThrow()
-    await otherPage.goto('/app')
-    await expect(otherPage).toHaveURL(`${SITE_URL}/verify-mfa`)
-    await otherPage
-      .getByLabel('Code d’authentification', { exact: true })
-      .fill(totp(secret))
-    await otherPage
-      .getByRole('button', { name: 'Vérifier le code', exact: true })
-      .click()
-    await expect(otherPage).toHaveURL(`${SITE_URL}/app`)
-    const code = await requestSignInCode(third, email)
-    expect(
-      (
-        await third.request.post('/api/auth/sign-in/email-otp', {
-          headers: { Origin: SITE_URL },
-          data: { email, otp: code },
+        (
+          await third.request.post(
+            password
+              ? '/api/auth/sign-in/email'
+              : '/api/auth/sign-in/email-otp',
+            {
+              headers: { Origin: SITE_URL },
+              data: password ? { email, password } : { email, otp: code },
+            }
+          )
+        ).status()
+      ).toBe(200)
+      const thirdPage = await third.newPage()
+      await thirdPage.goto('/app')
+      await expect(thirdPage).toHaveURL(`${SITE_URL}/verify-mfa`)
+      const primary = await getAuthenticatedClient(third)
+      await expect(
+        primary.query(api.resources.list, listArgs)
+      ).rejects.toThrow()
+      await expect(
+        primary.mutation(api.resources.create, {
+          title: 'Denied primary',
+          description: '',
         })
-      ).status()
-    ).toBe(200)
-    const thirdPage = await third.newPage()
-    await thirdPage.goto('/app')
-    await expect(thirdPage).toHaveURL(`${SITE_URL}/verify-mfa`)
-    await thirdPage
-      .getByRole('button', { name: 'Utiliser un code de récupération' })
-      .click()
-    await thirdPage.getByLabel('Code de récupération').fill(backupCode)
-    await thirdPage
-      .getByRole('button', { name: 'Vérifier le code', exact: true })
-      .click()
-    await expect(thirdPage).toHaveURL(`${SITE_URL}/app`)
-    const repeated = await third.request.post(
-      '/api/auth/two-factor/verify-backup-code',
-      { headers: { Origin: SITE_URL }, data: { code: backupCode } }
-    )
-    expect(repeated.ok()).toBe(false)
-  } finally {
-    const owner = await getAuthenticatedClient(page.context())
-    await deleteAccountWithClient(owner)
-    await other.close()
-    await third.close()
-  }
-})
+      ).rejects.toThrow()
+      await thirdPage
+        .getByRole('button', { name: 'Utiliser un code de récupération' })
+        .click()
+      await thirdPage.getByLabel('Code de récupération').fill(backupCode)
+      await thirdPage
+        .getByRole('button', { name: 'Vérifier le code', exact: true })
+        .click()
+      await expect(thirdPage).toHaveURL(`${SITE_URL}/app`)
+      await thirdPage.reload()
+      await expect(thirdPage).toHaveURL(`${SITE_URL}/app`)
+      const verified = await getAuthenticatedClient(third)
+      expect((await verified.query(api.resources.list, listArgs)).page).toEqual(
+        []
+      )
+      await verified.mutation(api.resources.create, {
+        title: 'After MFA',
+        description: '',
+      })
+      const repeated = await third.request.post(
+        '/api/auth/two-factor/verify-backup-code',
+        { headers: { Origin: SITE_URL }, data: { code: backupCode } }
+      )
+      expect(repeated.ok()).toBe(false)
+    } finally {
+      const owner = await getAuthenticatedClient(page.context())
+      await deleteAccountWithClient(owner)
+      await other.close()
+      await third.close()
+    }
+  })
 
-test('cancelling a failed MFA sign-in restores the browser session; success replaces it', async ({
-  page,
-}) => {
-  const email = createEmail()
-  await signInWithEmail(page, email)
-  const { secret } = await enrollMfa(page)
-  const previous = await getAuthenticatedClient(page.context())
-  let cleanup = previous
-  try {
-    const previousSession = z
-      .object({ session: z.object({ id: z.string() }) })
-      .parse(await (await page.request.get('/api/auth/get-session')).json())
-    const retryCode = await requestSignInCode(page.context(), email)
-    expect(
-      (
-        await page.request.post('/api/auth/sign-in/email-otp', {
-          headers: { Origin: SITE_URL },
-          data: { email, otp: retryCode },
-        })
-      ).status()
-    ).toBe(200)
-    await page.goto('/app')
-    await expect(page).toHaveURL(`${SITE_URL}/verify-mfa`)
-    const validTotp = totp(secret)
-    const wrongTotp = validTotp === '000000' ? '000001' : '000000'
-    await page
-      .getByLabel('Code d’authentification', { exact: true })
-      .fill(wrongTotp)
-    await page
-      .getByRole('button', { name: 'Vérifier le code', exact: true })
-      .click()
-    await expect(page.getByRole('alert')).toContainText('Code refusé')
-    const cancellation = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname === '/api/auth/pending-sign-in/cancel'
-    )
-    await page.getByRole('button', { name: /Annuler/ }).click()
-    expect((await cancellation).status()).toBe(200)
-    await expect(page).toHaveURL(`${SITE_URL}/app`)
-    const resumedSession = z
-      .object({ session: z.object({ id: z.string() }) })
-      .parse(await (await page.request.get('/api/auth/get-session')).json())
-    expect(resumedSession.session.id).toBe(previousSession.session.id)
-    expect(await previous.query(api.auth.getCurrentUser, {})).not.toBeNull()
-    const successfulRetry = await requestSignInCode(page.context(), email)
-    expect(
-      (
-        await page.request.post('/api/auth/sign-in/email-otp', {
-          headers: { Origin: SITE_URL },
-          data: { email, otp: successfulRetry },
-        })
-      ).status()
-    ).toBe(200)
-    await page.goto('/verify-mfa')
-    await page
-      .getByLabel('Code d’authentification', { exact: true })
-      .fill(totp(secret))
-    await page
-      .getByRole('button', { name: 'Vérifier le code', exact: true })
-      .click()
-    await expect(page).toHaveURL(`${SITE_URL}/app`)
-    expect(await previous.query(api.auth.getCurrentUser, {})).toBeNull()
-    cleanup = await getAuthenticatedClient(page.context())
-  } finally {
-    if (await cleanup.query(api.auth.getCurrentUser, {}))
-      await deleteAccountWithClient(cleanup)
-  }
-})
+  test(`${method}: cancelling a failed MFA sign-in restores the browser session; success replaces it`, async ({
+    page,
+  }) => {
+    const email = createEmail()
+    await signInWithEmail(page, email)
+    const password =
+      method === 'credentials' ? 'synthetic-e2e-credential-password' : undefined
+    if (password) {
+      const owner = await getAuthenticatedClient(page.context())
+      const user = await owner.query(api.auth.getCurrentUser, {})
+      if (!user) throw new Error('Missing credential fixture owner.')
+      await addPasswordCredential(user.id, password)
+    }
+    const { secret } = await enrollMfa(page, password)
+    const previous = await getAuthenticatedClient(page.context())
+    let cleanup = previous
+    try {
+      const previousSession = z
+        .object({ session: z.object({ id: z.string() }) })
+        .parse(await (await page.request.get('/api/auth/get-session')).json())
+      const retryCode = password
+        ? undefined
+        : await requestSignInCode(page.context(), email)
+      expect(
+        (
+          await page.request.post(
+            password
+              ? '/api/auth/sign-in/email'
+              : '/api/auth/sign-in/email-otp',
+            {
+              headers: { Origin: SITE_URL },
+              data: password ? { email, password } : { email, otp: retryCode },
+            }
+          )
+        ).status()
+      ).toBe(200)
+      await page.goto('/app')
+      await expect(page).toHaveURL(`${SITE_URL}/verify-mfa`)
+      const validTotp = totp(secret)
+      const wrongTotp = validTotp === '000000' ? '000001' : '000000'
+      await page
+        .getByLabel('Code d’authentification', { exact: true })
+        .fill(wrongTotp)
+      await page
+        .getByRole('button', { name: 'Vérifier le code', exact: true })
+        .click()
+      await expect(page.getByRole('alert')).toContainText('Code refusé')
+      const cancellation = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+          '/api/auth/pending-sign-in/cancel'
+      )
+      await page.getByRole('button', { name: /Annuler/ }).click()
+      expect((await cancellation).status()).toBe(200)
+      await expect(page).toHaveURL(`${SITE_URL}/app`)
+      const resumedSession = z
+        .object({ session: z.object({ id: z.string() }) })
+        .parse(await (await page.request.get('/api/auth/get-session')).json())
+      expect(resumedSession.session.id).toBe(previousSession.session.id)
+      expect(await previous.query(api.auth.getCurrentUser, {})).not.toBeNull()
+      if (password) {
+        await page.goto('/sign-in')
+        await page
+          .getByLabel('Email du compte avec mot de passe', { exact: true })
+          .fill(email)
+        await page.getByLabel('Mot de passe', { exact: true }).fill(password)
+        await page
+          .getByRole('button', {
+            name: 'Se connecter avec un mot de passe',
+            exact: true,
+          })
+          .click()
+        await expect(page).toHaveURL(`${SITE_URL}/verify-mfa`)
+      } else {
+        const successfulRetry = await requestSignInCode(page.context(), email)
+        expect(
+          (
+            await page.request.post('/api/auth/sign-in/email-otp', {
+              headers: { Origin: SITE_URL },
+              data: { email, otp: successfulRetry },
+            })
+          ).status()
+        ).toBe(200)
+      }
+      await page.goto('/verify-mfa')
+      await page
+        .getByLabel('Code d’authentification', { exact: true })
+        .fill(totp(secret))
+      await page
+        .getByRole('button', { name: 'Vérifier le code', exact: true })
+        .click()
+      await expect(page).toHaveURL(`${SITE_URL}/app`)
+      expect(await previous.query(api.auth.getCurrentUser, {})).toBeNull()
+      cleanup = await getAuthenticatedClient(page.context())
+    } finally {
+      if (await cleanup.query(api.auth.getCurrentUser, {}))
+        await deleteAccountWithClient(cleanup)
+    }
+  })
+}
 
 test('support uses an explicit operator grant, stays read-only and can return to the actor', async ({
   page,
@@ -300,7 +375,7 @@ test('an emailed magic link creates a session once and never authenticates on re
   await expect
     .poll(async () => {
       const search = await fetch(
-        `http://127.0.0.1:8025/api/v1/search?${new URLSearchParams({ query: `to:${email}` })}`
+        `${mailpitUrl}/api/v1/search?${new URLSearchParams({ query: `to:${email}` })}`
       )
       const data = z
         .object({ messages: z.array(z.object({ ID: z.string() })) })
@@ -309,11 +384,7 @@ test('an emailed magic link creates a session once and never authenticates on re
       if (!id) return false
       const message = z
         .object({ Text: z.string() })
-        .parse(
-          await (
-            await fetch(`http://127.0.0.1:8025/api/v1/message/${id}`)
-          ).json()
-        )
+        .parse(await (await fetch(`${mailpitUrl}/api/v1/message/${id}`)).json())
       link = /http:\/\/localhost:\d+\/api\/auth\/magic-link\/verify[^\s]+/.exec(
         message.Text
       )?.[0]
@@ -352,7 +423,7 @@ test('an emailed magic link creates a session once and never authenticates on re
 
 test('the private auth bridge rejects direct Convex calls while JWKS stays public', async () => {
   const direct = await fetch(
-    'http://127.0.0.1:3211/api/auth/email-otp/send-verification-otp',
+    `${backendSiteUrl}/api/auth/email-otp/send-verification-otp`,
     {
       method: 'POST',
       headers: { Origin: SITE_URL, 'Content-Type': 'application/json' },
@@ -360,7 +431,114 @@ test('the private auth bridge rejects direct Convex calls while JWKS stays publi
     }
   )
   expect(direct.status).toBe(403)
-  expect(
-    (await fetch('http://127.0.0.1:3211/api/auth/convex/jwks')).status
-  ).toBe(200)
+  expect((await fetch(`${backendSiteUrl}/api/auth/convex/jwks`)).status).toBe(
+    200
+  )
+})
+
+test('credential MFA management requires both current password and operation-bound identity proof', async ({
+  page,
+}) => {
+  await signInWithEmail(page, createEmail())
+  const client = await getAuthenticatedClient(page.context())
+  const user = await client.query(api.auth.getCurrentUser, {})
+  if (!user) throw new Error('Missing credential owner.')
+  const password = 'synthetic-e2e-management-password'
+  await addPasswordCredential(user.id, password)
+  try {
+    const withoutProof = async (operation: 'enable' | 'disable') => {
+      const response = await page.request.post(
+        `/api/auth/two-factor/${operation}`,
+        {
+          headers: { Origin: SITE_URL },
+          data: { password },
+        }
+      )
+      expect(response.status()).toBe(403)
+      expect(
+        z.object({ code: z.string() }).parse(await response.json()).code
+      ).toBe('IDENTITY_CONFIRMATION_REQUIRED')
+    }
+    await withoutProof('enable')
+    await page.goto('/app/security')
+    await page
+      .getByLabel('Mot de passe actuel', { exact: true })
+      .fill('incorrect-password')
+    const mailbox = await identityMailbox(page)
+    const refusedEnable = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/auth/two-factor/enable'
+    )
+    await page
+      .getByRole('button', { name: 'Activer la MFA', exact: true })
+      .click()
+    await finishIdentityConfirmation(page, mailbox)
+    const refused = await refusedEnable
+    expect(refused.status()).toBe(400)
+    expect(
+      z.object({ code: z.string() }).parse(await refused.json()).code
+    ).toBe('INVALID_PASSWORD')
+    await expect(page.getByRole('alert')).toContainText('Activation refusée')
+    await enrollMfa(page, password)
+    await withoutProof('disable')
+    for (const valid of [false, true]) {
+      await page
+        .getByLabel('Mot de passe actuel', { exact: true })
+        .fill(valid ? password : 'incorrect-password')
+      const confirmationMailbox = await identityMailbox(page)
+      const response = page.waitForResponse(
+        (result) =>
+          new URL(result.url()).pathname === '/api/auth/two-factor/disable'
+      )
+      const reloaded = valid ? page.waitForEvent('load') : null
+      page.once('dialog', (dialog) => {
+        void dialog.accept()
+      })
+      await page
+        .getByRole('button', { name: 'Désactiver la MFA', exact: true })
+        .click()
+      await finishIdentityConfirmation(page, confirmationMailbox)
+      const result = await response
+      expect(result.status()).toBe(valid ? 200 : 400)
+      if (reloaded) await reloaded
+      else
+        expect(
+          z.object({ code: z.string() }).parse(await result.json()).code
+        ).toBe('INVALID_PASSWORD')
+      if (!valid)
+        await expect(page.getByRole('alert')).toContainText(
+          'Désactivation refusée'
+        )
+    }
+    await expect(
+      page.getByRole('button', { name: 'Activer la MFA', exact: true })
+    ).toBeVisible()
+  } finally {
+    await deleteAccountWithClient(await getAuthenticatedClient(page.context()))
+  }
+})
+
+// Hydrated sign-in cannot detect a native GET submission before React starts.
+// Inspect the real SSR form with JavaScript disabled, without entering secrets.
+test('credential SSR form cannot submit a password in a URL before hydration', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    baseURL: SITE_URL,
+    javaScriptEnabled: false,
+  })
+  try {
+    const page = await context.newPage()
+    await page.goto('/sign-in')
+    const form = page.getByRole('form', { name: 'Connexion avec mot de passe' })
+    await expect(form).toHaveAttribute('method', 'post')
+    await expect(
+      form.getByLabel('Mot de passe', { exact: true })
+    ).toBeDisabled()
+    await expect(
+      form.getByRole('button', { name: 'Se connecter avec un mot de passe' })
+    ).toBeDisabled()
+  } finally {
+    await context.close()
+  }
 })

@@ -26,6 +26,7 @@ type MagicLinkDelivery = (message: {
 type SocialCredentials = { clientId: string; clientSecret: string }
 export type AuthModuleOptions = {
   adminIds: string[]
+  credentials?: boolean
   google?: SocialCredentials
   github?: SocialCredentials
 }
@@ -36,6 +37,25 @@ function requirePasskeyVerification(userVerified: boolean | undefined) {
       code: 'PASSKEY_USER_VERIFICATION_REQUIRED',
       message: 'Verify this passkey with a PIN or biometrics.',
     })
+  }
+}
+
+function sessionBoundTwoFactor() {
+  const plugin = twoFactor({ issuer: appConfig.name, allowPasswordless: true })
+  return {
+    ...plugin,
+    // Better Auth 1.6.22's after hook deletes the primary credential session.
+    // Only /sign-in/email is adapted: our live-session guards and factor-bound
+    // assurance own the pending challenge, as for OTP and passkeys. Preserve
+    // every endpoint, password check, schema and other matcher of the plugin.
+    hooks: {
+      ...plugin.hooks,
+      after: plugin.hooks.after.map((hook) => ({
+        ...hook,
+        matcher: (context: Parameters<typeof hook.matcher>[0]) =>
+          context.path !== '/sign-in/email' && hook.matcher(context),
+      })),
+    },
   }
 }
 
@@ -61,7 +81,10 @@ export function buildAuthOptions(
     secret: settings.secret,
     trustedOrigins: [settings.siteUrl],
     database,
-    emailAndPassword: { enabled: false },
+    emailAndPassword: {
+      enabled: modules.credentials === true,
+      requireEmailVerification: true,
+    },
     account: { accountLinking: { enabled: false }, encryptOAuthTokens: true },
     socialProviders: {
       ...(modules.google ? { google: modules.google } : {}),
@@ -118,7 +141,7 @@ export function buildAuthOptions(
       organization({ allowUserToCreateOrganization: false }),
       // Keep schemas stable; public endpoints are separately gated in auth.ts.
       magicLink({ sendMagicLink, expiresIn: 300, storeToken: 'hashed' }),
-      twoFactor({ issuer: appConfig.name, allowPasswordless: true }),
+      sessionBoundTwoFactor(),
       admin({
         defaultRole: 'user',
         adminUserIds: modules.adminIds,

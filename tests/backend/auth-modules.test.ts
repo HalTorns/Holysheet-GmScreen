@@ -48,6 +48,12 @@ test('a pending factor blocks data even with MFA disabled, and a replaced factor
   await expect(user.client.query(api.resources.list, listArgs)).rejects.toThrow(
     'MFA_REQUIRED'
   )
+  await expect(
+    user.client.mutation(api.resources.create, {
+      title: 'Denied',
+      description: '',
+    })
+  ).rejects.toThrow('MFA_REQUIRED')
   await backend.mutation(components.betterAuth.access.verifySessionFactor, {
     sessionId: user.sessionId,
     userId: user.userId,

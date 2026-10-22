@@ -5,6 +5,11 @@ import { createServer } from 'node:net'
 import { dirname, join } from 'node:path'
 import { parseEnv, promisify } from 'node:util'
 
+import {
+  assertLocalDeploymentSelection,
+  assertDockerPortsOwnership,
+  prepareDockerEnvironment,
+} from './local-config.mjs'
 import { archiveInventory, compareInventories, checksum } from './snapshots.mjs'
 
 const projectRoot = dirname(import.meta.dirname)
@@ -134,6 +139,8 @@ async function environmentFileChecksums() {
 }
 
 async function verifyRestore() {
+  assertLocalDeploymentSelection()
+  assertDockerPortsOwnership(prepareDockerEnvironment())
   const startedAt = Date.now()
   const originalEnvironment = await environmentFileChecksums()
   const configuration = parseEnv(

@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test'
 import { z } from 'zod'
 
 import { api } from '../../convex/_generated/api'
+import { backendUrl } from '../../scripts/local-config.mjs'
 import {
   deleteAccountWithClient,
   SITE_URL,
@@ -32,21 +33,24 @@ async function holdFirstResourceCreation(page: Page) {
   })
   let release: (() => void) | undefined
   let wasHeld = false
-  await page.routeWebSocket('ws://127.0.0.1:3210/**', (socket) => {
-    const server = socket.connectToServer()
-    socket.onMessage((message) => {
-      if (
-        !wasHeld &&
-        typeof message === 'string' &&
-        mutationMessage.safeParse(JSON.parse(message)).success
-      ) {
-        wasHeld = true
-        release = () => server.send(message)
-        return
-      }
-      server.send(message)
-    })
-  })
+  await page.routeWebSocket(
+    `${backendUrl.replace('http:', 'ws:')}/**`,
+    (socket) => {
+      const server = socket.connectToServer()
+      socket.onMessage((message) => {
+        if (
+          !wasHeld &&
+          typeof message === 'string' &&
+          mutationMessage.safeParse(JSON.parse(message)).success
+        ) {
+          wasHeld = true
+          release = () => server.send(message)
+          return
+        }
+        server.send(message)
+      })
+    }
+  )
   return {
     waitUntilHeld: () => expect.poll(() => wasHeld).toBe(true),
     release: () => release?.(),

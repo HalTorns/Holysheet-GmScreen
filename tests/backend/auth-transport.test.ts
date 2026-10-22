@@ -191,3 +191,67 @@ test.each(['revoked token', 'passkey without identity proof'] as const)(
     })
   }
 )
+
+// Real credential endpoint + installed plugin: a primary session must survive
+// to use the same guarded MFA protocol as OTP/passkeys (never a plugin cookie).
+test('credential sign-in keeps a live primary session pending MFA', async () => {
+  const { backend, user } = await createHttpSession()
+  vi.stubEnv('AUTH_CREDENTIALS_ENABLED', 'true')
+  await backend.action(async (ctx) => {
+    const auth = createAuth(ctx)
+    const context = await auth.$context
+    await context.internalAdapter.linkAccount({
+      userId: user.userId,
+      accountId: user.userId,
+      providerId: 'credential',
+      password: await context.password.hash('synthetic-credential-password'),
+    })
+  })
+  await backend.mutation(components.betterAuth.adapter.updateOne, {
+    input: {
+      model: 'user',
+      where: [{ field: '_id', value: user.userId }],
+      update: { twoFactorEnabled: true },
+    },
+  })
+  await backend.action(async (ctx) => {
+    const auth = createAuth(ctx)
+    const response = await auth.handler(
+      new Request('http://localhost:3000/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: {
+          origin: 'http://localhost:3000',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'transport@example.test',
+          password: 'synthetic-credential-password',
+        }),
+      })
+    )
+    expect(response.status).toBe(200)
+    const body: unknown = await response.json()
+    expect(
+      z.object({ user: z.object({ id: z.string() }) }).safeParse(body).success
+    ).toBe(true)
+    const cookie = response.headers
+      .getSetCookie()
+      .find(
+        (value) =>
+          value.startsWith('better-auth.session_token=') &&
+          !value.includes('Max-Age=0')
+      )
+      ?.split(';')[0]
+    expect(Boolean(cookie)).toBe(true)
+    const live = await auth.handler(
+      new Request('http://localhost:3000/api/auth/get-session', {
+        headers: { cookie: cookie ?? '' },
+      })
+    )
+    expect(
+      z
+        .object({ session: z.object({ id: z.string() }) })
+        .safeParse(await live.json()).success
+    ).toBe(true)
+  })
+})

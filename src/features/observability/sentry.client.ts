@@ -17,7 +17,7 @@ export async function initializeClientMonitoring() {
           ? [
               ...defaults,
               Sentry.spotlightBrowserIntegration({
-                sidecarUrl: 'http://localhost:8969/stream',
+                sidecarUrl: `${env.VITE_SPOTLIGHT_URL}/stream`,
               }),
             ]
           : defaults,

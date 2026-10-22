@@ -6,14 +6,14 @@ services:
     stop_signal: SIGINT
     stop_grace_period: 10s
     ports:
-      - '127.0.0.1:3210:3210'
-      - '127.0.0.1:3211:3211'
+      - '127.0.0.1:${LOCAL_CONVEX_PORT:-3210}:3210'
+      - '127.0.0.1:${LOCAL_CONVEX_SITE_PORT:-3211}:3211'
     env_file: .env.docker
     environment:
       POSTGRES_URL: ${LOCAL_POSTGRES_URL:-}
       DO_NOT_REQUIRE_SSL: '1'
-      CONVEX_CLOUD_ORIGIN: http://127.0.0.1:3210
-      CONVEX_SITE_ORIGIN: http://127.0.0.1:3211
+      CONVEX_CLOUD_ORIGIN: http://127.0.0.1:${LOCAL_CONVEX_PORT:-3210}
+      CONVEX_SITE_ORIGIN: http://127.0.0.1:${LOCAL_CONVEX_SITE_PORT:-3211}
       DISABLE_BEACON: 'true'
       REDACT_LOGS_TO_CLIENT: 'true'
       RUST_LOG: warn
@@ -56,9 +56,9 @@ services:
     stop_signal: SIGINT
     stop_grace_period: 10s
     ports:
-      - '127.0.0.1:6791:6791'
+      - '127.0.0.1:${LOCAL_DASHBOARD_PORT:-6791}:6791'
     environment:
-      NEXT_PUBLIC_DEPLOYMENT_URL: http://127.0.0.1:3210
+      NEXT_PUBLIC_DEPLOYMENT_URL: http://127.0.0.1:${LOCAL_CONVEX_PORT:-3210}
       NEXT_PUBLIC_LOAD_MONACO_INTERNALLY: 'true'
     depends_on:
       backend:
@@ -73,7 +73,7 @@ services:
     image: axllent/mailpit@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
     restart: unless-stopped
     ports:
-      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:${LOCAL_MAILPIT_PORT:-8025}:8025'
     environment:
       MP_MAX_MESSAGES: '100'
     healthcheck:
@@ -86,7 +86,7 @@ services:
     profiles: [observability]
     restart: unless-stopped
     ports:
-      - '127.0.0.1:8969:8969'
+      - '127.0.0.1:${LOCAL_SPOTLIGHT_PORT:-8969}:8969'
 
 volumes:
   convex-data:

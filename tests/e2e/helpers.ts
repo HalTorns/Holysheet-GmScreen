@@ -6,11 +6,11 @@ import { ConvexHttpClient } from 'convex/browser'
 import { z } from 'zod'
 
 import { api } from '../../convex/_generated/api'
+import { siteUrl, mailpitUrl, backendUrl } from '../../scripts/local-config.mjs'
 
-export const SITE_URL =
-  process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
-const MAILPIT_URL = 'http://127.0.0.1:8025'
-const CONVEX_URL = 'http://127.0.0.1:3210'
+export const SITE_URL = process.env.PLAYWRIGHT_BASE_URL ?? siteUrl
+const MAILPIT_URL = mailpitUrl
+const CONVEX_URL = backendUrl
 
 const mailboxSchema = z.object({
   messages: z.array(z.object({ ID: z.string() })),

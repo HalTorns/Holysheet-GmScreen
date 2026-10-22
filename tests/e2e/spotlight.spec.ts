@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { spotlightUrl } from '../../scripts/local-config.mjs'
 import { containsExceptionEvent } from './telemetry'
 
 test.skip(
@@ -16,7 +17,7 @@ test('Spotlight receives a redacted browser exception locally', async ({
   await expect(page.getByLabel('Adresse e-mail', { exact: true })).toBeEnabled()
   const delivered = page.waitForResponse(
     (response) =>
-      response.url() === 'http://localhost:8969/stream' &&
+      response.url() === `${spotlightUrl}/stream` &&
       response.request().method() === 'POST' &&
       containsExceptionEvent(response.request().postData())
   )

@@ -18,6 +18,7 @@ import { getSessionAccess } from './sessionAccess'
 export function isSignInPath(path: string) {
   return (
     [
+      '/sign-in/email',
       '/sign-in/email-otp',
       '/passkey/verify-authentication',
       '/magic-link/verify',

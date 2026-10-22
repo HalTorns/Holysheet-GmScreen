@@ -6,6 +6,11 @@ import {
   assertPostgresConfiguration,
   assertDockerPortsOwnership,
   backendUrl,
+  backendSiteUrl,
+  siteUrl,
+  dashboardUrl,
+  mailpitUrl,
+  spotlightUrl,
   composeArguments,
   composeEnvironment,
   localDeploymentEnvironment,
@@ -52,14 +57,15 @@ async function setup() {
     throw new Error('The backend returned an invalid admin key.')
   writePrivateEnvironment('.env.local', {
     ...current,
-    VITE_SITE_URL: 'http://localhost:3000',
+    VITE_SITE_URL: siteUrl,
+    VITE_SPOTLIGHT_URL: spotlightUrl,
     VITE_CONVEX_URL: backendUrl,
-    VITE_CONVEX_SITE_URL: 'http://127.0.0.1:3211',
+    VITE_CONVEX_SITE_URL: backendSiteUrl,
     CONVEX_SELF_HOSTED_URL: backendUrl,
     CONVEX_SELF_HOSTED_ADMIN_KEY: adminKey,
   })
   const changes = {
-    SITE_URL: 'http://localhost:3000',
+    SITE_URL: siteUrl,
     PASSKEY_RP_ID: 'localhost',
     BETTER_AUTH_SECRET: dockerEnvironment.LOCAL_AUTH_SECRET,
     AUTH_EMAIL_PROVIDER: 'mailpit',
@@ -100,7 +106,7 @@ async function setup() {
     { env, capture: true }
   )
   console.info(
-    'Services locaux prêts : PostgreSQL 18, Convex, dashboard et Mailpit. Configuration et secrets existants conservés.\nLancer pnpm dev et pnpm backend:dev dans deux terminaux.\nApplication : http://localhost:3000 — Emails : http://localhost:8025\nDashboard : pnpm dashboard (http://127.0.0.1:6791).'
+    `Services locaux prêts : PostgreSQL 18, Convex, dashboard et Mailpit. Configuration et secrets existants conservés.\nLancer pnpm dev et pnpm backend:dev dans deux terminaux.\nApplication : ${siteUrl} — Emails : ${mailpitUrl}\nDashboard : pnpm dashboard (${dashboardUrl}).`
   )
 }
 

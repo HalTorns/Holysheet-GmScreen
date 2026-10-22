@@ -51,8 +51,19 @@ const args = process.argv.slice(2)
 appendFileSync(process.env.TEST_COMMAND_LOG, JSON.stringify({ program: process.argv[1].split('/').at(-1), args, cloudSelected: Boolean(process.env.CONVEX_DEPLOY_KEY || process.env.CONVEX_DEPLOYMENT_TOKEN || process.env.CONVEX_DEPLOYMENT), localUrl: process.env.CONVEX_SELF_HOSTED_URL, expectedOrganizations: process.env.PLAYWRIGHT_EXPECT_ORGANIZATIONS }) + '\n')
 if (args.includes('./generate_admin_key.sh')) console.log('development-only-fake-key')
 if (args.includes('ps') && args.includes('-a') && process.env.TEST_LEGACY_OWNER) console.log('development-only-container-id')
-if (args.includes('publish=' + process.env.TEST_PORT_NUMBER) && process.env.TEST_PORT_PROJECT) console.log(process.env.TEST_PORT_PROJECT)
-if (args.includes('inspect')) console.log(process.env.TEST_COMPOSE_OWNER || process.cwd())
+const bindings = process.env.TEST_PORT_BINDINGS ? JSON.parse(process.env.TEST_PORT_BINDINGS) : process.env.TEST_PORT_PROJECT ? [{ id: 'port-container', containerPort: process.env.TEST_PORT_NUMBER, hostPort: process.env.TEST_PORT_NUMBER, project: process.env.TEST_PORT_PROJECT }] : []
+if (args[0] === 'ps' && !args.includes('-a')) {
+  for (const binding of bindings) {
+    const filter = args.find(arg => arg.startsWith('publish='))
+    // Docker's publish filter matches the container port, NOT the host port.
+    if (!filter || filter === 'publish=' + binding.containerPort) console.log(args.some(arg => arg.includes('.Label')) ? binding.project : binding.id)
+  }
+}
+if (args.includes('inspect')) {
+  if (args.some(arg => arg.includes('.NetworkSettings.Ports'))) {
+    for (const binding of bindings.filter(entry => args.includes(entry.id))) console.log(JSON.stringify({ project: binding.project, ports: { [binding.containerPort + '/tcp']: [{ HostIp: '127.0.0.1', HostPort: binding.hostPort }] } }))
+  } else console.log(process.env.TEST_COMPOSE_OWNER || process.cwd())
+}
 `
   await Promise.all(
     ['docker', 'pnpm', 'convex'].map((name) =>
@@ -398,4 +409,123 @@ test('un ancien projet Docker appartenant à un autre checkout ne peut pas être
   expect(result.status).toBe(1)
   expect(result.stderr).toContain('another checkout')
   expect(await commands(local.log)).not.toContain('"up"')
+})
+
+// Setup owns host configuration and CLI targeting. Real E2E owns Docker/JWKS.
+test('custom host ports survive setup reruns and reach the local CLI', async () => {
+  const local = await fixture()
+  const ports = {
+    LOCAL_APP_PORT: '3400',
+    LOCAL_CONVEX_PORT: '3410',
+    LOCAL_CONVEX_SITE_PORT: '3411',
+    LOCAL_DASHBOARD_PORT: '6991',
+    LOCAL_MAILPIT_PORT: '8225',
+    LOCAL_SPOTLIGHT_PORT: '9169',
+  }
+  expect(setup(local, ports).status).toBe(0)
+  const configuration = parseEnv(
+    await readFile(join(local.directory, '.env.local'), 'utf-8')
+  )
+  expect(configuration).toMatchObject({
+    VITE_SITE_URL: 'http://localhost:3400',
+    VITE_CONVEX_URL: 'http://127.0.0.1:3410',
+    VITE_CONVEX_SITE_URL: 'http://127.0.0.1:3411',
+    CONVEX_SELF_HOSTED_URL: 'http://127.0.0.1:3410',
+  })
+  expect(setup(local).status).toBe(0)
+  expect(
+    parseEnv(await readFile(join(local.directory, '.env.docker'), 'utf-8'))
+  ).toMatchObject(ports)
+  expect((await backendCommand(local, 'push')).status).toBe(0)
+  expect(await commands(local.log)).toContain(
+    '"localUrl":"http://127.0.0.1:3410"'
+  )
+})
+
+test.each([
+  { LOCAL_CONVEX_PORT: '0' },
+  { LOCAL_CONVEX_PORT: '65536' },
+  { LOCAL_CONVEX_SITE_PORT: '3311oops' },
+  { LOCAL_APP_PORT: '3.5' },
+  { LOCAL_MAILPIT_PORT: '3210' },
+])(
+  'invalid host ports fail before Docker or configuration writes (%j)',
+  async (ports) => {
+    const local = await fixture()
+    const result = setup(local, ports)
+    expect(result.status).toBe(1)
+    expect(result.stderr).toMatch(/local port|host ports/)
+    expect(await commands(local.log)).toBe('')
+    await expect(
+      readFile(join(local.directory, '.env.docker'))
+    ).rejects.toThrow()
+  }
+)
+
+// These bindings exercise the Docker protocol the old publish filter confused.
+test.each(['another-checkout', ''])(
+  'a custom host port conflict fails before writes (Docker project %j)',
+  async (project) => {
+    const local = await fixture()
+    const result = setup(local, {
+      LOCAL_CONVEX_PORT: '3410',
+      TEST_PORT_BINDINGS: JSON.stringify([
+        { id: 'occupied', containerPort: '3210', hostPort: '3410', project },
+      ]),
+    })
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('Local port 3410 is already published')
+    expect(await commands(local.log)).not.toContain('"up"')
+    await expect(
+      readFile(join(local.directory, '.env.docker'))
+    ).rejects.toThrow()
+  }
+)
+
+test('two checkouts sharing container ports can use distinct host ports', async () => {
+  const local = await fixture()
+  const result = setup(local, {
+    TEST_PORT_BINDINGS: JSON.stringify([
+      {
+        id: 'separate',
+        containerPort: '3210',
+        hostPort: '3510',
+        project: 'another-checkout',
+      },
+    ]),
+  })
+  expect(result.status, result.stderr).toBe(0)
+})
+
+test('a checkout can reuse its own published host port', async () => {
+  const local = await fixture()
+  expect(setup(local).status).toBe(0)
+  const configuration = parseEnv(
+    await readFile(join(local.directory, '.env.docker'), 'utf-8')
+  )
+  const result = setup(local, {
+    TEST_PORT_BINDINGS: JSON.stringify([
+      {
+        id: 'owned',
+        containerPort: '3210',
+        hostPort: '3210',
+        project: configuration.COMPOSE_PROJECT_NAME,
+      },
+    ]),
+  })
+  expect(result.status, result.stderr).toBe(0)
+})
+
+test('an inherited port cannot silently retarget an established checkout', async () => {
+  const local = await fixture()
+  expect(setup(local).status).toBe(0)
+  const original = await readFile(join(local.directory, '.env.docker'), 'utf-8')
+  await writeFile(local.log, '')
+  const result = setup(local, { LOCAL_CONVEX_PORT: '3410' })
+  expect(result.status).toBe(1)
+  expect(result.stderr).toContain('Conflicting local port')
+  expect(await commands(local.log)).toBe('')
+  expect(await readFile(join(local.directory, '.env.docker'), 'utf-8')).toBe(
+    original
+  )
 })

@@ -6,6 +6,9 @@ import {
   assertLocalDeploymentSelection,
   assertPostgresConfiguration,
   backendUrl,
+  backendSiteUrl,
+  siteUrl,
+  spotlightUrl,
   dashboardUrl,
   composeArguments,
   composeEnvironment,
@@ -55,9 +58,9 @@ for (const name of ['.env.local', '.env.docker']) {
 check('URLs frontend et CLI locales cohérentes', () => {
   const environment = readEnvironment('.env.local')
   if (
-    environment.VITE_SITE_URL !== 'http://localhost:3000' ||
+    environment.VITE_SITE_URL !== siteUrl ||
     environment.VITE_CONVEX_URL !== backendUrl ||
-    environment.VITE_CONVEX_SITE_URL !== 'http://127.0.0.1:3211' ||
+    environment.VITE_CONVEX_SITE_URL !== backendSiteUrl ||
     environment.CONVEX_SELF_HOSTED_URL !== backendUrl ||
     !environment.CONVEX_SELF_HOSTED_ADMIN_KEY
   )
@@ -142,7 +145,7 @@ for (const [name, url] of [
   ['API Convex', `${backendUrl}/version`],
   ['Dashboard Convex', dashboardUrl],
   ...(readEnvironment('.env.docker').LOCAL_SPOTLIGHT_ENABLED === 'true'
-    ? [['Spotlight', 'http://localhost:8969']]
+    ? [['Spotlight', spotlightUrl]]
     : []),
 ]) {
   try {
