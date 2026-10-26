@@ -19,6 +19,9 @@ export const Route = createFileRoute('/_authenticated/app/security')({
 })
 
 function SecurityPage() {
+  const { data: capabilities } = useSuspenseQuery(
+    convexQuery(api.capabilities.get, {})
+  )
   const { data: user } = useSuspenseQuery(
     convexQuery(api.auth.getCurrentUser, {})
   )
@@ -44,7 +47,9 @@ function SecurityPage() {
           </p>
         </div>
         <span className="ml-auto text-xs text-muted-foreground">
-          Connexion sans mot de passe
+          {capabilities.passwordOnly
+            ? 'Connexion email et mot de passe'
+            : 'Connexion sans mot de passe'}
         </span>
       </div>
       <section
@@ -61,7 +66,7 @@ function SecurityPage() {
         Les actions sensibles vous demandent une confirmation d’identité ici, en
         conservant votre saisie.
       </p>
-      <PasskeysSection />
+      {!capabilities.passwordOnly && <PasskeysSection />}
       <MfaSection />
       <SessionsSection />
       <DataSection />

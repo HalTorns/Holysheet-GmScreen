@@ -12,13 +12,13 @@ type AppConfig = {
 // Public identity shared by the UI and backend. Deployment secrets and security
 // settings belong in validated environment variables, never in this object.
 export const appConfig = {
-  name: 'Socle',
-  brandName: 'socle',
-  tagline: 'Un point de départ solide',
+  name: 'Holysheet GM Screen',
+  brandName: 'Holysheet',
+  tagline: 'Vos références de partie, à portée de main',
   description:
-    'Un point de départ cohérent pour vos applications. Des données en temps réel, une connexion sans mot de passe et des conventions qui restent lisibles.',
+    'Préparez vos campagnes et composez vos écrans de maître du jeu : notes, fiches et références réunies au même endroit.',
   language: 'fr',
   locale: 'fr-FR',
   timeZone: 'Europe/Paris',
-  exportPrefix: 'socle',
+  exportPrefix: 'holysheet',
 } as const satisfies AppConfig

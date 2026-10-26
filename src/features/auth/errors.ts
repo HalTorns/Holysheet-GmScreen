@@ -1,6 +1,10 @@
 import { ConvexError } from 'convex/values'
 
 const messages: Record<string, string> = {
+  SCREEN_LIMIT:
+    'Ce Screen a atteint sa limite de notes. Utilisez un autre Screen pour continuer.',
+  FOLDER_DEPTH_LIMIT:
+    'Les dossiers sont limités à huit niveaux. Choisissez un dossier parent moins profond.',
   IDENTITY_CONFIRMATION_REQUIRED:
     'Confirmez votre identité pour autoriser cette action.',
   USERNAME_TAKEN: 'Ce pseudo est déjà utilisé. Choisissez-en un autre.',

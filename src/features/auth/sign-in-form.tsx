@@ -14,8 +14,21 @@ import { authClient } from '@/lib/auth-client'
 import { CredentialsSignIn } from './credentials-sign-in'
 import type { LoginCapabilities } from './optional-sign-in'
 import { OptionalSignIn } from './optional-sign-in'
+import { PasswordAuth } from './password-auth'
 
 export function SignInForm({
+  capabilities,
+}: {
+  capabilities: LoginCapabilities
+}) {
+  return capabilities.passwordOnly ? (
+    <PasswordAuth />
+  ) : (
+    <LegacySignInForm capabilities={capabilities} />
+  )
+}
+
+function LegacySignInForm({
   capabilities,
 }: {
   capabilities: LoginCapabilities

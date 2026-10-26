@@ -1,5 +1,11 @@
 # Mises à jour
 
+## Correctifs avant publication Holysheet — 26 octobre 2026
+
+L’audit de préparation Coolify signale deux alertes high dans le lockfile du socle. Mise à jour ciblée de Zod 4.6.5 vers 4.6.6 ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)), avec override des dépendances transitives Zod 4 encore épinglées avant 4.6.6, et override de Happy DOM 21.0.3 vers 21.0.4 ([GHSA-834v-8h66-3h79](https://github.com/advisories/GHSA-834v-8h66-3h79)), dépendance transitive de l’outillage Vitest. Les autres versions et les patches Better Auth/Playwright restent conservés.
+
+La configuration Zod `jitless` reste active ; vérifier types, tests, build et parcours sous CSP. Nodemailer 10.2.1 et ses types 8.0.2 sont ajoutés pour le relais SMTP, avec configuration privée et tests d’erreurs expurgées. La CI produit conserve les tests backend du socle et cible les parcours Holysheet avec vérifications SSR, origines et CSP ; les parcours UI passwordless/organisations ne correspondent pas au produit.
+
 ## Ensemble d’auth compatible
 
 | Paquet                     | Version du socle |

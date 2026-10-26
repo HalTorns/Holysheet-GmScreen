@@ -6,7 +6,7 @@ import { Building2, LayoutGrid, ShieldCheck, LifeBuoy } from 'lucide-react'
 export const appNavigation = linkOptions([
   {
     to: '/app',
-    label: 'Ressources',
+    label: 'Projets',
     icon: LayoutGrid,
     activeOptions: { exact: true },
   },

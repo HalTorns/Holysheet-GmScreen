@@ -1,100 +1,60 @@
-# Boilerplate TanStack Start + Convex
+# Holysheet GM Screen
 
-Socle TypeScript pour une application web avec SSR, données temps réel et authentification sans mot de passe. Le socle inclut pseudos, administration applicative, confirmation des actions sensibles et formulaires protégés contre les conflits. Le parcours de référence est complet : connexion par code email, ajout de passkeys, sessions révocables et ressources privées persistées dans Convex.
+Une plateforme française pour préparer et consulter les références d’une partie de jeu de rôle : projets de campagne, dossiers, Screens personnalisables et contenus interactifs. Le [PRD](PRD.md) définit la V1 complète ; [le brief opérationnel](docs/product.md) suit sa réalisation.
 
-## Démarrer en local
+## Démarrage sur ce poste Windows
 
-Pour un nouveau produit, créer un dépôt **privé depuis le template** : suivre [la procédure nouveau projet](docs/new-project.md), qui garde secrets, données et configuration propres à chaque application.
+Docker Desktop doit être démarré avec son moteur Linux et l’intégration Ubuntu 24.04. Node 26.11.0 et pnpm 11.8.0 sont installés dans WSL 2. Le code reste dans le dossier Windows du projet ; les commandes s’exécutent dans Ubuntu.
 
-Pour démarrer avec un LLM, placer `PRD.md` à la racine du nouveau dépôt, puis copier [le prompt de démarrage](docs/start-prompt.md). Il guide la lecture des consignes, le setup OrbStack/Docker et la réalisation du premier parcours produit.
+Depuis PowerShell dans le projet :
 
-Avant le premier domaine métier, suivre [le démarrage produit](docs/project-start.md) : renseigner [le brief](docs/product.md), décider de la propriété des données, choisir les modules nécessaires et définir une première fonctionnalité complète. [La carte des outils](docs/agent-patterns.md#choisir-les-outils-du-socle) relie chaque besoin aux outils et exemples déjà présents.
-
-Prérequis : Node.js 26.11.0 (versions prises en charge : `>=24.5 <27`), pnpm 11.8.0, Docker avec Compose et moteur Docker démarré.
-
-```sh
-pnpm install --frozen-lockfile
-pnpm setup
-pnpm dev
+```powershell
+powershell -File scripts/wsl.ps1 doctor
+powershell -File scripts/wsl.ps1 dev
 ```
 
-Ouvrir [localhost:3000](http://localhost:3000), utiliser une adresse email de développement et récupérer le code dans [Mailpit](http://localhost:8025). Les messages restent locaux ; aucun compte chez un fournisseur email n’est nécessaire. Utiliser **localhost** pour le frontend : le RP ID des passkeys locales est `localhost`.
+Dans un second terminal pendant les changements backend :
 
-`pnpm setup` démarre PostgreSQL 18.6, Convex, son dashboard et Mailpit, génère les secrets locaux absents, configure le backend et déploie ses fonctions. Il conserve les données et secrets existants. La configuration privée reste dans `.env.local` et dans les variables du backend ; ne pas copier ces fichiers dans Git.
+```powershell
+powershell -File scripts/wsl.ps1 backend:dev
+```
 
-| Service                 | Adresse               |
-| ----------------------- | --------------------- |
-| Frontend SSR            | http://localhost:3000 |
-| API et WebSocket Convex | http://127.0.0.1:3210 |
-| Actions HTTP Convex     | http://127.0.0.1:3211 |
-| Dashboard Convex        | http://127.0.0.1:6791 |
-| Boîte email Mailpit     | http://localhost:8025 |
+Application : [localhost:3000](http://localhost:3000). Emails locaux : [Mailpit](http://localhost:8025). Dashboard technique Convex : [localhost:6791](http://localhost:6791), avec accès administrateur distinct de l’application.
 
-PostgreSQL stocke les données internes de Convex dans un volume distinct ; son port reste privé dans le réseau Docker. Pour un ancien checkout SQLite, arrêter les serveurs de développement puis lancer `pnpm storage:migrate` avant de reprendre le setup. La [procédure de migration](docs/deployment.md#cible-du-projet--développement-local-production-sur-coolify) conserve le volume SQLite et un export privé vérifié.
+L’inscription utilise email et mot de passe. Vérifier l’adresse avec le code reçu dans Mailpit, puis se connecter avec le mot de passe. La récupération par code modifie le mot de passe et invalide les anciennes sessions. Les codes et messages restent dans l’environnement local ; aucun fournisseur d’email externe n’est nécessaire.
 
-Pendant les changements backend, lancer `pnpm backend:dev` dans un second terminal. `pnpm dashboard` ouvre l’outil admin local et, sur Mac, copie sa clé pour la connexion. Coller dans **Admin Key**, puis **Log In** ; remplacer le presse-papiers et se déconnecter après usage. Le dashboard inspecte toute l’instance, indépendamment des rôles de l’application.
+Pour une première initialisation : `powershell -File scripts/wsl.ps1 setup`. Pour reprendre des services arrêtés : `services:up`, puis `doctor`. Pour les arrêter en conservant leurs données : `services:down`. Le [guide Windows/WSL](docs/windows-wsl.md) précise les dépendances natives et le montage des fichiers privés.
 
-## Commandes
+## Premier parcours
 
-| Commande | Usage |
-| --- | --- |
-| `pnpm dev` | Frontend avec rechargement |
-| `pnpm backend:dev` | Surveiller et déployer les modifications Convex locales |
-| `pnpm backend:push` | Déployer les fonctions locales une fois |
-| `pnpm backend:deploy` | Vérifier les types puis publier depuis `operations` sur Coolify |
-| `pnpm dashboard` | Ouvrir le dashboard admin Convex local |
-| `pnpm doctor` | Vérifier configuration et santé des services |
-| `pnpm auth:generate` | Régénérer le schéma Better Auth Local Install |
-| `pnpm check` | Types, Oxlint, Oxfmt, Knip, Vitest backend/Browser Mode et build |
-| `pnpm test:e2e` | Parcours réels Chromium, Convex et Mailpit |
-| `pnpm test:e2e:organizations` | Parcours partagé avec activation locale temporaire |
-| `pnpm storage:migrate` | Migrer un ancien checkout SQLite vers PostgreSQL 18 |
-| `pnpm backup:verify` | Restauration locale sur un backend Docker jetable |
-| `pnpm build` / `pnpm start` | Build puis serveur SSR de production |
-| `pnpm services:down` | Arrêter les conteneurs en conservant les volumes |
+Le premier jalon couvre un espace personnel : projet → dossiers → Screen numérique ou A4 paysage → note texte simple → sauvegarde et réouverture. Les versions de notes refusent un écrasement concurrent et les autres vues reçoivent les données via Convex. L’export du compte et son nettoyage incluent les nouvelles collections.
 
-Avant le premier E2E : `pnpm exec playwright install chromium`. Les tests requièrent un backend initialisé par `pnpm setup` et démarrent le frontend automatiquement.
+L’éditeur avancé, les douze catégories de widgets, les profils configurables, l’autosauvegarde/historique, l’impression/export de Screens et la communauté restent dans le périmètre de la V1 à construire. L’état et les preuves de livraison se trouvent dans [docs/product.md](docs/product.md).
 
-Les commandes `backend:dev` et `backend:push` vérifient la cible locale et la propriété Docker, désignent explicitement `.env.local` et refusent les arguments supplémentaires. Pour une publication distante, suivre [la procédure dédiée](docs/deployment.md).
+## Architecture et vérification
 
-Pour vérifier le serveur construit et sa CSP stricte sans viser une autre application : `pnpm test:e2e:local` choisit un port libre, construit son serveur et restaure l’origine backend. Ajouter `organizations` ou `modules` pour ces parcours optionnels. La CI exécute les suites directement sur son propre serveur de production et le build de `pnpm check`.
+TanStack Start/Router pour le SSR et la navigation, Convex pour les données/droits/temps réel, Better Auth Local Install pour les comptes. PostgreSQL est la persistance interne de Convex. Interface métier dans `src/features/`, routes légères dans `src/routes/`, règles backend dans `convex/`, validations partagées dans `shared/`.
 
-## Choix structurants
+Depuis Ubuntu dans ce checkout :
 
-- TanStack Start pour le SSR et les routes ; TanStack Query pour le cache SSR intégré à Convex.
-- Convex pour le stockage et les règles métier ; chaque accès privé valide la session et le propriétaire côté backend.
-- Better Auth en **Local Install** avec codes email vérifiés et passkeys. Les clés privées restent dans les authentificateurs, les sessions et clés publiques sont dans Convex.
-- Tailwind v4, composants shadcn/ui et Base UI pour l’interface ; TanStack Form et Zod pour les formulaires.
-- Versions d’auth verrouillées : composant Convex `0.12.5`, Better Auth `1.6.22`, passkey `1.6.22`. Mettre à jour cet ensemble avec sa procédure, pas avec une mise à jour globale aveugle.
+```sh
+pnpm backend:push
+pnpm check
+pnpm test:e2e:local -- tests/e2e/holysheet.spec.ts
+git diff --check
+```
 
-## Documents de référence
+Le test Holysheet utilise des identités synthétiques, vérifie inscription, session, sauvegarde/réouverture, synchronisation, conflits, export, restauration et récupération du mot de passe. Traces, vidéos et captures automatiques d’authentification restent désactivées. Les suites historiques du socle conservent leurs contrats backend ; leurs anciens parcours UI de ressources/passwordless demandent une adaptation au produit.
 
-- [Architecture et conventions](docs/architecture.md)
-- [Créer une application depuis le template privé](docs/new-project.md)
-- [Adapter le socle à un nouveau projet](docs/adopting.md)
-- [Structurer le produit, choisir les droits et livrer le premier parcours](docs/project-start.md)
-- [Brief produit à renseigner dans le nouveau projet](docs/product.md)
-- [Outils, exemples et matrice de validation pour les agents](docs/agent-patterns.md)
-- [Comptes, administration et formulaires réutilisables](docs/accounts.md)
-- [Sécurité et limites du socle](docs/security.md)
-- [Développement, tests et CI](docs/development.md)
-- [Historique des vérifications locales](docs/verification.md)
-- [Revue historique du socle et corrections](docs/review.md)
-- [Déploiement cloud et auto-hébergé](docs/deployment.md)
-- [Sauvegarde et restauration](docs/backup-restore.md)
-- [Mises à jour compatibles](docs/upgrades.md)
-- [Modules optionnels](docs/modules.md)
-- [Organisations et rôles optionnels](docs/organizations.md)
-- [Revue historique de l’isolation et des permissions](docs/organizations-review.md)
+Ne pas copier les `.env*` privés ou les volumes entre projets. Les wrappers vérifient la cible locale et la propriété des services. Aucune commande de publication distante n’appartient au setup local.
 
-Les organisations et rôles sont intégrés mais désactivés par défaut. Activer `ORGANIZATIONS_ENABLED=true` dans Convex pour ajouter des espaces partagés avec propriétaires, administrateurs, membres et lecteurs. L’espace personnel reste disponible. Le [guide du module](docs/organizations.md) décrit permissions, invitations et cycle de vie des données.
+## Documents utiles
 
-La cible de production est Coolify : le [Compose de production](docker-compose.coolify.yml), le [Dockerfile SSR](Dockerfile) et le [guide de déploiement](docs/deployment.md) préparent la mise en ligne avec des domaines et secrets dédiés.
+- [Déploiement Coolify et configuration du relais SMTP Infomaniak](docs/coolify-holysheet.md).
 
-Les paiements, stockage R2 et fonctions IA restent à brancher selon le produit.
+- [Instructions agents](AGENTS.md), [conventions](docs/agent-patterns.md), [architecture](docs/architecture.md), [sécurité](docs/security.md).
+- [Modèle d’accès personnel](docs/decisions/access-model.md), [contenus et dispositions](docs/decisions/screen-data.md).
+- [Comptes](docs/accounts.md), [modules d’auth du socle](docs/auth-modules.md), [versions et correctifs](docs/upgrades.md).
+- [Développement](docs/development.md), [sauvegarde/restauration](docs/backup-restore.md), [déploiement](docs/deployment.md).
 
-## Modules et qualité
-
-Les conventions Codex/Claude/Cursor sont centralisées dans [AGENTS.md](AGENTS.md) et [les patterns agents](docs/agent-patterns.md). Oxlint/Ultracite, Oxfmt, Knip et les hooks Lefthook/lint-staged forment la chaîne de qualité ; `.vscode` fournit extensions, réglages et tâches. Node >=24.5 <27, version conseillée 26.11.0.
-
-[Magic Links, MFA, OAuth et support admin](docs/auth-modules.md) restent optionnels. [SEO, Arcjet, Sentry/Spotlight et PostHog](docs/observability.md) possèdent leurs propres configurations ; le défaut n’exige aucun compte SaaS. `pnpm services:up --spotlight` ouvre aussi l’interface de diagnostic locale sur le port 8969. Le mode personnel reste le point de départ du template.
+Le dépôt source reste accessible via le remote `boilerplate`. `origin` désigne le dépôt produit Holysheet GM Screen. L’utilisateur effectue le déploiement Coolify depuis ce dépôt ; suivre le guide ci-dessus pour le premier démarrage et la publication des fonctions Convex.

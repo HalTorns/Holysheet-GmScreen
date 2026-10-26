@@ -1,5 +1,6 @@
 import { api } from '@convex/_generated/api'
 import { appConfig } from '@shared/app-config'
+import { gmTables } from '@shared/gm'
 import { MAX_PAGE_SIZE } from '@shared/validation'
 import { z } from '@shared/zod'
 import { useForm } from '@tanstack/react-form'
@@ -114,7 +115,27 @@ function ExportDataButton() {
           cursor = page.continueCursor
         }
       }
+      const holysheet: Record<string, unknown[]> = {}
+      for (const collection of gmTables) {
+        cursor = null
+        isDone = false
+        const documents: unknown[] = []
+        while (!isDone) {
+          const page: FunctionReturnType<typeof api.gm.exportCollection> =
+            await convex.query(api.gm.exportCollection, {
+              collection,
+              paginationOpts: { numItems: 50, cursor },
+            })
+          documents.push(...page.page)
+          isDone = page.isDone
+          if (!isDone && cursor === page.continueCursor)
+            throw new Error('Export pagination did not progress')
+          cursor = page.continueCursor
+        }
+        holysheet[collection] = documents
+      }
       downloadExport({
+        holysheet,
         profile,
         accountStatus,
         resources,
@@ -150,6 +171,7 @@ function ExportDataButton() {
 }
 
 function downloadExport(value: {
+  holysheet: Record<string, unknown[]>
   profile: ExportPage['profile'] | null
   accountStatus: ExportPage['accountStatus'] | null
   resources: ExportPage['resources']['page']

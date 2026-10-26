@@ -71,6 +71,7 @@ async function setup() {
     AUTH_EMAIL_PROVIDER: 'mailpit',
     AUTH_EMAIL_FROM: 'connexion@local.test',
     MAILPIT_URL: 'http://mailpit:8025',
+    AUTH_PASSWORD_ONLY: 'true',
   }
   const response = await fetch(
     `${backendUrl}/api/update_environment_variables`,

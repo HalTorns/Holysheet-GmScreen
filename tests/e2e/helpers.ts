@@ -43,7 +43,7 @@ export function createEmail(): string {
   return `e2e-${randomUUID()}@example.test`
 }
 
-async function readMailbox(email: string): Promise<string[]> {
+export async function readMailbox(email: string): Promise<string[]> {
   const query = new URLSearchParams({ query: `to:${email}`, limit: '10' })
   const response = await fetch(`${MAILPIT_URL}/api/v1/search?${query}`)
   if (!response.ok) throw new Error('La boîte Mailpit est inaccessible.')
@@ -61,7 +61,7 @@ async function readVerificationCode(messageId: string): Promise<string> {
   return code
 }
 
-async function waitForVerificationCode(
+export async function waitForVerificationCode(
   email: string,
   previousMessages: Set<string>
 ): Promise<string> {

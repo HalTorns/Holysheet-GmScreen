@@ -1,5 +1,6 @@
 import { v } from 'convex/values'
 
+import { gmTables } from '../shared/gm'
 import { components, internal } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
 import type { MutationCtx } from './_generated/server'
@@ -78,6 +79,15 @@ async function cleanDeletedAccount(
   { userId, email }: Extract<Doc<'cleanupJobs'>, { kind: 'account' }>
 ) {
   await clearUserRateLimits(ctx, userId)
+  let gmDataRemain = false
+  for (const table of gmTables) {
+    const documents = await ctx.db
+      .query(table)
+      .withIndex('by_owner', (q) => q.eq('ownerId', userId))
+      .take(BATCH_SIZE)
+    for (const document of documents) await ctx.db.delete(table, document._id)
+    gmDataRemain ||= documents.length === BATCH_SIZE
+  }
   const resources = await ctx.db
     .query('resources')
     .withIndex('by_owner', (index) => index.eq('ownerId', userId))
@@ -106,6 +116,7 @@ async function cleanDeletedAccount(
   )
   return (
     resources.length === BATCH_SIZE ||
+    gmDataRemain ||
     events.length === BATCH_SIZE ||
     credentialsRemain ||
     invitationsRemain

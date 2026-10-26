@@ -15,6 +15,14 @@ services:
       CONVEX_SELF_HOSTED_URL: http://backend:3210
       # Runtime only. Empty during bootstrap; backend:deploy requires the key.
       CONVEX_SELF_HOSTED_ADMIN_KEY: ${CONVEX_SELF_HOSTED_ADMIN_KEY:-}
+      VITE_SITE_URL: ${VITE_SITE_URL:-https://gmscreen.holysheet.fr}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set an independent persistent authentication secret}
+      SMTP_HOST: ${SMTP_HOST:?Set the Infomaniak SMTP relay hostname}
+      SMTP_PORT: ${SMTP_PORT:?Set the SMTP relay port}
+      SMTP_SECURITY: ${SMTP_SECURITY:?Set tls or starttls}
+      SMTP_USER: ${SMTP_USER:?Set the SMTP relay username}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?Set the SMTP relay password at runtime only}
+      SMTP_EHLO_NAME: ${SMTP_EHLO_NAME:-gmscreen.holysheet.fr}
     depends_on:
       backend:
         condition: service_healthy

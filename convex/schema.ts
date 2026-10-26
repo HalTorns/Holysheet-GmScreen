@@ -1,7 +1,28 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
+import {
+  projectFields,
+  folderFields,
+  screenFields,
+  noteFields,
+  layoutFields,
+} from './lib/gmValidators'
+
 export default defineSchema({
+  gmProjects: defineTable(projectFields).index('by_owner', ['ownerId']),
+  gmFolders: defineTable(folderFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_parent', ['projectId', 'parentId']),
+  gmScreens: defineTable(screenFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_folder', ['projectId', 'folderId']),
+  gmNotes: defineTable(noteFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_screen', ['screenId']),
+  gmLayouts: defineTable(layoutFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_screen', ['screenId']),
   cleanupJobs: defineTable(
     v.union(
       v.object({

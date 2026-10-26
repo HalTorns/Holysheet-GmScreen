@@ -35,10 +35,11 @@ export function createAuthOptions(
   return buildAuthOptions(
     authComponent.adapter(ctx),
     settings,
-    async ({ email, otp }) => {
+    async ({ email, otp, type }) => {
       await requireActionCtx(ctx).runAction(internal.emails.sendOtp, {
         email,
         otp,
+        purpose: type,
       })
     },
     async ({ email, url }) => {
@@ -49,7 +50,9 @@ export function createAuthOptions(
     },
     {
       adminIds: modules?.AUTH_ADMIN_ENABLED ? modules.ADMIN_USER_IDS : [],
-      credentials: modules?.AUTH_CREDENTIALS_ENABLED ?? false,
+      credentials: modules
+        ? modules.AUTH_CREDENTIALS_ENABLED || modules.AUTH_PASSWORD_ONLY
+        : false,
       ...(modules?.AUTH_GOOGLE_ENABLED &&
       modules.GOOGLE_CLIENT_ID &&
       modules.GOOGLE_CLIENT_SECRET

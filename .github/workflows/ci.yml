@@ -14,21 +14,9 @@ concurrency:
 
 jobs:
   application:
-    name: Validation — ${{ matrix.label }}
+    name: Validation — Holysheet
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - mode: personal
-            label: Personnel
-            organizations: 'false'
-          - mode: organizations
-            label: Organisations
-            organizations: 'true'
-    env:
-      PLAYWRIGHT_EXPECT_ORGANIZATIONS: ${{ matrix.organizations }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,25 +43,8 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Vérifier types, Oxlint, Oxfmt, Knip, Vitest navigateur et build
         run: pnpm check
-      - name: Parcours complets en mode personnel
-        if: matrix.mode == 'personal'
-        run: pnpm test:e2e:ci
-      - name: Parcours complets en mode organisations
-        if: matrix.mode == 'organizations'
-        run: pnpm test:e2e:organizations --all
-      - name: Parcours optionnels Magic Link, MFA et administration
-        if: matrix.mode == 'personal'
-        run: |
-          sleep 60
-          pnpm test:e2e:modules
-      - name: SDK analytics/erreurs avec la CSP de production
-        if: matrix.mode == 'personal'
-        run: pnpm test:e2e:local observability
-      - name: Spotlight local sans DSN Sentry
-        if: matrix.mode == 'personal'
-        run: |
-          pnpm services:up --spotlight
-          pnpm test:e2e:local spotlight
+      - name: Parcours Holysheet et sécurité HTTP sur le serveur construit
+        run: pnpm test:e2e:ci tests/e2e/holysheet.spec.ts
       - name: Arrêter les services
         if: always()
         run: pnpm services:down

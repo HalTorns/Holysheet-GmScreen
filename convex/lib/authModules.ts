@@ -13,6 +13,7 @@ export function getAuthModules() {
       AUTH_MAGIC_LINK_ENABLED: featureFlag,
       AUTH_MFA_ENABLED: featureFlag,
       AUTH_CREDENTIALS_ENABLED: featureFlag,
+      AUTH_PASSWORD_ONLY: featureFlag,
       AUTH_ADMIN_ENABLED: featureFlag,
       AUTH_GOOGLE_ENABLED: featureFlag,
       AUTH_GITHUB_ENABLED: featureFlag,

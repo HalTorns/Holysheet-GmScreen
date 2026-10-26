@@ -4,6 +4,7 @@ import { appConfig } from '../shared/app-config'
 import { emailSchema, otpSchema } from '../shared/validation'
 import { internal } from './_generated/api'
 import { internalAction, internalMutation } from './_generated/server'
+import type { ActionCtx } from './_generated/server'
 import { getEmailSettings } from './lib/emailEnvironment'
 import { getAuthSettings } from './lib/environment'
 import { limitAuthEmail, limitIdentityEmail } from './lib/rateLimits'
@@ -11,12 +12,17 @@ import { limitAuthEmail, limitIdentityEmail } from './lib/rateLimits'
 const REQUEST_TIMEOUT_MS = 10_000
 
 async function deliverMessage(
+  ctx: ActionCtx,
   email: string,
   subject: string,
   text: string
 ): Promise<void> {
   const settings = getEmailSettings()
   const provider = settings.AUTH_EMAIL_PROVIDER
+  if (provider === 'smtp') {
+    await ctx.runAction(internal.smtp.deliver, { email, subject, text })
+    return
+  }
   const from = settings.AUTH_EMAIL_FROM
   const payload =
     provider === 'mailpit'
@@ -76,9 +82,20 @@ function getEmailEndpoint(
 }
 
 export const sendOtp = internalAction({
-  args: { email: v.string(), otp: v.string() },
+  args: {
+    email: v.string(),
+    otp: v.string(),
+    purpose: v.optional(
+      v.union(
+        v.literal('sign-in'),
+        v.literal('email-verification'),
+        v.literal('forget-password'),
+        v.literal('change-email')
+      )
+    ),
+  },
   returns: v.null(),
-  handler: async (ctx, { email, otp }) => {
+  handler: async (ctx, { email, otp, purpose }) => {
     const recipient = emailSchema.safeParse(email)
     const code = otpSchema.safeParse(otp)
     if (!recipient.success || !code.success)
@@ -87,9 +104,14 @@ export const sendOtp = internalAction({
       email: recipient.data,
     })
     await deliverMessage(
+      ctx,
       recipient.data,
-      'Votre code de connexion',
-      `Votre code de connexion est ${code.data}. Il expire dans 5 minutes.\n\nSi vous n'avez pas demandé ce code, ignorez ce message.`
+      purpose === 'forget-password'
+        ? 'Récupération de votre mot de passe'
+        : purpose === 'email-verification'
+          ? 'Vérifiez votre adresse email'
+          : 'Votre code de connexion',
+      `Votre code est ${code.data}. Il expire dans 5 minutes.\n\nSi vous n'avez pas demandé ce code, ignorez ce message.`
     )
     return null
   },
@@ -109,6 +131,7 @@ export const sendMagicLink = internalAction({
       throw new ConvexError({ code: 'INVALID_INPUT' })
     await ctx.runMutation(internal.emails.consumeQuota, { email: recipient })
     await deliverMessage(
+      ctx,
       recipient,
       'Votre lien de connexion',
       `Connectez-vous en ouvrant ce lien à usage unique, valable 5 minutes :\n${url}\n\nIgnorez ce message si vous n'avez pas demandé cette connexion.`
@@ -136,6 +159,7 @@ export const sendConfirmation = internalAction({
       userId: args.userId,
     })
     await deliverMessage(
+      ctx,
       email,
       'Confirmez votre identité',
       `Votre code de confirmation est ${code}. Il expire dans 5 minutes et autorise uniquement l’action demandée. Ne le partagez pas.`

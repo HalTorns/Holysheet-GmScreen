@@ -18,7 +18,11 @@ export type AuthSettings = {
   passkeyRpId: string
 }
 
-type OtpDelivery = (message: { email: string; otp: string }) => Promise<void>
+type OtpDelivery = (message: {
+  email: string
+  otp: string
+  type: 'sign-in' | 'email-verification' | 'forget-password' | 'change-email'
+}) => Promise<void>
 type MagicLinkDelivery = (message: {
   email: string
   url: string
@@ -84,6 +88,7 @@ export function buildAuthOptions(
     emailAndPassword: {
       enabled: modules.credentials === true,
       requireEmailVerification: true,
+      revokeSessionsOnPasswordReset: true,
     },
     account: { accountLinking: { enabled: false }, encryptOAuthTokens: true },
     socialProviders: {

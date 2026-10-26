@@ -4,15 +4,16 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Brand } from '@/components/brand'
 import { SignInForm } from '@/features/auth/sign-in-form'
 import { getPublicCapabilities } from '@/lib/public-capabilities'
+import { pageMetadata } from '@/lib/seo'
 
 export const Route = createFileRoute('/sign-in')({
   loader: () => getPublicCapabilities(),
-  head: () => ({
-    meta: [
-      { title: `Connexion — ${appConfig.name}` },
-      { name: 'robots', content: 'noindex, nofollow' },
-    ],
-  }),
+  head: () =>
+    pageMetadata({
+      title: `Connexion — ${appConfig.name}`,
+      path: '/sign-in',
+      privatePage: true,
+    }),
   component: SignInPage,
 })
 
@@ -23,12 +24,13 @@ function SignInPage() {
         <Brand />
         <div>
           <h2>
-            Votre prochaine idée
-            <br />a trouvé <em>son socle.</em>
+            Votre prochaine partie,
+            <br />
+            <em>à portée de main.</em>
           </h2>
           <p>
-            Un espace à vous pour poser les premières briques. Simple à
-            retrouver, facile à faire évoluer.
+            Préparez vos campagnes, rassemblez vos références et composez vos
+            écrans de maître du jeu.
           </p>
         </div>
         <p>VOTRE ESPACE. VOS DONNÉES. VOTRE CONTRÔLE.</p>

@@ -2,10 +2,10 @@ import { appConfig } from '@shared/app-config'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { ErrorState } from '@/components/page-state'
-import { ResourceList } from '@/features/resources/resource-list'
+import { Projects } from '@/features/gm/projects'
 
 export const Route = createFileRoute('/_authenticated/app/')({
-  head: () => ({ meta: [{ title: `Mes ressources — ${appConfig.name}` }] }),
+  head: () => ({ meta: [{ title: `Mes projets — ${appConfig.name}` }] }),
   errorComponent: ({ reset }) => <ErrorState onRetry={reset} />,
-  component: ResourceList,
+  component: Projects,
 })

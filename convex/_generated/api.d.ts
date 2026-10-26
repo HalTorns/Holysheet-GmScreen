@@ -16,6 +16,7 @@ import type * as capabilities from "../capabilities.js";
 import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
+import type * as gm from "../gm.js";
 import type * as http from "../http.js";
 import type * as identityConfirmation from "../identityConfirmation.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -23,6 +24,7 @@ import type * as lib_authHooks from "../lib/authHooks.js";
 import type * as lib_authModules from "../lib/authModules.js";
 import type * as lib_emailEnvironment from "../lib/emailEnvironment.js";
 import type * as lib_environment from "../lib/environment.js";
+import type * as lib_gmValidators from "../lib/gmValidators.js";
 import type * as lib_modules from "../lib/modules.js";
 import type * as lib_organizationValidators from "../lib/organizationValidators.js";
 import type * as lib_organizations from "../lib/organizations.js";
@@ -37,6 +39,7 @@ import type * as lib_validators from "../lib/validators.js";
 import type * as organizations from "../organizations.js";
 import type * as profileNames from "../profileNames.js";
 import type * as resources from "../resources.js";
+import type * as smtp from "../smtp.js";
 import type * as userAdmin from "../userAdmin.js";
 
 import type {
@@ -54,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   cleanup: typeof cleanup;
   crons: typeof crons;
   emails: typeof emails;
+  gm: typeof gm;
   http: typeof http;
   identityConfirmation: typeof identityConfirmation;
   "lib/auth": typeof lib_auth;
@@ -61,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   "lib/authModules": typeof lib_authModules;
   "lib/emailEnvironment": typeof lib_emailEnvironment;
   "lib/environment": typeof lib_environment;
+  "lib/gmValidators": typeof lib_gmValidators;
   "lib/modules": typeof lib_modules;
   "lib/organizationValidators": typeof lib_organizationValidators;
   "lib/organizations": typeof lib_organizations;
@@ -75,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   organizations: typeof organizations;
   profileNames: typeof profileNames;
   resources: typeof resources;
+  smtp: typeof smtp;
   userAdmin: typeof userAdmin;
 }>;
 

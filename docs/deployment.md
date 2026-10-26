@@ -1,5 +1,9 @@
 # Déploiement
 
+## Procédure du produit Holysheet
+
+Pour ce projet, suivre en priorité [le guide Coolify Holysheet](coolify-holysheet.md) : domaine `gmscreen.holysheet.fr`, relais SMTP Infomaniak et expéditeur `admin@holysheet.fr`. La commande `backend:configure` transmet les variables privées depuis `operations`, puis `backend:deploy` publie les fonctions. Les sections génériques du socle ci-dessous décrivent aussi l’alternative Resend ; elle n’est pas requise pour Holysheet.
+
 ## Variables et portée
 
 | Variable | Emplacement | Exemple ou règle |

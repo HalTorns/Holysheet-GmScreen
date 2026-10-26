@@ -105,6 +105,19 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
       )
         forbidden()
       const modules = getAuthModules()
+      if (
+        modules.AUTH_PASSWORD_ONLY &&
+        (path.startsWith('/passkey/') ||
+          path === '/sign-in/email-otp' ||
+          path === '/sign-in/magic-link' ||
+          path === '/magic-link/verify' ||
+          path === '/sign-in/social' ||
+          path.startsWith('/callback/') ||
+          (path === '/email-otp/send-verification-otp' &&
+            z.object({ type: z.string().optional() }).safeParse(request.body)
+              .data?.type === 'sign-in'))
+      )
+        forbidden('MODULE_DISABLED')
       if (modules.AUTH_PROXY_REQUIRED) {
         const provided = request.headers?.get('x-starter-auth-proxy') ?? ''
         const hash = async (value: string) =>

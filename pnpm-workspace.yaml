@@ -1,6 +1,9 @@
 packages:
   - .
 minimumReleaseAge: 1440
+overrides:
+  happy-dom: 21.0.4
+  'zod@>=4.0.0 <4.6.6': 4.6.6
 minimumReleaseAgeExclude:
   - '@tanstack/react-query@5.104.2'
   - '@tanstack/query-core@5.104.2'

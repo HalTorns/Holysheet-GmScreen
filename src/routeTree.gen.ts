@@ -22,6 +22,8 @@ import { Route as AuthenticatedAppSecurityRouteImport } from './routes/_authenti
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedAppOrganizationsIndexRouteImport } from './routes/_authenticated/app/organizations/index'
 import { Route as AuthenticatedAppOrganizationsOrganizationIdRouteImport } from './routes/_authenticated/app/organizations/$organizationId'
+import { Route as AuthenticatedAppProjectsProjectIdRouteImport } from './routes/_authenticated/app/projects/$projectId'
+import { Route as AuthenticatedAppScreensScreenIdRouteImport } from './routes/_authenticated/app/screens/$screenId'
 import { Route as AuthenticatedAppUsersIndexRouteImport } from './routes/_authenticated/app/users/index'
 import { Route as AuthenticatedAppUsersUserIdRouteImport } from './routes/_authenticated/app/users/$userId'
 
@@ -92,6 +94,18 @@ const AuthenticatedAppOrganizationsOrganizationIdRoute =
     path: '/app/organizations/$organizationId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAppProjectsProjectIdRoute =
+  AuthenticatedAppProjectsProjectIdRouteImport.update({
+    id: '/app/projects/$projectId',
+    path: '/app/projects/$projectId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAppScreensScreenIdRoute =
+  AuthenticatedAppScreensScreenIdRouteImport.update({
+    id: '/app/screens/$screenId',
+    path: '/app/screens/$screenId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAppUsersIndexRoute =
   AuthenticatedAppUsersIndexRouteImport.update({
     id: '/app/users/',
@@ -117,6 +131,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
+  '/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
+  '/app/screens/$screenId': typeof AuthenticatedAppScreensScreenIdRoute
   '/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
   '/app/organizations/': typeof AuthenticatedAppOrganizationsIndexRoute
   '/app/users/': typeof AuthenticatedAppUsersIndexRoute
@@ -133,6 +149,8 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
+  '/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
+  '/app/screens/$screenId': typeof AuthenticatedAppScreensScreenIdRoute
   '/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
   '/app/organizations': typeof AuthenticatedAppOrganizationsIndexRoute
   '/app/users': typeof AuthenticatedAppUsersIndexRoute
@@ -151,6 +169,8 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
+  '/_authenticated/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
+  '/_authenticated/app/screens/$screenId': typeof AuthenticatedAppScreensScreenIdRoute
   '/_authenticated/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
   '/_authenticated/app/organizations/': typeof AuthenticatedAppOrganizationsIndexRoute
   '/_authenticated/app/users/': typeof AuthenticatedAppUsersIndexRoute
@@ -169,6 +189,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/app/'
     | '/app/organizations/$organizationId'
+    | '/app/projects/$projectId'
+    | '/app/screens/$screenId'
     | '/app/users/$userId'
     | '/app/organizations/'
     | '/app/users/'
@@ -185,6 +207,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/app'
     | '/app/organizations/$organizationId'
+    | '/app/projects/$projectId'
+    | '/app/screens/$screenId'
     | '/app/users/$userId'
     | '/app/organizations'
     | '/app/users'
@@ -202,6 +226,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/_authenticated/app/'
     | '/_authenticated/app/organizations/$organizationId'
+    | '/_authenticated/app/projects/$projectId'
+    | '/_authenticated/app/screens/$screenId'
     | '/_authenticated/app/users/$userId'
     | '/_authenticated/app/organizations/'
     | '/_authenticated/app/users/'
@@ -311,6 +337,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppOrganizationsOrganizationIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/app/projects/$projectId': {
+      id: '/_authenticated/app/projects/$projectId'
+      path: '/app/projects/$projectId'
+      fullPath: '/app/projects/$projectId'
+      preLoaderRoute: typeof AuthenticatedAppProjectsProjectIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/screens/$screenId': {
+      id: '/_authenticated/app/screens/$screenId'
+      path: '/app/screens/$screenId'
+      fullPath: '/app/screens/$screenId'
+      preLoaderRoute: typeof AuthenticatedAppScreensScreenIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/app/users/': {
       id: '/_authenticated/app/users/'
       path: '/app/users'
@@ -333,6 +373,8 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAppSecurityRoute: typeof AuthenticatedAppSecurityRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppOrganizationsOrganizationIdRoute: typeof AuthenticatedAppOrganizationsOrganizationIdRoute
+  AuthenticatedAppProjectsProjectIdRoute: typeof AuthenticatedAppProjectsProjectIdRoute
+  AuthenticatedAppScreensScreenIdRoute: typeof AuthenticatedAppScreensScreenIdRoute
   AuthenticatedAppUsersUserIdRoute: typeof AuthenticatedAppUsersUserIdRoute
   AuthenticatedAppOrganizationsIndexRoute: typeof AuthenticatedAppOrganizationsIndexRoute
   AuthenticatedAppUsersIndexRoute: typeof AuthenticatedAppUsersIndexRoute
@@ -344,6 +386,9 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppOrganizationsOrganizationIdRoute:
     AuthenticatedAppOrganizationsOrganizationIdRoute,
+  AuthenticatedAppProjectsProjectIdRoute:
+    AuthenticatedAppProjectsProjectIdRoute,
+  AuthenticatedAppScreensScreenIdRoute: AuthenticatedAppScreensScreenIdRoute,
   AuthenticatedAppUsersUserIdRoute: AuthenticatedAppUsersUserIdRoute,
   AuthenticatedAppOrganizationsIndexRoute:
     AuthenticatedAppOrganizationsIndexRoute,
