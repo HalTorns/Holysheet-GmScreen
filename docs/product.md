@@ -18,7 +18,7 @@ Hors périmètre : VTT, IA intégrée, organisations, collaboration entre compte
 - Modules organisations, paiements, IA et fournisseurs externes désactivés. Stockage Convex en première intention lors de l’ajout des fichiers.
 - Domaine validé : `gmscreen.holysheet.fr`. Hypothèses réversibles à préciser : quotas, durée de corbeille, identité visuelle, limites custom et version des archives. Aucun quota provisoire ne représente une préférence utilisateur.
 
-## État au 26 octobre 2026
+## État du premier jalon
 
 - Prêt : environnement Ubuntu WSL 2, Node 26.11.0, pnpm 11.8.0, Chromium Linux, Docker et quatre services locaux ; setup et diagnostic passés.
 - Implémenté : inscription/vérification/connexion et récupération email/mot de passe, projets, dossiers imbriqués, Screen 1920 × 1080 ou A4 paysage, note texte simple sauvegardée explicitement, réouverture, synchronisation de deux onglets et refus de conflits sans perte du brouillon.
@@ -30,4 +30,12 @@ Hors périmètre : VTT, IA intégrée, organisations, collaboration entre compte
 - Prochaine tranche : éditeur libre avec positions/tailles persistées, profils configurables, autosauvegarde et historique ; garder l’impression indépendante.
 - CI adaptée au produit : tous les tests backend restent exécutés ; le workflow cible les E2E Holysheet, incluant les contrôles HTTP/CSP. Les anciens fichiers E2E UI de ressources/passwordless/organisations sont conservés comme références. Une validation locale ne prouve pas une CI distante.
 - Préparation Coolify : Compose et guide opérateur, service privé `operations`, relais SMTP Infomaniak configurable au runtime et expéditeur `admin@holysheet.fr`. Correctifs ciblés Zod/Happy DOM ; audit de production sans alerte high/critical, deux alertes modérées restantes.
-- L’utilisateur autorise le commit et le push sur le dépôt GitHub produit et effectue lui-même le déploiement Coolify. Aucun effacement de données ni déploiement distant par l’agent n’est autorisé. La remise réelle des emails dépendra des paramètres du relais saisis dans Coolify.
+- Le premier jalon est initialisé sur Coolify le 27 octobre 2026 : configuration privée et fonctions publiées après autorisation explicite de l’utilisateur. La page de connexion et les endpoints publics répondent en HTTP 200 ; l’utilisateur confirme ensuite que les parcours fonctionnent. Aucun effacement ni réinitialisation n’a été réalisé.
+
+## Tranche éditeur — développement au 27 octobre 2026
+
+Branche locale `codex/screen-editor`, séparée de la branche déployée `main`. Voir [la décision éditeur](decisions/screen-editor.md) pour les comportements, limites et stratégie de conservation des données. Le développement et les tests utilisent les services locaux et Mailpit. La production garde le premier jalon jusqu’à publication explicite de cette tranche.
+
+La tranche couvre les notes existantes : géométrie persistée au pointeur/clavier, zoom et grille, empilement, profils numériques nommés et dimensions, verrouillage synchronisé distinct de la lecture seule, autosauvegarde, annuler/refaire de la vue et historique privé durable. Les contenus restent partagés entre profils et la mise en page papier indépendante. Les autres catégories, texte enrichi, styles/groupes/guides, corbeille, pop-ups, impression/export et communauté restent à réaliser.
+
+Validation locale passée : `pnpm backend:push`, `pnpm check` (130 tests backend/unitaires, 7 tests navigateur de composants, types/lint/format/Knip/build) et les quatre E2E Holysheet sur le serveur construit. Le parcours métier vérifie déplacement, redimensionnement sous zoom, synchronisation entre fenêtres, profils indépendants, verrouillage, autosauvegarde, historique, petit écran et restauration réelle des six collections GM, puis récupération du compte. La saisie pendant une requête et les conflits sont aussi couverts par les tests React. Aucun résultat de CI distante ni déploiement de l’éditeur n’est encore établi.

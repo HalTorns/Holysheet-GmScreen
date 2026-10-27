@@ -7,9 +7,13 @@ import {
   screenFields,
   noteFields,
   layoutFields,
+  historyFields,
 } from './lib/gmValidators'
 
 export default defineSchema({
+  gmEditorHistory: defineTable(historyFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_subject', ['subjectId', 'version']),
   gmProjects: defineTable(projectFields).index('by_owner', ['ownerId']),
   gmFolders: defineTable(folderFields)
     .index('by_owner', ['ownerId'])

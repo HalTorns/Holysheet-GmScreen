@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config'
 import { sharedResolve, createUIPlugins } from './config/vite-shared.ts'
 
 export default defineConfig({
+  optimizeDeps: { include: ['convex/values'] },
   resolve: sharedResolve,
   plugins: [...createUIPlugins()],
   test: {

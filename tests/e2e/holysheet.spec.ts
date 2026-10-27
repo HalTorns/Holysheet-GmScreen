@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 
 import { api } from '../../convex/_generated/api'
+import { gmTables } from '../../shared/gm'
 import { verifyLocalRestore } from './backup'
 import {
   completeProfile,
@@ -13,6 +14,7 @@ import {
   waitForVerificationCode,
   getAnonymousClient,
 } from './helpers'
+import { verifyScreenEditor } from './screen-editor'
 
 test('password registration, project, folder and Screen survive reload, synchronize and restore', async ({
   page,
@@ -106,6 +108,9 @@ test('password registration, project, folder and Screen survive reload, synchron
       .getByRole('link', { name: 'Références de session →', exact: true })
       .click()
     await page
+      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
+      .uncheck()
+    await page
       .getByRole('button', { name: 'Ajouter une note', exact: true })
       .click()
     await page
@@ -117,10 +122,16 @@ test('password registration, project, folder and Screen survive reload, synchron
     ).toBeDisabled()
     await expect(page.getByText('Enregistré', { exact: true })).toBeVisible()
     await page.reload()
+    await page
+      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
+      .uncheck()
     await expect(
       page.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Le marchand ferme au crépuscule.')
     await secondPage.goto(page.url())
+    await secondPage
+      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
+      .uncheck()
     await expect(
       secondPage.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Le marchand ferme au crépuscule.')
@@ -156,14 +167,9 @@ test('password registration, project, folder and Screen survive reload, synchron
     await expect(
       page.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Nouvelle version distante')
+    await verifyScreenEditor(page, secondPage, client)
     const report = await verifyLocalRestore()
-    for (const table of [
-      'gmProjects',
-      'gmFolders',
-      'gmScreens',
-      'gmNotes',
-      'gmLayouts',
-    ])
+    for (const table of gmTables)
       expect(report.tables[table]).toBeGreaterThan(0)
     await page.goto('/app/security')
     const [download] = await Promise.all([

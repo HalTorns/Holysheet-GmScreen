@@ -5,13 +5,12 @@ import {
   GM_MAX_FOLDER_DEPTH,
   GM_MAX_LAYOUTS,
   GM_MAX_NOTES,
-  gmNote,
   gmTitle,
 } from '../shared/gm'
-import type { Id } from './_generated/dataModel'
-import type { QueryCtx } from './_generated/server'
 import { mutation, query } from './_generated/server'
 import { requireUser, requireAccountUser } from './lib/auth'
+import { ownedProject, ownedScreen, ownedNote } from './lib/gmAccess'
+import { saveNote } from './lib/gmEditing'
 import {
   folderValidator,
   gmCollection,
@@ -37,29 +36,6 @@ function title(value: string) {
   const result = gmTitle.safeParse(value)
   if (!result.success) throw new ConvexError({ code: 'INVALID_INPUT' })
   return result.data
-}
-
-async function ownedProject(
-  ctx: QueryCtx,
-  id: Id<'gmProjects'>,
-  ownerId: string
-) {
-  const project = await ctx.db.get('gmProjects', id)
-  if (!project || project.ownerId !== ownerId)
-    throw new ConvexError({ code: 'NOT_FOUND' })
-  return project
-}
-
-async function ownedScreen(
-  ctx: QueryCtx,
-  id: Id<'gmScreens'>,
-  ownerId: string
-) {
-  const screen = await ctx.db.get('gmScreens', id)
-  if (!screen || screen.ownerId !== ownerId)
-    throw new ConvexError({ code: 'NOT_FOUND' })
-  await ownedProject(ctx, screen.projectId, ownerId)
-  return screen
 }
 
 export const listProjects = query({
@@ -268,6 +244,7 @@ export const addNote = mutation({
   handler: async (ctx, { screenId }) => {
     const user = await requireUser(ctx)
     const screen = await ownedScreen(ctx, screenId, user._id)
+    if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
     const notes = await ctx.db
       .query('gmNotes')
       .withIndex('by_screen', (q) => q.eq('screenId', screenId))
@@ -289,15 +266,20 @@ export const addNote = mutation({
       .take(GM_MAX_LAYOUTS)
     for (const layout of layouts) {
       const factor = layout.unit === 'mm' ? 0.2 : 1
+      const width = Math.min(400 * factor, layout.width - 24 * factor)
+      const height = Math.min(240 * factor, layout.height - 24 * factor)
       await ctx.db.patch('gmLayouts', layout._id, {
         placements: [
           ...layout.placements,
           {
             noteId: id,
-            x: 24 * factor,
-            y: (24 + (notes.length % 4) * 200) * factor,
-            width: 400 * factor,
-            height: 240 * factor,
+            x: Math.min(24 * factor, layout.width - width),
+            y: Math.min(
+              (24 + (notes.length % 4) * 200) * factor,
+              layout.height - height
+            ),
+            width,
+            height,
             layer: notes.length,
           },
         ],
@@ -314,21 +296,8 @@ export const updateNote = mutation({
   returns: v.number(),
   handler: async (ctx, { id, expectedVersion, body }) => {
     const user = await requireUser(ctx)
-    const note = await ctx.db.get('gmNotes', id)
-    if (!note || note.ownerId !== user._id)
-      throw new ConvexError({ code: 'NOT_FOUND' })
-    await ownedScreen(ctx, note.screenId, user._id)
-    if (note.version !== expectedVersion)
-      throw new ConvexError({ code: 'CONFLICT' })
-    if (!gmNote.safeParse(body).success)
-      throw new ConvexError({ code: 'INVALID_INPUT' })
-    await limitUserOperation(ctx, 'resourceWrite', user._id)
-    await ctx.db.patch('gmNotes', id, {
-      body,
-      version: note.version + 1,
-      updatedAt: Date.now(),
-    })
-    return note.version + 1
+    const note = await ownedNote(ctx, id, user._id)
+    return saveNote(ctx, note, expectedVersion, body)
   },
 })
 

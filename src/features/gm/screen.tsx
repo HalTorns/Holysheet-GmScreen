@@ -1,39 +1,58 @@
 import { api } from '@convex/_generated/api'
-import type { Doc } from '@convex/_generated/dataModel'
+import type { Doc, Id } from '@convex/_generated/dataModel'
 import { Link } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
-import { DraftGuard } from '@/components/draft-guard'
 import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 
+import { LayoutEditor } from './layout-editor'
+
 export function Screen({ screenId }: { screenId: string }) {
   const data = useQuery(api.gm.getScreen, { id: screenId })
+  if (data === undefined) return <p role="status">Chargement du Screen…</p>
+  if (!data) return <p role="alert">Screen introuvable ou inaccessible.</p>
+  return <ScreenWorkspace key={data.screen._id} {...data} />
+}
+
+function ScreenWorkspace({
+  screen,
+  notes,
+  layouts,
+}: {
+  screen: Doc<'gmScreens'>
+  notes: Doc<'gmNotes'>[]
+  layouts: Doc<'gmLayouts'>[]
+}) {
   const addNote = useMutation(api.gm.addNote)
-  const [error, setError] = useState<string | null>(null)
+  const setLocked = useMutation(api.gmEditor.setLayoutLocked)
+  const [selected, setSelected] = useState<Id<'gmLayouts'> | null>(null)
+  const [readOnly, setReadOnly] = useState(false)
+  const [autoSave, setAutoSave] = useState(true)
+  const [dirty, setDirty] = useState(false)
   const [pending, setPending] = useState(false)
-  const [locked, setLocked] = useState(false)
-  async function add() {
-    if (!data) return
+  const [error, setError] = useState<string | null>(null)
+  const reportDirty = useCallback((value: boolean) => setDirty(value), [])
+  const digital = layouts.filter((layout) => layout.kind === 'digital')
+  const layout = digital.find((item) => item._id === selected) ?? digital[0]
+  const locked = screen.layoutLocked ?? false
+  async function perform(action: () => Promise<unknown>) {
     setPending(true)
     setError(null)
     try {
-      await addNote({ screenId: data.screen._id })
+      await action()
     } catch (error) {
       setError(operationErrorMessage(error))
     } finally {
       setPending(false)
     }
   }
-  if (data === undefined) return <p role="status">Chargement du Screen…</p>
-  if (!data) return <p role="alert">Screen introuvable ou inaccessible.</p>
-  const layout = data.layouts.find((item) => item.kind === 'digital')
   return (
     <>
       <Link
         to="/app/projects/$projectId"
-        params={{ projectId: data.screen.projectId }}
+        params={{ projectId: screen.projectId }}
         className="quiet-link"
       >
         ← Retour au projet
@@ -43,151 +62,99 @@ export function Screen({ screenId }: { screenId: string }) {
           <p className="eyebrow">
             SCREEN · {layout?.width} × {layout?.height} px
           </p>
-          <h1>{data.screen.title}</h1>
+          <h1>{screen.title}</h1>
           <p>
-            Vos notes sont sauvegardées avec leur contenu, indépendamment de la
-            mise en page.
+            {readOnly
+              ? 'Lecture seule'
+              : locked
+                ? 'Disposition verrouillée · contenus modifiables'
+                : 'Édition · déplacez et redimensionnez vos notes'}
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => setLocked(!locked)}>
-            {locked ? 'Reprendre l’édition' : 'Lecture seule'}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            disabled={dirty || pending}
+            onClick={() => setReadOnly(!readOnly)}
+          >
+            {readOnly ? 'Reprendre l’édition' : 'Lecture seule'}
           </Button>
-          <Button onClick={() => void add()} disabled={locked || pending}>
-            {pending ? 'Ajout…' : 'Ajouter une note'}
+          <Button
+            variant="outline"
+            disabled={readOnly || dirty || pending}
+            onClick={() =>
+              void perform(() =>
+                setLocked({ screenId: screen._id, locked: !locked })
+              )
+            }
+          >
+            {locked
+              ? 'Déverrouiller la disposition'
+              : 'Verrouiller la disposition'}
+          </Button>
+          <Button
+            disabled={readOnly || locked || dirty || pending}
+            onClick={() =>
+              void perform(() => addNote({ screenId: screen._id }))
+            }
+          >
+            {pending ? 'Patientez…' : 'Ajouter une note'}
           </Button>
         </div>
       </div>
+      <div className="mb-4 flex flex-wrap items-end gap-4 rounded-xl border bg-background p-3">
+        <label className="grid gap-1 text-sm">
+          Profil de disposition
+          <select
+            aria-label="Profil de disposition"
+            className="rounded border bg-background p-2"
+            value={layout?._id ?? ''}
+            disabled={dirty || pending}
+            onChange={(event) =>
+              setSelected(
+                digital.find((item) => item._id === event.target.value)?._id ??
+                  null
+              )
+            }
+          >
+            {digital.map((profile) => (
+              <option key={profile._id} value={profile._id}>
+                {profile.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={autoSave}
+            onChange={(event) => setAutoSave(event.target.checked)}
+          />
+          Sauvegarde automatique
+        </label>
+        {dirty && (
+          <p role="status" className="text-xs text-muted-foreground">
+            Enregistrez les brouillons avant de changer de profil ou de mode.
+          </p>
+        )}
+      </div>
       {error && (
-        <p role="alert" className="field-error mb-4">
+        <p role="alert" className="field-error mb-3">
           {error}
         </p>
       )}
-      <p className="mb-3 text-sm text-muted-foreground">
-        {data.notes.length === 0
-          ? 'Ajoutez une note, puis collez vos références.'
-          : 'Enregistrez chaque note pour retrouver son contenu après réouverture.'}
-      </p>
       {layout && (
-        <div className="max-w-full overflow-auto rounded-xl border bg-muted/30 p-4">
-          <div
-            className="relative bg-background shadow-sm"
-            style={{ width: layout.width, height: layout.height }}
-            aria-label="Surface du Screen"
-          >
-            {layout.placements.map((placement) => {
-              const note = data.notes.find(
-                (item) => item._id === placement.noteId
-              )
-              return note ? (
-                <section
-                  key={note._id}
-                  className="absolute overflow-hidden rounded-lg border bg-background p-3 shadow-sm"
-                  style={{
-                    left: placement.x,
-                    top: placement.y,
-                    width: placement.width,
-                    height: placement.height,
-                    zIndex: placement.layer,
-                  }}
-                >
-                  <NoteEditor note={note} readOnly={locked} />
-                </section>
-              ) : null
-            })}
-          </div>
-        </div>
+        <LayoutEditor
+          key={layout._id}
+          layout={layout}
+          notes={notes}
+          readOnly={readOnly}
+          locked={locked}
+          autoSave={autoSave}
+          onDirtyChange={reportDirty}
+          onProfileCreated={setSelected}
+        />
       )}
     </>
-  )
-}
-
-function NoteEditor({
-  note,
-  readOnly,
-}: {
-  note: Doc<'gmNotes'>
-  readOnly: boolean
-}) {
-  const [draft, setDraft] = useState<{ body: string; version: number } | null>(
-    null
-  )
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const update = useMutation(api.gm.updateNote)
-  async function save() {
-    if (!draft) return
-    setPending(true)
-    setError(null)
-    try {
-      await update({
-        id: note._id,
-        body: draft.body,
-        expectedVersion: draft.version,
-      })
-      setDraft(null)
-    } catch (error) {
-      setError(operationErrorMessage(error))
-    } finally {
-      setPending(false)
-    }
-  }
-  const conflict = draft !== null && draft.version !== note.version
-  return (
-    <div className="flex h-full flex-col gap-2">
-      <DraftGuard dirty={draft !== null} />
-      <label className="text-xs font-semibold" htmlFor={`note-${note._id}`}>
-        Note
-      </label>
-      <textarea
-        id={`note-${note._id}`}
-        aria-label="Contenu de la note"
-        className="min-h-10 flex-1 resize-none rounded border bg-background p-2 text-sm"
-        value={draft?.body ?? note.body}
-        readOnly={readOnly || pending}
-        maxLength={50_000}
-        onChange={(event) =>
-          setDraft({
-            body: event.target.value,
-            version: draft?.version ?? note.version,
-          })
-        }
-      />
-      {conflict && (
-        <div className="text-xs" role="alert">
-          <p>
-            Cette note a changé dans une autre vue. Votre brouillon est
-            conservé.
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setDraft(null)
-              setError(null)
-            }}
-          >
-            Charger la version enregistrée
-          </Button>
-        </div>
-      )}
-      {error && (
-        <p role="alert" className="field-error text-xs">
-          {error}
-        </p>
-      )}
-      <div className="flex items-center justify-between">
-        <span role="status" className="text-xs text-muted-foreground">
-          {draft ? 'Modifications non enregistrées' : 'Enregistré'}
-        </span>
-        <Button
-          size="sm"
-          disabled={readOnly || !draft || pending || conflict}
-          onClick={() => void save()}
-        >
-          {pending ? 'Enregistrement…' : 'Enregistrer'}
-        </Button>
-      </div>
-    </div>
   )
 }

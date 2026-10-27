@@ -1,6 +1,10 @@
 import { ConvexError } from 'convex/values'
 
 const messages: Record<string, string> = {
+  LAYOUT_LOCKED:
+    'La disposition de ce Screen est verrouillée. Déverrouillez-la pour la modifier.',
+  LAYOUT_LIMIT: 'Ce Screen a atteint sa limite de profils de disposition.',
+  LAYOUT_NAME_TAKEN: 'Un profil porte déjà ce nom. Choisissez un autre nom.',
   SCREEN_LIMIT:
     'Ce Screen a atteint sa limite de notes. Utilisez un autre Screen pour continuer.',
   FOLDER_DEPTH_LIMIT:

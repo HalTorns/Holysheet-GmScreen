@@ -29,3 +29,5 @@ Premier parcours implémenté dans cinq collections : `gmProjects`, `gmFolders`,
 Limites techniques initiales et réversibles : 100 notes par Screen, 8 profils maximum en lecture, 8 niveaux de dossiers, titres de 120 caractères et notes de 50 000 caractères. Listes/export par pages de 50 au plus. Écritures limitées par le budget existant `resourceWrite` (30/minute). La création produit deux profils : numérique et A4 paysage ; leur édition reste à implémenter.
 
 La sauvegarde initiale des notes est explicite. Le brouillon est protégé à la navigation et conservé lors d’une modification distante ; un conflit ne peut pas écraser cette version. L’autosauvegarde et l’historique demeurent dans la phase éditeur.
+
+La tranche suivante est décrite dans [la décision éditeur](screen-editor.md) : géométrie et profils numériques éditables, verrouillage partagé, sauvegarde automatique, annuler/refaire et historique borné dans `gmEditorHistory`. L’export, le nettoyage et les fixtures de restauration incluent cette sixième collection. Les limites et preuves de cette tranche remplacent l’état initial ci-dessus lorsqu’elle est livrée.

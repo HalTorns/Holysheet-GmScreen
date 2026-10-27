@@ -184,7 +184,7 @@ describe('Holysheet personal workspace', () => {
     ).rejects.toThrow('FOLDER_DEPTH_LIMIT')
   })
 
-  it('cleans all five collections across multiple batches without touching a different owner', async () => {
+  it('cleans all workspace collections across multiple batches without touching a different owner', async () => {
     vi.useFakeTimers()
     const backend = createBackendTest()
     const alice = await createAuthenticatedUser(backend, 'alice@example.test')

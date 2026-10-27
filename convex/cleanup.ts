@@ -8,6 +8,8 @@ import { internalMutation } from './_generated/server'
 import { clearUserRateLimits } from './lib/rateLimits'
 
 const BATCH_SIZE = 100
+// Notes and revisions can each hold 50,000 characters. Bound their joint read.
+const GM_BATCH_SIZE = 20
 const SECURITY_EVENT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 const CLEANUP_RETRY_MS = 5 * 60 * 1000
 const RESUME_BATCH_SIZE = 20
@@ -84,9 +86,9 @@ async function cleanDeletedAccount(
     const documents = await ctx.db
       .query(table)
       .withIndex('by_owner', (q) => q.eq('ownerId', userId))
-      .take(BATCH_SIZE)
+      .take(GM_BATCH_SIZE)
     for (const document of documents) await ctx.db.delete(table, document._id)
-    gmDataRemain ||= documents.length === BATCH_SIZE
+    gmDataRemain ||= documents.length === GM_BATCH_SIZE
   }
   const resources = await ctx.db
     .query('resources')

@@ -18,6 +18,7 @@ export const screenFields = {
   projectId: v.id('gmProjects'),
   folderId: v.optional(v.id('gmFolders')),
   title: v.string(),
+  layoutLocked: v.optional(v.boolean()),
 }
 export const noteFields = {
   ...owned,
@@ -33,6 +34,33 @@ export const placementValidator = v.object({
   width: v.number(),
   height: v.number(),
   layer: v.number(),
+})
+export const digitalLayoutFields = {
+  name: v.string(),
+  width: v.number(),
+  height: v.number(),
+  placements: v.array(placementValidator),
+}
+export const historySnapshot = v.union(
+  v.object({ kind: v.literal('note'), body: v.string() }),
+  v.object({ kind: v.literal('layout'), ...digitalLayoutFields })
+)
+export const historyTarget = v.union(
+  v.object({ kind: v.literal('note'), id: v.id('gmNotes') }),
+  v.object({ kind: v.literal('layout'), id: v.id('gmLayouts') })
+)
+export const historyFields = {
+  ...owned,
+  projectId: v.id('gmProjects'),
+  screenId: v.id('gmScreens'),
+  subjectId: v.union(v.id('gmNotes'), v.id('gmLayouts')),
+  version: v.number(),
+  snapshot: historySnapshot,
+}
+export const historyValidator = v.object({
+  _id: v.id('gmEditorHistory'),
+  _creationTime: v.number(),
+  ...historyFields,
 })
 export const layoutFields = {
   ...owned,
@@ -76,12 +104,14 @@ export const gmCollection = v.union(
   v.literal('gmFolders'),
   v.literal('gmScreens'),
   v.literal('gmNotes'),
-  v.literal('gmLayouts')
+  v.literal('gmLayouts'),
+  v.literal('gmEditorHistory')
 )
 export const gmDocument = v.union(
   projectValidator,
   folderValidator,
   screenValidator,
   noteValidator,
-  layoutValidator
+  layoutValidator,
+  historyValidator
 )
