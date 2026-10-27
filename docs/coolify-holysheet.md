@@ -40,6 +40,8 @@ Dans l’interface actuelle : **Build time → Not available during build**, **R
 
 Coolify interpole tout le Compose avec `build-time.env` avant de construire les images. Les références privées utilisent donc `${VARIABLE:-}` : leur absence pendant cette étape est normale. Cela ne rend pas les valeurs facultatives au runtime : renseigner toutes les variables privées du tableau, sauf la clé admin laissée vide au tout premier démarrage. Les entrées des conteneurs backend et PostgreSQL refusent de démarrer si leur secret est absent, avant d’appeler les scripts d’origine des images. `backend:configure` vérifie les variables d’authentification et SMTP avant publication. Ne pas activer Build time pour contourner une erreur d’interpolation ; charger le dernier Compose du dépôt.
 
+Le build Vite de production ne charge pas `scripts/local-config.mjs` : les anciennes variables `LOCAL_*`, éventuellement injectées par Coolify après un changement de Compose, ne doivent pas invalider les ports d’un build de production. Le développement et `vite preview` continuent à charger et vérifier les ports locaux. Context7 n’étant pas disponible, cette configuration conditionnelle et asynchrone a été vérifiée avec les types installés de Vite 8.3.4 et sa documentation officielle.
+
 L’expéditeur est configuré par la commande opérateur à **`admin@holysheet.fr`**, avec le nom Holysheet GM Screen. Vérifier dans Infomaniak que cet expéditeur est autorisé pour le relais et que le domaine dispose des enregistrements SPF/DKIM prévus par le fournisseur. Ces valeurs DNS dépendent du compte Infomaniak ; elles ne sont pas inventées dans ce dépôt.
 
 ## 3. Premier démarrage et publication Convex
