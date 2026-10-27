@@ -29,9 +29,9 @@ Pour une première initialisation : `powershell -File scripts/wsl.ps1 setup`. Po
 
 Le premier jalon couvre un espace personnel : projet → dossiers → Screen numérique ou A4 paysage → note texte simple → sauvegarde et réouverture. Les versions de notes refusent un écrasement concurrent et les autres vues reçoivent les données via Convex. L’export du compte et son nettoyage incluent les nouvelles collections.
 
-La tranche suivante ajoute un éditeur de notes déplaçables et redimensionnables, des profils numériques configurables, le zoom, la grille, les calques, le verrouillage, l’autosauvegarde et l’historique. Elle est validée localement sur `codex/screen-editor`, sans déploiement en production. Voir [les comportements de l’éditeur](docs/decisions/screen-editor.md).
+L’éditeur de notes déplaçables et redimensionnables, les profils numériques configurables, le zoom, la grille, les calques, le verrouillage, l’autosauvegarde et l’historique sont publiés en production au commit `a669c54`. Voir [les comportements de l’éditeur](docs/decisions/screen-editor.md).
 
-Les autres catégories de widgets, le texte enrichi, les groupes/styles, l’impression/export de Screens et la communauté restent dans le périmètre de la V1 à construire. L’état et les preuves de livraison se trouvent dans [docs/product.md](docs/product.md).
+La tranche suivante complète les outils de notes : duplication, copier-coller dans la vue, corbeille restaurable, groupes, alignement/distribution et styles bornés par profil ; voir [la décision](docs/decisions/widget-tools.md). Les autres catégories de widgets, les fiches/variables, le texte enrichi, l’impression/export de Screens et la communauté restent dans le périmètre de la V1 à construire. L’état et les preuves de livraison se trouvent dans [docs/product.md](docs/product.md).
 
 ## Architecture et vérification
 

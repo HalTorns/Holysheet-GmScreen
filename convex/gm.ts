@@ -228,7 +228,9 @@ export const getScreen = query({
     await ownedProject(ctx, screen.projectId, user._id)
     const notes = await ctx.db
       .query('gmNotes')
-      .withIndex('by_screen', (q) => q.eq('screenId', normalizedId))
+      .withIndex('by_screen_live', (q) =>
+        q.eq('screenId', normalizedId).eq('deletedAt', undefined)
+      )
       .take(GM_MAX_NOTES)
     const layouts = await ctx.db
       .query('gmLayouts')
@@ -247,7 +249,9 @@ export const addNote = mutation({
     if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
     const notes = await ctx.db
       .query('gmNotes')
-      .withIndex('by_screen', (q) => q.eq('screenId', screenId))
+      .withIndex('by_screen_live', (q) =>
+        q.eq('screenId', screenId).eq('deletedAt', undefined)
+      )
       .take(GM_MAX_NOTES)
     if (notes.length >= GM_MAX_NOTES)
       throw new ConvexError({ code: 'SCREEN_LIMIT' })

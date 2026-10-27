@@ -4,7 +4,9 @@ import {
   GM_MAX_DIMENSION,
   GM_MIN_WIDGET_HEIGHT,
   GM_MIN_WIDGET_WIDTH,
+  defaultWidgetStyle,
 } from '@shared/gm'
+import { moveWidgets } from '@shared/gm-geometry'
 import { useMutation } from 'convex/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
@@ -16,6 +18,7 @@ import { LayoutSettings } from './layout-settings'
 import { NoteEditor } from './note-editor'
 import { RevisionHistory } from './revision-history'
 import { useEditorDraft } from './use-editor-draft'
+import { WidgetTools } from './widget-tools'
 
 type Placement = Doc<'gmLayouts'>['placements'][number]
 type LayoutState = Pick<
@@ -91,6 +94,7 @@ export function LayoutEditor({
   const [zoom, setZoom] = useState(100)
   const [gesture, setGesture] = useState<Gesture | null>(null)
   const [noteDrafts, setNoteDrafts] = useState<Set<string>>(() => new Set())
+  const [toolsPending, setToolsPending] = useState(false)
   const base = useMemo(
     () => ({
       name: layout.name,
@@ -105,7 +109,7 @@ export function LayoutEditor({
       update({ id: layout._id, expectedVersion, ...value }),
     [layout._id, update]
   )
-  const blocked = locked || readOnly
+  const blocked = locked || readOnly || toolsPending
   const editor = useEditorDraft({
     value: base,
     version: layout.version,
@@ -114,7 +118,11 @@ export function LayoutEditor({
     paused: blocked || gesture !== null,
   })
   const dirty =
-    editor.dirty || editor.pending || noteDrafts.size > 0 || gesture !== null
+    editor.dirty ||
+    editor.pending ||
+    noteDrafts.size > 0 ||
+    gesture !== null ||
+    toolsPending
   const scale = zoom / 100
   const current = editor.value
   const active =
@@ -141,6 +149,19 @@ export function LayoutEditor({
 
   function alter(id: Id<'gmNotes'>, changes: Partial<Placement>) {
     if (blocked || editor.pending || gesture) return
+    const original = current.placements.find((p) => p.noteId === id)
+    if (original && (changes.x !== undefined || changes.y !== undefined)) {
+      editor.edit({
+        ...current,
+        placements: moveWidgets(
+          current.placements,
+          id,
+          (changes.x ?? original.x) - original.x,
+          (changes.y ?? original.y) - original.y
+        ),
+      })
+      return
+    }
     editor.edit({
       ...current,
       placements: current.placements.map((p) =>
@@ -200,9 +221,17 @@ export function LayoutEditor({
     editor.edit(
       {
         ...gesture.state,
-        placements: gesture.state.placements.map((p) =>
-          p.noteId === next.noteId ? next : p
-        ),
+        placements:
+          gesture.kind === 'move'
+            ? moveWidgets(
+                gesture.state.placements,
+                next.noteId,
+                next.x - gesture.original.x,
+                next.y - gesture.original.y
+              )
+            : gesture.state.placements.map((p) =>
+                p.noteId === next.noteId ? next : p
+              ),
       },
       gesture.version
     )
@@ -259,7 +288,7 @@ export function LayoutEditor({
 
   return (
     <div role="group" aria-label="Éditeur de disposition" className="space-y-3">
-      <DraftGuard dirty={editor.dirty || gesture !== null} />
+      <DraftGuard dirty={editor.dirty || gesture !== null || toolsPending} />
       <div className="flex flex-wrap items-center gap-2">
         <LayoutSettings
           layout={layout}
@@ -458,6 +487,16 @@ export function LayoutEditor({
       {notes.length === 0 && (
         <p>Ajoutez une note, puis collez vos références.</p>
       )}
+      <WidgetTools
+        layout={layout}
+        placements={current.placements}
+        notes={notes}
+        activeId={active?.noteId}
+        disabled={blocked || editor.pending || gesture !== null}
+        draft={editor.dirty || noteDrafts.size > 0}
+        onChange={(placements) => editor.edit({ ...current, placements })}
+        onPendingChange={setToolsPending}
+      />
       <div
         className="max-h-[75dvh] max-w-full overflow-auto rounded-xl border bg-muted/30 p-4"
         aria-label="Vue défilante du Screen"
@@ -488,11 +527,19 @@ export function LayoutEditor({
           >
             {current.placements.map((stored, index) => {
               const placement =
-                gesture?.original.noteId === stored.noteId
-                  ? gesture.preview
-                  : stored
+                gesture?.kind === 'move'
+                  ? (moveWidgets(
+                      gesture.state.placements,
+                      gesture.original.noteId,
+                      gesture.preview.x - gesture.original.x,
+                      gesture.preview.y - gesture.original.y
+                    ).find((p) => p.noteId === stored.noteId) ?? stored)
+                  : gesture?.original.noteId === stored.noteId
+                    ? gesture.preview
+                    : stored
               const note = notes.find((item) => item._id === placement.noteId)
               if (!note) return null
+              const widgetStyle = placement.style ?? defaultWidgetStyle
               return (
                 <section
                   key={note._id}
@@ -504,6 +551,12 @@ export function LayoutEditor({
                     width: placement.width,
                     height: placement.height,
                     zIndex: placement.layer,
+                    backgroundColor: widgetStyle.background,
+                    color: widgetStyle.color,
+                    borderColor: widgetStyle.borderColor,
+                    borderWidth: widgetStyle.borderWidth,
+                    borderRadius: widgetStyle.radius,
+                    opacity: widgetStyle.opacity / 100,
                   }}
                 >
                   <button
@@ -519,12 +572,24 @@ export function LayoutEditor({
                     onKeyDown={(event) => keyboard(event, placement, 'move')}
                   >
                     ⠿ Note {index + 1}
+                    {placement.groupId ? ' · groupe' : ''}
                   </button>
-                  <div className="min-h-0 flex-1 p-2">
+                  <div
+                    className="min-h-0 flex-1 p-2"
+                    style={{
+                      fontSize: widgetStyle.fontSize,
+                      fontFamily:
+                        widgetStyle.fontFamily === 'serif'
+                          ? 'serif'
+                          : widgetStyle.fontFamily === 'mono'
+                            ? 'monospace'
+                            : 'sans-serif',
+                    }}
+                  >
                     <NoteEditor
                       note={note}
                       index={index}
-                      readOnly={readOnly}
+                      readOnly={readOnly || toolsPending}
                       autoSave={autoSave}
                       onDirtyChange={reportNoteDraft}
                     />

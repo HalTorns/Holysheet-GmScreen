@@ -45,6 +45,8 @@ const messages: Record<string, string> = {
     'Ce code est incorrect ou a expiré. Vérifiez-le ou demandez un nouveau code.',
   OTP_NOT_FOUND: 'Ce code est incorrect ou a expiré. Demandez un nouveau code.',
   INVALID_INPUT: 'Vérifiez les informations saisies et réessayez.',
+  TRASH_LIMIT:
+    'La corbeille contient déjà 100 notes. Restaurez ou effacez des notes avant de continuer.',
   NOT_FOUND: 'Cet élément est introuvable ou vous n’y avez plus accès.',
   SESSION_EXPIRED: 'Votre session a expiré. Reconnectez-vous pour continuer.',
   SESSION_NOT_FRESH:

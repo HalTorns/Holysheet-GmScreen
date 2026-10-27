@@ -15,6 +15,7 @@ import {
   getAnonymousClient,
 } from './helpers'
 import { verifyScreenEditor } from './screen-editor'
+import { verifyWidgetTools } from './widget-tools'
 
 test('password registration, project, folder and Screen survive reload, synchronize and restore', async ({
   page,
@@ -168,6 +169,7 @@ test('password registration, project, folder and Screen survive reload, synchron
       page.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Nouvelle version distante')
     await verifyScreenEditor(page, secondPage, client)
+    await verifyWidgetTools(page, client)
     const report = await verifyLocalRestore()
     for (const table of gmTables)
       expect(report.tables[table]).toBeGreaterThan(0)

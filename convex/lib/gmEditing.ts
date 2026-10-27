@@ -9,6 +9,7 @@ import {
   GM_MIN_WIDGET_HEIGHT,
   gmLayoutSize,
   gmNote,
+  gmWidgetStyle,
 } from '../../shared/gm'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
@@ -35,7 +36,7 @@ export function assertVersion(actual: number, expected: number) {
   if (actual !== expected) throw new ConvexError({ code: 'CONFLICT' })
 }
 
-async function recordHistory(
+export async function recordHistory(
   ctx: MutationCtx,
   document: Doc<'gmNotes'> | Doc<'gmLayouts'>,
   snapshot: Doc<'gmEditorHistory'>['snapshot']
@@ -96,7 +97,9 @@ export async function saveLayout(
     throw new ConvexError({ code: 'INVALID_INPUT' })
   const notes = await ctx.db
     .query('gmNotes')
-    .withIndex('by_screen', (q) => q.eq('screenId', layout.screenId))
+    .withIndex('by_screen_live', (q) =>
+      q.eq('screenId', layout.screenId).eq('deletedAt', undefined)
+    )
     .take(GM_MAX_NOTES)
   const ids = new Set(value.placements.map((p) => p.noteId))
   if (
@@ -112,6 +115,8 @@ export async function saveLayout(
     throw new ConvexError({ code: 'INVALID_INPUT' })
   for (const p of value.placements) {
     if (
+      (p.style !== undefined && !gmWidgetStyle.safeParse(p.style).success) ||
+      (p.groupId !== undefined && !/^[a-zA-Z0-9_-]{1,80}$/.test(p.groupId)) ||
       ![p.x, p.y, p.width, p.height, p.layer].every(Number.isSafeInteger) ||
       p.x < 0 ||
       p.y < 0 ||

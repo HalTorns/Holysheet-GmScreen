@@ -20,20 +20,39 @@ export const screenFields = {
   title: v.string(),
   layoutLocked: v.optional(v.boolean()),
 }
+export const widgetStyleValidator = v.object({
+  background: v.string(),
+  color: v.string(),
+  borderColor: v.string(),
+  fontFamily: v.union(v.literal('sans'), v.literal('serif'), v.literal('mono')),
+  fontSize: v.number(),
+  borderWidth: v.number(),
+  radius: v.number(),
+  opacity: v.number(),
+})
+const geometryFields = {
+  x: v.number(),
+  y: v.number(),
+  width: v.number(),
+  height: v.number(),
+  layer: v.number(),
+  groupId: v.optional(v.string()),
+  style: v.optional(widgetStyleValidator),
+}
 export const noteFields = {
   ...owned,
   projectId: v.id('gmProjects'),
   screenId: v.id('gmScreens'),
   body: v.string(),
   version: v.number(),
+  deletedAt: v.optional(v.number()),
+  trashPlacements: v.optional(
+    v.array(v.object({ layoutId: v.id('gmLayouts'), ...geometryFields }))
+  ),
 }
 export const placementValidator = v.object({
   noteId: v.id('gmNotes'),
-  x: v.number(),
-  y: v.number(),
-  width: v.number(),
-  height: v.number(),
-  layer: v.number(),
+  ...geometryFields,
 })
 export const digitalLayoutFields = {
   name: v.string(),

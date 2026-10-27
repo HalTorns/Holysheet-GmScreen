@@ -32,7 +32,7 @@ export async function ownedNote(
   ownerId: string
 ) {
   const note = await ctx.db.get('gmNotes', id)
-  if (!note || note.ownerId !== ownerId)
+  if (!note || note.ownerId !== ownerId || note.deletedAt !== undefined)
     throw new ConvexError({ code: 'NOT_FOUND' })
   await ownedScreen(ctx, note.screenId, ownerId)
   return note

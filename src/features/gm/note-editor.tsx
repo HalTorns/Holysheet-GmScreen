@@ -58,6 +58,12 @@ export function NoteEditor({
         value={editor.value}
         readOnly={readOnly}
         maxLength={50_000}
+        style={{
+          backgroundColor: 'transparent',
+          color: 'inherit',
+          fontSize: 'inherit',
+          fontFamily: 'inherit',
+        }}
         onChange={(event) => editor.edit(event.target.value)}
       />
       {editor.conflict && (
