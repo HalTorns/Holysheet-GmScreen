@@ -36,6 +36,10 @@ Les paramètres SMTP sont volontairement laissés à remplir. Le service Mail In
 
 Pour les secrets, activer **Available at Runtime** et désactiver **Available at Buildtime**. Conserver l’injection automatique de tous les build args désactivée. Le Compose ne transmet les secrets SMTP ni au service `site`, ni à son build. Aucun serveur Resend ou Mailpit n’est nécessaire en production.
 
+Dans l’interface actuelle : **Build time → Not available during build**, **Runtime → Available in the container**. Dans **Advanced → Build arguments**, choisir **Managed manually in Dockerfile**. Les trois URL `VITE_*` restent disponibles au build et au runtime. Retirer les anciennes variables `LOCAL_*` héritées du Compose de développement de cette ressource.
+
+Coolify interpole tout le Compose avec `build-time.env` avant de construire les images. Les références privées utilisent donc `${VARIABLE:-}` : leur absence pendant cette étape est normale. Cela ne rend pas les valeurs facultatives au runtime : renseigner toutes les variables privées du tableau, sauf la clé admin laissée vide au tout premier démarrage. Les entrées des conteneurs backend et PostgreSQL refusent de démarrer si leur secret est absent, avant d’appeler les scripts d’origine des images. `backend:configure` vérifie les variables d’authentification et SMTP avant publication. Ne pas activer Build time pour contourner une erreur d’interpolation ; charger le dernier Compose du dépôt.
+
 L’expéditeur est configuré par la commande opérateur à **`admin@holysheet.fr`**, avec le nom Holysheet GM Screen. Vérifier dans Infomaniak que cet expéditeur est autorisé pour le relais et que le domaine dispose des enregistrements SPF/DKIM prévus par le fournisseur. Ces valeurs DNS dépendent du compte Infomaniak ; elles ne sont pas inventées dans ce dépôt.
 
 ## 3. Premier démarrage et publication Convex

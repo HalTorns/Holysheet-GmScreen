@@ -1,6 +1,9 @@
 # Coolify: repository Compose build pack, /docker-compose.coolify.yml.
 # Configure domains for site (:3000) and backend (:3210 and :3211).
 # Keep dashboard without a public domain. Its random loopback port is for SSH tunnels.
+# Coolify parses the entire file with build-time.env before building images.
+# Runtime-only values must allow empty interpolation during that build pass.
+# Fill them in Coolify at runtime; do not pass private values as build arguments.
 services:
   operations:
     build:
@@ -16,12 +19,12 @@ services:
       # Runtime only. Empty during bootstrap; backend:deploy requires the key.
       CONVEX_SELF_HOSTED_ADMIN_KEY: ${CONVEX_SELF_HOSTED_ADMIN_KEY:-}
       VITE_SITE_URL: ${VITE_SITE_URL:-https://gmscreen.holysheet.fr}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set an independent persistent authentication secret}
-      SMTP_HOST: ${SMTP_HOST:?Set the Infomaniak SMTP relay hostname}
-      SMTP_PORT: ${SMTP_PORT:?Set the SMTP relay port}
-      SMTP_SECURITY: ${SMTP_SECURITY:?Set tls or starttls}
-      SMTP_USER: ${SMTP_USER:?Set the SMTP relay username}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:?Set the SMTP relay password at runtime only}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_SECURITY: ${SMTP_SECURITY:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_EHLO_NAME: ${SMTP_EHLO_NAME:-gmscreen.holysheet.fr}
     depends_on:
       backend:
@@ -62,16 +65,21 @@ services:
       start_period: 30s
   backend:
     image: ghcr.io/convex/convex-backend@sha256:d715e9ec088784407ca4ba2d3db592702cd328d02c76cdca3852c0018f2a76b4
+    # Validate at container startup, after Coolify supplies runtime-only values.
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - ': "$${INSTANCE_SECRET:?Set CONVEX_INSTANCE_SECRET in the Coolify runtime}"; exec ./run_backend.sh'
     restart: unless-stopped
     stop_signal: SIGINT
     stop_grace_period: 10s
     expose: ['3210', '3211']
     environment:
       INSTANCE_NAME: convex-production
-      INSTANCE_SECRET: ${CONVEX_INSTANCE_SECRET:?Set a persistent 64-character hex secret}
+      INSTANCE_SECRET: ${CONVEX_INSTANCE_SECRET:-}
       CONVEX_CLOUD_ORIGIN: ${VITE_CONVEX_URL:?}
       CONVEX_SITE_ORIGIN: ${VITE_CONVEX_SITE_URL:?}
-      POSTGRES_URL: postgresql://convex:${POSTGRES_PASSWORD:?Set a persistent hex password}@postgres:5432
+      POSTGRES_URL: postgresql://convex:${POSTGRES_PASSWORD:-}@postgres:5432
       # PostgreSQL is restricted to the private network on this Docker host.
       DO_NOT_REQUIRE_SSL: '1'
       # Optional object storage. Empty region/buckets keep convex-data storage.
@@ -107,12 +115,16 @@ services:
       start_period: 10s
   postgres:
     image: postgres:18.6@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - ': "$${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the Coolify runtime}"; exec docker-entrypoint.sh postgres'
     restart: unless-stopped
     shm_size: 128mb
     environment:
       POSTGRES_USER: convex
       POSTGRES_DB: convex_production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     volumes:
       - postgres-data:/var/lib/postgresql
     networks: [database]
