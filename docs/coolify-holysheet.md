@@ -7,10 +7,14 @@ L’utilisateur effectue le déploiement. Le dépôt fournit le Compose, les ima
 - Dépôt : `HalTorns/Holysheet-GmScreen`, branche `main`.
 - Build pack : **Docker Compose**, chemin `/docker-compose.coolify.yml`.
 - Application : `https://gmscreen.holysheet.fr`, service `site`, port interne `3000`.
-- Deux sous-domaines de backend proposés (à créer dans le DNS) : `https://convex.gmscreen.holysheet.fr`, service `backend`, port `3210` ; `https://convex-http.gmscreen.holysheet.fr`, même service, port `3211`.
+- Deux sous-domaines de backend proposés (à créer dans le DNS) : `https://gmscreen-api.holysheet.fr`, service `backend`, port `3210` ; `https://gmscreen-http.holysheet.fr`, même service, port `3211`.
 - Garder `operations`, `postgres` et `dashboard` sans domaine public. Le dashboard reste accessible uniquement par son tunnel d’administration.
 
 Dans Coolify, le port du domaine désigne le port interne du conteneur ; les visiteurs utilisent HTTPS sur le port standard. Le proxy doit accepter les WebSockets de Convex. Voir la [documentation Compose de Coolify](https://coolify.io/docs/applications/builds/docker-compose).
+
+Avec Cloudflare Universal SSL dans une zone DNS complète, utiliser des sous-domaines à un seul niveau : le certificat standard de `holysheet.fr` couvre `gmscreen-api.holysheet.fr`, mais pas `convex.gmscreen.holysheet.fr`. Les deux anciens noms imbriqués proposés avant le 27 octobre 2026 sont remplacés dans ce guide pour cette raison. Voir les [limites de couverture Cloudflare](https://developers.cloudflare.com/ssl/edge-certificates/universal-ssl/limitations/#hostname-coverage).
+
+Pour une installation utilisant les anciens noms, créer les deux nouveaux enregistrements DNS, remplacer les deux domaines backend dans Coolify en conservant leurs ports et le protocole adapté au mode Cloudflare existant, puis modifier `VITE_CONVEX_URL` et `VITE_CONVEX_SITE_URL` et reconstruire le site. Les URL `VITE_*` restent en HTTPS : elles désignent les origines publiques, même si Cloudflare rejoint actuellement Coolify en HTTP. Les modifications du guide ou de `.env.coolify.example` ne remplacent pas les valeurs déjà saisies dans Coolify. Vérifier ensuite le HTTPS des deux nouvelles origines et reprendre la configuration/publication Convex de l’étape 3, si elle n’est pas encore faite.
 
 ## 2. Renseigner les variables
 
@@ -19,8 +23,8 @@ Utiliser [`.env.coolify.example`](../.env.coolify.example) comme liste des noms,
 | Variable | Valeur / portée |
 | --- | --- |
 | `VITE_SITE_URL` | `https://gmscreen.holysheet.fr` ; build du site et runtime operations |
-| `VITE_CONVEX_URL` | `https://convex.gmscreen.holysheet.fr` ; URL API publique, build |
-| `VITE_CONVEX_SITE_URL` | `https://convex-http.gmscreen.holysheet.fr` ; URL HTTP publique, build |
+| `VITE_CONVEX_URL` | `https://gmscreen-api.holysheet.fr` ; URL API publique, build |
+| `VITE_CONVEX_SITE_URL` | `https://gmscreen-http.holysheet.fr` ; URL HTTP publique, build |
 | `CONVEX_INSTANCE_SECRET` | Générer 32 octets hexadécimaux et conserver avec les volumes ; runtime backend |
 | `POSTGRES_PASSWORD` | Générer une autre valeur de 32 octets hexadécimaux ; runtime PostgreSQL/backend |
 | `BETTER_AUTH_SECRET` | Autre secret aléatoire d’au moins 32 caractères, stable ; runtime operations uniquement |
