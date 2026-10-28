@@ -46,7 +46,10 @@ const messages: Record<string, string> = {
   OTP_NOT_FOUND: 'Ce code est incorrect ou a expiré. Demandez un nouveau code.',
   INVALID_INPUT: 'Vérifiez les informations saisies et réessayez.',
   TRASH_LIMIT:
-    'La corbeille contient déjà 100 notes. Restaurez ou effacez des notes avant de continuer.',
+    'La corbeille contient déjà 100 éléments. Restaurez ou effacez-en avant de continuer.',
+  SHEET_LIMIT:
+    'Ce projet a atteint sa limite de 500 fiches. Mettez des fiches à la corbeille pour continuer.',
+  NOT_IN_TRASH: 'Mettez d’abord cette fiche à la corbeille.',
   NOT_FOUND: 'Cet élément est introuvable ou vous n’y avez plus accès.',
   SESSION_EXPIRED: 'Votre session a expiré. Reconnectez-vous pour continuer.',
   SESSION_NOT_FRESH:
@@ -62,23 +65,25 @@ export function authErrorMessage(
   return code ? (messages[code] ?? fallback) : fallback
 }
 
+export function convexErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof ConvexError)) return undefined
+  const data: unknown = error.data
+  return data &&
+    typeof data === 'object' &&
+    'code' in data &&
+    typeof data.code === 'string'
+    ? data.code
+    : undefined
+}
+
 export function operationErrorMessage(
   error: unknown,
   fallback?: string
 ): string {
   if (error instanceof AuthOperationError)
     return authErrorMessage(error.code, fallback)
-  if (error instanceof ConvexError) {
-    const data: unknown = error.data
-    if (
-      data &&
-      typeof data === 'object' &&
-      'code' in data &&
-      typeof data.code === 'string'
-    ) {
-      return authErrorMessage(data.code, fallback)
-    }
-  }
+  const code = convexErrorCode(error)
+  if (code) return authErrorMessage(code, fallback)
   return (
     fallback ??
     'L’opération a échoué. Vérifiez votre connexion, puis réessayez.'

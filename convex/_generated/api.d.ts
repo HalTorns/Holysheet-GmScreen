@@ -18,6 +18,7 @@ import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as gm from "../gm.js";
 import type * as gmEditor from "../gmEditor.js";
+import type * as gmSheets from "../gmSheets.js";
 import type * as gmWidgets from "../gmWidgets.js";
 import type * as http from "../http.js";
 import type * as identityConfirmation from "../identityConfirmation.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   emails: typeof emails;
   gm: typeof gm;
   gmEditor: typeof gmEditor;
+  gmSheets: typeof gmSheets;
   gmWidgets: typeof gmWidgets;
   http: typeof http;
   identityConfirmation: typeof identityConfirmation;

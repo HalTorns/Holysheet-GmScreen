@@ -49,3 +49,17 @@ export async function ownedLayout(
   await ownedScreen(ctx, layout.screenId, ownerId)
   return layout
 }
+
+// Fiche du compte, vivante ou en corbeille : chaque fonction décide ensuite
+// de l'état qu'elle accepte.
+export async function ownedSheet(
+  ctx: QueryCtx,
+  id: Id<'gmSheets'>,
+  ownerId: string
+) {
+  const sheet = await ctx.db.get('gmSheets', id)
+  if (!sheet || sheet.ownerId !== ownerId)
+    throw new ConvexError({ code: 'NOT_FOUND' })
+  await ownedProject(ctx, sheet.projectId, ownerId)
+  return sheet
+}

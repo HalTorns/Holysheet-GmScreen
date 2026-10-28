@@ -32,6 +32,12 @@ const pageFields = {
 }
 const pagination = { paginationOpts: paginationOptsValidator }
 
+// Un contenu de fiche peut peser environ 400 ko en UTF-8 : 10 par page
+// gardent l'export sous 4 Mo, loin du budget de 16 Mio par transaction.
+function exportPageLimit(collection: string) {
+  return collection === 'gmSheetContents' ? 10 : 50
+}
+
 function title(value: string) {
   const result = gmTitle.safeParse(value)
   if (!result.success) throw new ConvexError({ code: 'INVALID_INPUT' })
@@ -315,7 +321,10 @@ export const exportCollection = query({
       .withIndex('by_owner', (q) => q.eq('ownerId', user._id))
       .paginate({
         ...paginationOpts,
-        numItems: Math.min(50, Math.max(1, paginationOpts.numItems)),
+        numItems: Math.min(
+          exportPageLimit(collection),
+          Math.max(1, paginationOpts.numItems)
+        ),
       })
   },
 })

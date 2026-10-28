@@ -118,13 +118,68 @@ export const layoutValidator = v.object({
   _creationTime: v.number(),
   ...layoutFields,
 })
+export const sheetKindValidator = v.union(
+  v.literal('npc'),
+  v.literal('monster'),
+  v.literal('merchant'),
+  v.literal('item'),
+  v.literal('place'),
+  v.literal('rule'),
+  v.literal('event'),
+  v.literal('note'),
+  v.literal('other')
+)
+export const sheetFieldValidator = v.object({
+  label: v.string(),
+  value: v.string(),
+})
+export const sheetFields = {
+  ...owned,
+  projectId: v.id('gmProjects'),
+  kind: sheetKindValidator,
+  title: v.string(),
+  summary: v.string(),
+  version: v.number(),
+  deletedAt: v.optional(v.number()),
+}
+export const sheetContentFields = {
+  ...owned,
+  projectId: v.id('gmProjects'),
+  sheetId: v.id('gmSheets'),
+  body: v.string(),
+  fields: v.array(sheetFieldValidator),
+}
+export const sheetLinkFields = {
+  ...owned,
+  projectId: v.id('gmProjects'),
+  fromId: v.id('gmSheets'),
+  toId: v.id('gmSheets'),
+}
+export const sheetValidator = v.object({
+  _id: v.id('gmSheets'),
+  _creationTime: v.number(),
+  ...sheetFields,
+})
+export const sheetContentValidator = v.object({
+  _id: v.id('gmSheetContents'),
+  _creationTime: v.number(),
+  ...sheetContentFields,
+})
+export const sheetLinkValidator = v.object({
+  _id: v.id('gmSheetLinks'),
+  _creationTime: v.number(),
+  ...sheetLinkFields,
+})
 export const gmCollection = v.union(
   v.literal('gmProjects'),
   v.literal('gmFolders'),
   v.literal('gmScreens'),
   v.literal('gmNotes'),
   v.literal('gmLayouts'),
-  v.literal('gmEditorHistory')
+  v.literal('gmEditorHistory'),
+  v.literal('gmSheets'),
+  v.literal('gmSheetContents'),
+  v.literal('gmSheetLinks')
 )
 export const gmDocument = v.union(
   projectValidator,
@@ -132,5 +187,8 @@ export const gmDocument = v.union(
   screenValidator,
   noteValidator,
   layoutValidator,
-  historyValidator
+  historyValidator,
+  sheetValidator,
+  sheetContentValidator,
+  sheetLinkValidator
 )

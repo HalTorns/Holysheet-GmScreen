@@ -90,6 +90,20 @@ describe('Holysheet personal workspace', () => {
         title: 'Intrusion',
       })
     ).rejects.toThrow('NOT_FOUND')
+    const tavern = await alice.client.mutation(api.gmSheets.createSheet, {
+      projectId,
+      kind: 'place',
+      title: 'Taverne',
+    })
+    const host = await alice.client.mutation(api.gmSheets.createSheet, {
+      projectId,
+      kind: 'npc',
+      title: 'Aubergiste',
+    })
+    await alice.client.mutation(api.gmSheets.setSheetLinks, {
+      id: host,
+      targets: [tavern],
+    })
     for (const collection of gmTables) {
       const exported = await alice.client.query(api.gm.exportCollection, {
         collection,

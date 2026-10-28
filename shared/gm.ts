@@ -42,4 +42,54 @@ export const gmTables = [
   'gmNotes',
   'gmLayouts',
   'gmEditorHistory',
+  'gmSheets',
+  'gmSheetContents',
+  'gmSheetLinks',
 ] as const
+
+// Bibliothèque de fiches (F1). Les métadonnées légères (gmSheets) sont
+// séparées du contenu lourd (gmSheetContents) pour rester sous les limites
+// de lecture Convex : voir docs/PLAN-F1.md.
+export const GM_MAX_SHEETS = 500
+export const GM_MAX_SHEET_LINKS = 50
+export const GM_MAX_SHEET_FIELDS = 40
+export const gmSheetKinds = [
+  'npc',
+  'monster',
+  'merchant',
+  'item',
+  'place',
+  'rule',
+  'event',
+  'note',
+  'other',
+] as const
+export type GmSheetKind = (typeof gmSheetKinds)[number]
+export const gmSheetKindLabels: Record<GmSheetKind, string> = {
+  npc: 'PNJ',
+  monster: 'Monstre',
+  merchant: 'Marchand',
+  item: 'Objet',
+  place: 'Lieu',
+  rule: 'Règle',
+  event: 'Événement',
+  note: 'Note',
+  other: 'Autre',
+}
+export const gmSheetContent = z.object({
+  title: gmTitle,
+  summary: z.string().trim().max(500),
+  body: gmNote,
+  fields: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1).max(60),
+        value: z.string().max(2000),
+      })
+    )
+    .max(GM_MAX_SHEET_FIELDS),
+})
+export function gmSheetKindOf(value: string): GmSheetKind | undefined {
+  return gmSheetKinds.find((kind) => kind === value)
+}
+export const gmSheetSearch = z.string().trim().min(1).max(100)

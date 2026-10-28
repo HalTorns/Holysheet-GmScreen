@@ -48,6 +48,13 @@ function ProjectContent({ project }: { project: Doc<'gmProjects'> }) {
             partie.
           </p>
         </div>
+        <Link
+          to="/app/projects/$projectId/library"
+          params={{ projectId }}
+          className="quiet-link"
+        >
+          Bibliothèque de fiches →
+        </Link>
       </div>
       <nav
         aria-label="Dossier courant"

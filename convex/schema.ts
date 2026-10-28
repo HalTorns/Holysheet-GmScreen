@@ -8,6 +8,9 @@ import {
   noteFields,
   layoutFields,
   historyFields,
+  sheetFields,
+  sheetContentFields,
+  sheetLinkFields,
 } from './lib/gmValidators'
 
 export default defineSchema({
@@ -28,6 +31,21 @@ export default defineSchema({
   gmLayouts: defineTable(layoutFields)
     .index('by_owner', ['ownerId'])
     .index('by_screen', ['screenId']),
+  gmSheets: defineTable(sheetFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_project_live', ['projectId', 'deletedAt'])
+    .index('by_project_kind_live', ['projectId', 'kind', 'deletedAt'])
+    .searchIndex('search_title', {
+      searchField: 'title',
+      filterFields: ['projectId', 'deletedAt'],
+    }),
+  gmSheetContents: defineTable(sheetContentFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_sheet', ['sheetId']),
+  gmSheetLinks: defineTable(sheetLinkFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_from', ['fromId'])
+    .index('by_to', ['toId']),
   cleanupJobs: defineTable(
     v.union(
       v.object({
