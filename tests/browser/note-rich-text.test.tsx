@@ -300,12 +300,22 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
     .selectOptions('2')
   await expect.element(screen.getByRole('textbox')).toHaveValue('## texte')
   await screen.getByRole('textbox').fill('un\ndeux')
+
+  // Attendre la valeur appliquée par React avant de placer la sélection.
+
+  await expect.element(screen.getByRole('textbox')).toHaveValue('un\ndeux')
+
   field().setSelectionRange(0, 7)
   await screen
     .getByRole('button', { name: 'Liste à puces', exact: true })
     .click()
   await expect.element(screen.getByRole('textbox')).toHaveValue('- un\n- deux')
   await screen.getByRole('textbox').fill('un\ndeux')
+
+  // Attendre la valeur appliquée par React avant de placer la sélection.
+
+  await expect.element(screen.getByRole('textbox')).toHaveValue('un\ndeux')
+
   field().setSelectionRange(0, 7)
   await screen
     .getByRole('button', { name: 'Liste numérotée', exact: true })
@@ -314,6 +324,11 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
     .element(screen.getByRole('textbox'))
     .toHaveValue('1. un\n1. deux')
   await screen.getByRole('textbox').fill('code\nbloc')
+
+  // Attendre la valeur appliquée par React avant de placer la sélection.
+
+  await expect.element(screen.getByRole('textbox')).toHaveValue('code\nbloc')
+
   field().setSelectionRange(0, 9)
   await screen
     .getByRole('button', { name: 'Code littéral', exact: true })
@@ -322,6 +337,11 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
     .element(screen.getByRole('textbox'))
     .toHaveValue('\n```\ncode\nbloc\n```\n')
   await screen.getByRole('textbox').fill('secret')
+
+  // Attendre la valeur appliquée par React avant de placer la sélection.
+
+  await expect.element(screen.getByRole('textbox')).toHaveValue('secret')
+
   field().setSelectionRange(0, 6)
   await screen
     .getByRole('button', { name: 'Bloc repliable', exact: true })
@@ -333,6 +353,11 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
     .toHaveValue('\n:::details[Résumé]\nsecret\n:::\n')
   await expect.poll(() => document.activeElement === field()).toBe(true)
   await screen.getByRole('textbox').fill('lien')
+
+  // Attendre la valeur appliquée par React avant de placer la sélection.
+
+  await expect.element(screen.getByRole('textbox')).toHaveValue('lien')
+
   field().setSelectionRange(0, 4)
   await screen.getByRole('button', { name: 'Lien', exact: true }).click()
   await screen
