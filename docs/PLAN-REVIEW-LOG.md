@@ -50,3 +50,10 @@
 - T0 c/d (job `auth-modules`, test compte antérieur) reportés à la future montée de version : aucune version ne change dans T0.
 - Preuves Claude : `pnpm audit --prod --audit-level=high` → 0 ; `pnpm check` → 0.
 - Note : l'utilisateur demande désormais d'appliquer les recommandations sans le solliciter.
+
+### Inspection T0 n°1 — REVISE (session Codex neuve)
+
+- Instantané `1e04f21`, empreinte du checkout inchangée. Réponse : `scratchpad/claudex/i1/reply.txt`.
+- **T0-01 (medium)** — le garde inspectait l'instance de génération du schéma, pas la fabrique de production (`createAuth`, plugins finaux de `convex/auth.ts`). → **Accepté**, corrigé par le builder : `createAuth(ctx).options` en mode password-only et Magic Link + Google/GitHub, cas négatif `storeIdentifier: 'hashed'`.
+- CI `40689261671` (sur `1e04f21`) : échec du seul test pnpm — `pnpm config get audit --json` vide sur le runner, alors que l'étape `pnpm audit` passe. → corrigé : lecture stricte du bloc YAML ; l'étape CI `pnpm audit` reste la preuve que pnpm honore la clé.
+- Observation à reporter dans l'audit (axe D) : timeout isolé et intermittent dans `tests/backend/gm-editor.test.ts` signalé par le builder.
