@@ -180,7 +180,9 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
       })
       .click()
     await expect(field).toHaveValue('**distant**')
-    await page.getByRole('button', { name: 'Historique', exact: true }).click()
+    await page
+      .getByRole('button', { name: 'Historique de la note', exact: true })
+      .click()
     await page
       .getByRole('button', { name: 'Restaurer la version 1', exact: true })
       .click()

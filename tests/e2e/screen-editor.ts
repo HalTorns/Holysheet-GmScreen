@@ -139,7 +139,7 @@ export async function verifyScreenEditor(
   if (!prior) throw new Error('Missing persistent layout history')
   await page
     .getByRole('group', { name: 'Éditeur de disposition', exact: true })
-    .getByRole('button', { name: 'Historique', exact: true })
+    .getByRole('button', { name: 'Historique du profil', exact: true })
     .first()
     .click()
   await page

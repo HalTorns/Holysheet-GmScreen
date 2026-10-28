@@ -33,6 +33,9 @@ export function RevisionHistory({
         variant="outline"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
+        aria-label={`${open ? 'Fermer l’historique' : 'Historique'} ${
+          target.kind === 'note' ? 'de la note' : 'du profil'
+        }`}
       >
         {open ? 'Fermer l’historique' : 'Historique'}
       </Button>
