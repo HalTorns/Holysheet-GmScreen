@@ -84,9 +84,16 @@ export async function verifyWidgetKinds(
     })
     .toBe(true)
   await page.reload()
-  await page
-    .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-    .uncheck()
+  // Après rechargement, un clic avant l'hydratation est perdu (AUD-08) :
+  // on réessaie jusqu'à ce que la case réagisse réellement.
+  const autosaveAfterReload = page.getByRole('checkbox', {
+    name: 'Sauvegarde automatique',
+    exact: true,
+  })
+  await expect(async () => {
+    await autosaveAfterReload.uncheck({ timeout: 2000 })
+    await expect(autosaveAfterReload).not.toBeChecked()
+  }).toPass({ timeout: 20_000 })
   await expect(
     checklist.getByRole('checkbox', { name: 'Élément 1', exact: true })
   ).toBeChecked()
@@ -116,9 +123,16 @@ export async function verifyWidgetKinds(
   expect(second).toBeLessThanOrEqual(6)
   expect(total).toBe(first + second + 1)
   await page.reload()
-  await page
-    .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-    .uncheck()
+  // Après rechargement, un clic avant l'hydratation est perdu (AUD-08) :
+  // on réessaie jusqu'à ce que la case réagisse réellement.
+  const autosave = page.getByRole('checkbox', {
+    name: 'Sauvegarde automatique',
+    exact: true,
+  })
+  await expect(async () => {
+    await autosave.uncheck({ timeout: 2000 })
+    await expect(autosave).not.toBeChecked()
+  }).toPass({ timeout: 20_000 })
   await expect(
     dice.getByLabel('Expression de dés', { exact: true })
   ).toHaveValue('2d6+1')
