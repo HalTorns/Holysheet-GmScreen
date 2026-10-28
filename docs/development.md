@@ -34,7 +34,7 @@ Chaque nouveau checkout reçoit un projet Compose distinct dans `.env.docker`, l
 
 ### Poste Linux sans Docker
 
-Le poste de développement courant est un conteneur Linux (webtop) sans démon Docker ni namespaces utilisateur. Node 26.11.0 y est installé via nvm, sans changer l’alias `default`. Activer `nvm use 26.11.0` dans le shell du projet, puis utiliser pnpm 11.8.0.
+Le poste de développement courant est un conteneur Linux (webtop) sans démon Docker ni namespaces utilisateur. Node 26.11.1 y est installé via nvm, sans changer l’alias `default`. Activer `nvm use 26.11.1` dans le shell du projet, puis utiliser pnpm 11.8.0.
 
 | Commande | Sur ce poste |
 | --- | --- |
@@ -67,7 +67,7 @@ Traces réseau, vidéo et captures sont désactivées pour éviter d’archiver 
 
 ## CI
 
-GitHub Actions utilise Node 26.11.0 et pnpm 11.8.0, installe depuis le lockfile, refuse les vulnérabilités de production de niveau high/critical, démarre les services locaux, puis exécute types, lint, format, tests backend, build et E2E Chromium contre le serveur construit. Un second job analyse l’historique Git avec Gitleaks, sorties masquées. Les jobs n’ont pas accès aux secrets de production, utilisent une permission GitHub de lecture et ne déploient rien.
+GitHub Actions utilise Node 26.11.1 et pnpm 11.8.0, installe depuis le lockfile, refuse les vulnérabilités de production de niveau high/critical, démarre les services locaux, puis exécute types, lint, format, tests backend, build et E2E Chromium contre le serveur construit. Un second job analyse l’historique Git avec Gitleaks, sorties masquées. Les jobs n’ont pas accès aux secrets de production, utilisent une permission GitHub de lecture et ne déploient rien.
 
 La validation applicative utilise deux jobs de matrice **Personnel** et **Organisations**, chacun avec son runner Ubuntu, ses secrets générés localement et son volume Convex. Les deux exécutent la suite navigateur entière : le personnel avec `pnpm test:e2e:ci`, les organisations avec `pnpm test:e2e:organizations --all`. Le mode demandé est comparé à `capabilities.get` avant les scénarios du module, pour empêcher une validation du mauvais mode par des tests ignorés. Un échec d’un job n’annule pas l’autre (`fail-fast: false`). Les services sont arrêtés dans une étape `always()` ; aucune archive de données, trace d’auth ni fichier privé n’est envoyé comme artefact.
 

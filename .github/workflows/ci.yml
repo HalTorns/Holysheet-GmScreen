@@ -25,7 +25,7 @@ jobs:
       - name: Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26.11.0
+          node-version: 26.11.1
       - name: pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
@@ -62,3 +62,36 @@ jobs:
       - name: Rechercher les secrets avec sorties masquées
         run: >-
           docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges -v "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git --redact=100 --no-banner --log-opts="--all" /repo
+
+  docker-image:
+    name: Image Docker de production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Construire l'étape finale avec des URL publiques factices
+        run: >-
+          docker build --target production -t holysheet-ci --build-arg VITE_SITE_URL=https://ci.example.test --build-arg VITE_CONVEX_URL=https://convex.ci.example.test --build-arg VITE_CONVEX_SITE_URL=https://convex-site.ci.example.test .
+      - name: Vérifier la version de Node de l'image
+        run: |
+          expected="v$(cat .node-version)"
+          actual="$(docker run --rm --entrypoint node holysheet-ci --version)"
+          echo "Node attendu $expected, image $actual"
+          test "$actual" = "$expected"
+      - name: Démarrer l'image et vérifier /robots.txt
+        run: |
+          docker run -d --name holysheet-ci -p 3000:3000 holysheet-ci
+          for _ in $(seq 1 60); do
+            if body="$(curl -fsS http://127.0.0.1:3000/robots.txt)"; then break; fi
+            sleep 1
+          done
+          printf '%s\n' "$body"
+          grep -qx 'Sitemap: https://ci.example.test/sitemap.xml' <<<"$body"
+      - name: Journaux et arrêt du conteneur
+        if: always()
+        run: |
+          docker logs holysheet-ci 2>&1 | tail -50 || true
+          docker rm -f holysheet-ci || true
