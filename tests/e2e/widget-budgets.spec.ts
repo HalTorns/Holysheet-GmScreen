@@ -3,6 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 
 import { expect, test } from '@playwright/test'
 import type { FunctionReturnType } from 'convex/server'
+import { ConvexError } from 'convex/values'
 
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -212,9 +213,18 @@ test('maximum note duplication, retention, export and cleanup fit the real backe
     expect(final?.notes).toHaveLength(100)
     expect(final?.notes.every((n) => n.body.length === 50_000)).toBe(true)
     expect(final?.layouts.every((p) => p.placements.length === 100)).toBe(true)
-    await expect(
-      resource(() => authenticated.mutation(api.gm.addNote, { screenId }))
-    ).rejects.toThrow('SCREEN_LIMIT')
+    // Sur un backend réel, le message client est générique (« Server Error ») :
+    // le code métier se lit dans ConvexError.data.
+    const overflow = await resource(() =>
+      authenticated.mutation(api.gm.addNote, { screenId })
+    ).then(
+      () => null,
+      (error_: unknown) => error_
+    )
+    expect(overflow).toBeInstanceOf(ConvexError)
+    expect(
+      overflow instanceof ConvexError ? overflow.data : null
+    ).toMatchObject({ code: 'SCREEN_LIMIT' })
     let trashCount = 0
     let trashCursor: string | null = null
     for (;;) {
