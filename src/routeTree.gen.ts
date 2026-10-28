@@ -28,6 +28,7 @@ import { Route as AuthenticatedAppSheetsSheetIdRouteImport } from './routes/_aut
 import { Route as AuthenticatedAppUsersIndexRouteImport } from './routes/_authenticated/app/users/index'
 import { Route as AuthenticatedAppUsersUserIdRouteImport } from './routes/_authenticated/app/users/$userId'
 import { Route as AuthenticatedAppProjectsProjectIdLibraryRouteImport } from './routes/_authenticated/app/projects/$projectId_.library'
+import { Route as AuthenticatedAppProjectsProjectIdVariablesRouteImport } from './routes/_authenticated/app/projects/$projectId_.variables'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -132,6 +133,12 @@ const AuthenticatedAppProjectsProjectIdLibraryRoute =
     path: '/app/projects/$projectId/library',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAppProjectsProjectIdVariablesRoute =
+  AuthenticatedAppProjectsProjectIdVariablesRouteImport.update({
+    id: '/app/projects/$projectId_/variables',
+    path: '/app/projects/$projectId/variables',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/app/organizations/': typeof AuthenticatedAppOrganizationsIndexRoute
   '/app/users/': typeof AuthenticatedAppUsersIndexRoute
   '/app/projects/$projectId/library': typeof AuthenticatedAppProjectsProjectIdLibraryRoute
+  '/app/projects/$projectId/variables': typeof AuthenticatedAppProjectsProjectIdVariablesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -172,6 +180,7 @@ export interface FileRoutesByTo {
   '/app/organizations': typeof AuthenticatedAppOrganizationsIndexRoute
   '/app/users': typeof AuthenticatedAppUsersIndexRoute
   '/app/projects/$projectId/library': typeof AuthenticatedAppProjectsProjectIdLibraryRoute
+  '/app/projects/$projectId/variables': typeof AuthenticatedAppProjectsProjectIdVariablesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -194,6 +203,7 @@ export interface FileRoutesById {
   '/_authenticated/app/organizations/': typeof AuthenticatedAppOrganizationsIndexRoute
   '/_authenticated/app/users/': typeof AuthenticatedAppUsersIndexRoute
   '/_authenticated/app/projects/$projectId_/library': typeof AuthenticatedAppProjectsProjectIdLibraryRoute
+  '/_authenticated/app/projects/$projectId_/variables': typeof AuthenticatedAppProjectsProjectIdVariablesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/app/organizations/'
     | '/app/users/'
     | '/app/projects/$projectId/library'
+    | '/app/projects/$projectId/variables'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/app/organizations'
     | '/app/users'
     | '/app/projects/$projectId/library'
+    | '/app/projects/$projectId/variables'
   id:
     | '__root__'
     | '/'
@@ -257,6 +269,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/organizations/'
     | '/_authenticated/app/users/'
     | '/_authenticated/app/projects/$projectId_/library'
+    | '/_authenticated/app/projects/$projectId_/variables'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -405,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppProjectsProjectIdLibraryRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/app/projects/$projectId_/variables': {
+      id: '/_authenticated/app/projects/$projectId_/variables'
+      path: '/app/projects/$projectId/variables'
+      fullPath: '/app/projects/$projectId/variables'
+      preLoaderRoute: typeof AuthenticatedAppProjectsProjectIdVariablesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -420,6 +440,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAppOrganizationsIndexRoute: typeof AuthenticatedAppOrganizationsIndexRoute
   AuthenticatedAppUsersIndexRoute: typeof AuthenticatedAppUsersIndexRoute
   AuthenticatedAppProjectsProjectIdLibraryRoute: typeof AuthenticatedAppProjectsProjectIdLibraryRoute
+  AuthenticatedAppProjectsProjectIdVariablesRoute: typeof AuthenticatedAppProjectsProjectIdVariablesRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -438,6 +459,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAppUsersIndexRoute: AuthenticatedAppUsersIndexRoute,
   AuthenticatedAppProjectsProjectIdLibraryRoute:
     AuthenticatedAppProjectsProjectIdLibraryRoute,
+  AuthenticatedAppProjectsProjectIdVariablesRoute:
+    AuthenticatedAppProjectsProjectIdVariablesRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

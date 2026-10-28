@@ -103,3 +103,4 @@
 ## Chantier 2 — tranche F2 (variables et formules) — 2026-10-28
 
 - Plan `docs/PLAN-F2.md` (Claude). Review Codex, session neuve, 1 round : **REVISE**, 3 constats moyens acceptés — F2-01 (une écriture rapide incrémente la version, `CONFLICT` pour un éditeur obsolète), F2-02 (`name` ajouté au contrat de mise à jour), F2-03 (fixture du test d'export à compléter). Clarifications sans autre effet : pas de second round (quota). SHA256 du plan final : `712eb95bbece0938ce804c69769a113face9feb35f7cc1e3326ccd531e845581`.
+- Build F2 (Claude, auteur) : `shared/formula.ts` (parseur et évaluateur bornés, détection de cycle), table `gmVariables` (union typée), `convex/gmVariables.ts` (5 fonctions), page Variables, E2E `tests/e2e/variables.ts`. Preuves locales : `pnpm check` (180 + 7 tests), `pnpm audit:convex` (69/0). L'utilisateur demande de rendre plus de charge à Codex quand Claude approche 50 % : le build passe à Codex à partir de F3.

@@ -104,6 +104,12 @@ describe('Holysheet personal workspace', () => {
       id: host,
       target: tavern,
     })
+    await alice.client.mutation(api.gmVariables.createVariable, {
+      projectId,
+      name: 'force',
+      label: 'Force',
+      definition: { type: 'number', value: 3 },
+    })
     for (const collection of gmTables) {
       const exported = await alice.client.query(api.gm.exportCollection, {
         collection,

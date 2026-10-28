@@ -63,3 +63,15 @@ export async function ownedSheet(
   await ownedProject(ctx, sheet.projectId, ownerId)
   return sheet
 }
+
+export async function ownedVariable(
+  ctx: QueryCtx,
+  id: Id<'gmVariables'>,
+  ownerId: string
+) {
+  const variable = await ctx.db.get('gmVariables', id)
+  if (!variable || variable.ownerId !== ownerId)
+    throw new ConvexError({ code: 'NOT_FOUND' })
+  await ownedProject(ctx, variable.projectId, ownerId)
+  return variable
+}

@@ -19,6 +19,7 @@ import type * as emails from "../emails.js";
 import type * as gm from "../gm.js";
 import type * as gmEditor from "../gmEditor.js";
 import type * as gmSheets from "../gmSheets.js";
+import type * as gmVariables from "../gmVariables.js";
 import type * as gmWidgets from "../gmWidgets.js";
 import type * as http from "../http.js";
 import type * as identityConfirmation from "../identityConfirmation.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   gm: typeof gm;
   gmEditor: typeof gmEditor;
   gmSheets: typeof gmSheets;
+  gmVariables: typeof gmVariables;
   gmWidgets: typeof gmWidgets;
   http: typeof http;
   identityConfirmation: typeof identityConfirmation;

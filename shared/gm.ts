@@ -45,6 +45,7 @@ export const gmTables = [
   'gmSheets',
   'gmSheetContents',
   'gmSheetLinks',
+  'gmVariables',
 ] as const
 
 // Bibliothèque de fiches (F1). Les métadonnées légères (gmSheets) sont
@@ -93,3 +94,9 @@ export function gmSheetKindOf(value: string): GmSheetKind | undefined {
   return gmSheetKinds.find((kind) => kind === value)
 }
 export const gmSheetSearch = z.string().trim().min(1).max(100)
+
+// Variables de projet (F2).
+export const GM_MAX_VARIABLES = 200
+export const gmVariableName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,39}$/)
+export const gmVariableLabel = z.string().trim().max(120)
+export const gmVariableText = z.string().max(2000)

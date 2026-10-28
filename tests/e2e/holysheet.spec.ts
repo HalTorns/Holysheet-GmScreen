@@ -16,6 +16,7 @@ import {
 } from './helpers'
 import { verifyLibrary } from './library'
 import { verifyScreenEditor } from './screen-editor'
+import { verifyVariables } from './variables'
 import { verifyWidgetTools } from './widget-tools'
 
 test('password registration, project, folder and Screen survive reload, synchronize and restore', async ({
@@ -172,6 +173,7 @@ test('password registration, project, folder and Screen survive reload, synchron
     await verifyScreenEditor(page, secondPage, client)
     await verifyWidgetTools(page, client)
     await verifyLibrary(page, client)
+    await verifyVariables(page, client)
     const report = await verifyLocalRestore()
     for (const table of gmTables)
       expect(report.tables[table]).toBeGreaterThan(0)

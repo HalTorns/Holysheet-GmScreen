@@ -11,6 +11,7 @@ import {
   sheetFields,
   sheetContentFields,
   sheetLinkFields,
+  variableFields,
 } from './lib/gmValidators'
 
 export default defineSchema({
@@ -46,6 +47,10 @@ export default defineSchema({
     .index('by_owner', ['ownerId'])
     .index('by_from', ['fromId'])
     .index('by_to', ['toId']),
+  gmVariables: defineTable(variableFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_project', ['projectId'])
+    .index('by_project_name', ['projectId', 'nameKey']),
   cleanupJobs: defineTable(
     v.union(
       v.object({

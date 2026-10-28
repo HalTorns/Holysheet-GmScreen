@@ -170,6 +170,52 @@ export const sheetLinkValidator = v.object({
   _creationTime: v.number(),
   ...sheetLinkFields,
 })
+const variableCommon = {
+  ...owned,
+  projectId: v.id('gmProjects'),
+  name: v.string(),
+  nameKey: v.string(),
+  label: v.string(),
+  version: v.number(),
+}
+const variableShapes = {
+  number: {
+    type: v.literal('number'),
+    value: v.number(),
+    min: v.optional(v.number()),
+    max: v.optional(v.number()),
+  },
+  text: { type: v.literal('text'), value: v.string() },
+  boolean: { type: v.literal('boolean'), value: v.boolean() },
+  formula: {
+    type: v.literal('formula'),
+    expression: v.string(),
+    dependencies: v.array(v.string()),
+  },
+}
+export const variableFields = v.union(
+  v.object({ ...variableCommon, ...variableShapes.number }),
+  v.object({ ...variableCommon, ...variableShapes.text }),
+  v.object({ ...variableCommon, ...variableShapes.boolean }),
+  v.object({ ...variableCommon, ...variableShapes.formula })
+)
+const variableSystem = {
+  _id: v.id('gmVariables'),
+  _creationTime: v.number(),
+  ...variableCommon,
+}
+export const variableValidator = v.union(
+  v.object({ ...variableSystem, ...variableShapes.number }),
+  v.object({ ...variableSystem, ...variableShapes.text }),
+  v.object({ ...variableSystem, ...variableShapes.boolean }),
+  v.object({ ...variableSystem, ...variableShapes.formula })
+)
+export const variableDefinitionValidator = v.union(
+  v.object(variableShapes.number),
+  v.object(variableShapes.text),
+  v.object(variableShapes.boolean),
+  v.object({ type: v.literal('formula'), expression: v.string() })
+)
 export const gmCollection = v.union(
   v.literal('gmProjects'),
   v.literal('gmFolders'),
@@ -179,7 +225,8 @@ export const gmCollection = v.union(
   v.literal('gmEditorHistory'),
   v.literal('gmSheets'),
   v.literal('gmSheetContents'),
-  v.literal('gmSheetLinks')
+  v.literal('gmSheetLinks'),
+  v.literal('gmVariables')
 )
 export const gmDocument = v.union(
   projectValidator,
@@ -190,5 +237,6 @@ export const gmDocument = v.union(
   historyValidator,
   sheetValidator,
   sheetContentValidator,
-  sheetLinkValidator
+  sheetLinkValidator,
+  variableValidator
 )
