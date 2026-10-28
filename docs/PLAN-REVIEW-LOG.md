@@ -128,3 +128,7 @@
 - CI `40744179995` sur `6f18d96` : nouvel échec dû à l'hydratation (page Variables). **Correction structurelle d'AUD-08 par Claude** : marqueur `data-hydrated` posé par la racine après hydratation, et helper E2E `waitForHydration` appelé après chaque `goto` ou `reload` dans les parcours bibliothèque, variables et widgets.
 - CI `40749429244` sur `feb6997` : avec les attentes d'hydratation, tout le parcours passe jusqu'au rapport de restauration, qui était invalide car `scripts/snapshots.mjs` ignorait le kind `sheet` (oubli de F4a). Correction par Claude : kind ajouté et référence de fiche contrôlée (même compte et même projet).
 - CI `40752029856` sur `c26186a` : application (avec restauration), image Docker et secrets **success**. Fast-forward de `main` avec F4a et la correction d'AUD-08. **Arrêt** : le quota Codex est à 61 % (limite fixée à 70 %), une tranche de plus le dépasserait.
+
+## Chantier 2 — tranche F4b (texte riche) — 2026-10-28
+
+- Quota Codex remis à zéro à 19 h 14 UTC (3 % au moment de l'arbitrage). ADR `docs/decisions/rich-text.md` et plan `docs/PLAN-F4b.md` rédigés par Codex, **arbitrés par Claude** : Markdown explicite sans migration, limites de collage acceptées, dépendances de rendu sûres.
