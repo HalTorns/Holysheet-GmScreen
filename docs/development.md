@@ -32,6 +32,19 @@ Chaque nouveau checkout reçoit un projet Compose distinct dans `.env.docker`, l
 
 `pnpm backend:dev` et `pnpm backend:push` passent par `scripts/backend-local.mjs` : refus des sélecteurs distants et options supplémentaires, vérification de l’identité Docker/PostgreSQL et des ports, puis invocation de Convex avec le fichier `.env.local` explicitement désigné et un environnement local. Le watcher relaie son interruption au CLI. Une publication distante suit [deployment.md](deployment.md), sans modifier ces commandes locales.
 
+### Poste Linux sans Docker
+
+Le poste de développement courant est un conteneur Linux (webtop) sans démon Docker ni namespaces utilisateur. Node 26.11.0 y est installé via nvm, sans changer l’alias `default`. Activer `nvm use 26.11.0` dans le shell du projet, puis utiliser pnpm 11.8.0.
+
+| Commande | Sur ce poste |
+| --- | --- |
+| `pnpm install --frozen-lockfile`, `pnpm audit --prod --audit-level=high` | oui |
+| `pnpm check` : types, Oxlint, Oxfmt, Knip, Vitest backend/unitaire avec `convex-test`, Vitest navigateur, build | oui, Chromium installé sans `--with-deps` |
+| `pnpm auth:generate` | oui |
+| `pnpm setup`, `services:*`, `doctor`, `backend:dev`, `backend:push`, `test:e2e*` | non : ces commandes exigent Docker (PostgreSQL, Convex, Mailpit) |
+
+Les preuves de services et les E2E proviennent de la CI GitHub (`Validation`), qui exécute `pnpm setup` puis l’E2E Holysheet sur un runner Ubuntu. Un changement qui demande ces preuves est poussé sur une branche, puis intégré à `main` une fois la CI verte. Le sandbox de Codex CLI (bwrap) est indisponible sur ce poste : Codex y travaille sans sandbox, avec contrôle de l’état du checkout par le coordinateur.
+
 ## Contrats de test
 
 Les tests backend Convex protègent les validations, droits de propriétaire, sessions et quotas avec des cas autorisés et interdits. Les E2E protègent les risques de transport et de cycle de vie : SSR anonyme, code réellement envoyé, cookies, CRUD persistant, isolation via API directe, révocation entre navigateurs, cérémonie WebAuthn virtuelle, export privé et suppression de compte. Le test de restauration crée des données et une passkey réelles avant l’exercice sur un backend jetable.
