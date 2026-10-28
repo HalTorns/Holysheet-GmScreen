@@ -119,3 +119,7 @@
 - Build F3b (**Codex**, session neuve) : kinds `checklist`, `counter` (local ou lié à une variable `number`, seule source de vérité) et `dice` (`NdS±K`, `crypto.getRandomValues` avec rejet, résultats non persistés) ; 5 tests backend, 4 unitaires, 3 navigateur, E2E `widget-kinds.ts`. **Inspection Claude** : droits (`requireUser`, `ownedNote`), validation de la source liée (même compte, même projet, type nombre) à la liaison comme au détachement (valeur capturée côté serveur), tirage sans biais. `pnpm check` relancé par Claude : vert. Quota Codex observé : 54 % de la fenêtre de 5 h (arrêt demandé à 70 %).
 - CI `40734155254` sur `85e0e4a` : E2E en échec, car la case de checklist était contrôlée par l'état serveur uniquement et le clic semblait sans effet jusqu'à la réponse (« Clicking the checkbox did not change its state »). Correction par Claude : coche optimiste, liée à la version et annulée en cas d'échec.
 - CI `40737066449` sur `1970075` : application, image Docker et secrets **success**. Fast-forward de `main` avec F3b. Auteurs : Codex (code F3b), Claude (inspection et coche optimiste).
+
+## Chantier 2 — tranche F4a (widget fiche) — 2026-10-28
+
+- Plan `docs/PLAN-F4.md` (Claude) ; découpage F4a (widget fiche) et F4b (texte riche, avec ADR). **Pas de review du plan par Codex**, pour économiser son quota (54 % de la fenêtre de 5 h ; arrêt demandé par l'utilisateur à 70 %). Build par Codex dans une session neuve, inspection par Claude.
