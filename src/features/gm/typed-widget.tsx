@@ -156,15 +156,25 @@ function TypedWidgetEditor({
   const current = editor.value
   const title = current.config.title || gmWidgetLabels[current.kind]
   const blocked = readOnly || pending || editor.pending || editor.dirty
+  // Coche optimiste : la case suit le clic tout de suite, jusqu'à la version
+  // suivante du serveur ; elle revient en arrière si l'écriture échoue.
+  const [optimistic, setOptimistic] = useState<{
+    version: number
+    checks: Record<string, boolean>
+  }>({ version: widget.version, checks: {} })
+  const optimisticChecks =
+    optimistic.version === widget.version ? optimistic.checks : {}
   async function perform(action: () => Promise<unknown>) {
-    if (inFlight.current) return
+    if (inFlight.current) return false
     inFlight.current = true
     setPending(true)
     setError(null)
     try {
       await action()
+      return true
     } catch (error_) {
       setError(operationErrorMessage(error_))
+      return false
     } finally {
       inFlight.current = false
       setPending(false)
@@ -238,18 +248,29 @@ function TypedWidgetEditor({
                 <label>
                   <input
                     type="checkbox"
-                    checked={current.state.checkedIds.includes(item.id)}
+                    checked={
+                      optimisticChecks[item.id] ??
+                      current.state.checkedIds.includes(item.id)
+                    }
                     disabled={blocked}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const checked = event.target.checked
+                      setOptimistic({
+                        version: widget.version,
+                        checks: { ...optimisticChecks, [item.id]: checked },
+                      })
                       void perform(() =>
                         setItem({
                           id: widget._id,
                           expectedVersion: widget.version,
                           itemId: item.id,
-                          checked: event.target.checked,
+                          checked,
                         })
-                      )
-                    }
+                      ).then((saved) => {
+                        if (!saved)
+                          setOptimistic({ version: widget.version, checks: {} })
+                      })
+                    }}
                   />
                   {item.label}
                 </label>
