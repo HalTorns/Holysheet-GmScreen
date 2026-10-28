@@ -85,3 +85,11 @@
 - Preuves Claude (Node 26.11.1) : `pnpm check` (150 + 7 tests), `pnpm audit:convex` (54/0), `pnpm audit --prod --audit-level=high` → 0.
 - Inspection finale C1 n°1 (Codex, session neuve) : **REVISE**, 1 constat — C1-F01 (medium) : le smoke test Docker acceptait un 3xx, pouvait valider le dernier corps capturé après échecs et n'imposait pas réellement 60 s. → **Accepté** : statut exactement 200, `grep -Fxq`, `--max-time 5`, échéance `SECONDS + 60`, échec explicite ; nettoyage `always()` conservé.
 - Réinspection C1 (session Codex neuve, ciblée) : **APPROVED**. CI `40704268922` sur `b11b0ba` : application, image Docker et secrets **success**. Fast-forward de `main`. Auteur du code C1 : Claude ; Codex : review du plan et 2 inspections.
+
+## Chantier 2 — tranche F1 (bibliothèque de fiches) — 2026-10-28
+
+- L'utilisateur choisit de lancer le chantier 2 avant C2, puis autorise l'enchaînement sans validation.
+- Plan `docs/PLAN-F1.md` (Claude), avec la feuille de route F1 à F9. Review Codex, session neuve :
+  - Round 1 **REVISE** : F1-01 (high) comptage de 500 fiches pleines au-delà de 16 Mio ; F1-02 (high) export, listes et liens dépassant les budgets de lecture. → **Acceptés** : séparation `gmSheets` (métadonnées) / `gmSheetContents` (contenu), export plafonné à 10 contenus par page, lots de nettoyage par table (5 pour les contenus), tests avec fiches pleines multioctets.
+  - Round 2 **REVISE** : F1-03 (medium) les liens entrants venant de fiches en corbeille portent la borne à 599. → **Accepté** : suppression de tous les liens `by_to`, test au-delà de 499 sources. Pas de round 3, pour économiser le quota : la correction élargit une borne sans autre effet, et Claude tranche.
+- SHA256 du plan final : `fab409f027831d169034eb309899f8737f995362d990fbdd193240191471ac28`.
