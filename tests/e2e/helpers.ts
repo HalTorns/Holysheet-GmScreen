@@ -311,3 +311,10 @@ export async function deleteOrganizationWithClient(
     confirmation: 'DELETE',
   })
 }
+
+// Attendre l'hydratation React après un chargement complet (voir __root.tsx).
+export async function waitForHydration(page: Page) {
+  await page.waitForFunction(
+    () => document.documentElement.dataset.hydrated === 'true'
+  )
+}

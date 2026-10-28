@@ -4,6 +4,7 @@ import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
 import { readScreen } from '../helpers/gm-screen'
+import { waitForHydration } from './helpers'
 
 export async function verifyWidgetKinds(
   page: Page,
@@ -22,6 +23,7 @@ export async function verifyWidgetKinds(
     format: 'digital',
   })
   await page.goto(`/app/screens/${screenId}`)
+  await waitForHydration(page)
   await page
     .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
     .uncheck()
@@ -84,6 +86,7 @@ export async function verifyWidgetKinds(
     })
     .toBe(true)
   await page.reload()
+  await waitForHydration(page)
   // Après rechargement, un clic avant l'hydratation est perdu (AUD-08) :
   // on réessaie jusqu'à ce que la case réagisse réellement.
   const autosaveAfterReload = page.getByRole('checkbox', {
@@ -123,6 +126,7 @@ export async function verifyWidgetKinds(
   expect(second).toBeLessThanOrEqual(6)
   expect(total).toBe(first + second + 1)
   await page.reload()
+  await waitForHydration(page)
   // Après rechargement, un clic avant l'hydratation est perdu (AUD-08) :
   // on réessaie jusqu'à ce que la case réagisse réellement.
   const autosave = page.getByRole('checkbox', {
@@ -164,6 +168,7 @@ export async function verifyWidgetKinds(
     counter.getByRole('button', { name: 'Augmenter', exact: true })
   ).toBeEnabled()
   await other.goto(page.url())
+  await waitForHydration(other)
   await counter.getByRole('button', { name: 'Augmenter', exact: true }).click()
   await expect(
     counter.getByLabel('Valeur du compteur', { exact: true }).first()
@@ -175,6 +180,7 @@ export async function verifyWidgetKinds(
       .first()
   ).toHaveText(String(force.value + 1))
   await other.goto(`/app/projects/${projectId}/variables`)
+  await waitForHydration(other)
   await expect(
     other.getByLabel('Résultat de force', { exact: true })
   ).toHaveText(String(force.value + 1))
@@ -283,6 +289,7 @@ export async function verifyWidgetKinds(
     .getAttribute('href')
   if (!sheetUrl) throw new Error('Missing linked sheet')
   await other.goto(sheetUrl)
+  await waitForHydration(other)
   await other
     .getByLabel('Résumé', { exact: true })
     .fill('Connaît le passage secret')

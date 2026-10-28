@@ -9,6 +9,7 @@ import {
   Scripts,
 } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { useEffect } from 'react'
 import { Toaster } from 'sonner'
 
 import { OptionalAnalytics } from '@/features/observability/analytics'
@@ -55,6 +56,11 @@ export const Route = createRootRouteWithContext<{
 
 function Root() {
   const context = Route.useRouteContext()
+  // Marqueur d'hydratation : les tests E2E attendent ce signal avant
+  // d'interagir, un clic sur le HTML SSR non hydraté étant perdu (AUD-08).
+  useEffect(() => {
+    document.documentElement.dataset.hydrated = 'true'
+  }, [])
   return (
     <html lang={appConfig.language}>
       <head>

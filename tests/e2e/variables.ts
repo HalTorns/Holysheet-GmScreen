@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
+import { waitForHydration } from './helpers'
 
 // Variables et formules (F2) : création, recalcul en direct, refus de cycle.
 export async function verifyVariables(page: Page, client: ConvexHttpClient) {
@@ -11,6 +12,7 @@ export async function verifyVariables(page: Page, client: ConvexHttpClient) {
   const projectId = sheet?.sheet.projectId
   if (!projectId) throw new Error('Missing project')
   await page.goto(`/app/projects/${projectId}/variables`)
+  await waitForHydration(page)
   await expect(
     page.getByRole('heading', { name: 'Variables du projet' })
   ).toBeVisible()
@@ -56,6 +58,7 @@ export async function verifyVariables(page: Page, client: ConvexHttpClient) {
     })
     .toBe('Force physique')
   await page.reload()
+  await waitForHydration(page)
   await expect(page.getByLabel('Libellé de force')).toHaveValue(
     'Force physique'
   )
@@ -65,6 +68,7 @@ export async function verifyVariables(page: Page, client: ConvexHttpClient) {
   const other = await page.context().newPage()
   try {
     await other.goto(page.url())
+    await waitForHydration(other)
     await expect(other.getByLabel('Valeur de bonus')).toHaveValue(
       'force * 2 + 1'
     )

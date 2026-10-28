@@ -4,6 +4,7 @@ import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
 import { readScreen } from '../helpers/gm-screen'
+import { waitForHydration } from './helpers'
 
 // Bibliothèque de fiches (F1) : création, édition, lien et rétrolien par
 // l'interface, vérifiés aussi côté serveur.
@@ -13,6 +14,7 @@ export async function verifyLibrary(page: Page, client: ConvexHttpClient) {
   if (!screen) throw new Error('Missing Screen')
   const projectId = screen.screen.projectId
   await page.goto(`/app/projects/${projectId}/library`)
+  await waitForHydration(page)
   await expect(
     page.getByRole('heading', { name: 'Fiches du projet' })
   ).toBeVisible()
