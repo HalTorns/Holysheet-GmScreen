@@ -152,7 +152,8 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
     await expect(
       page.getByRole('link', { name: 'sûr', exact: true })
     ).toHaveAttribute('rel', 'noopener noreferrer')
-    await page.locator('summary').focus()
+    // Le Screen contient d'autres details (historique, outils) : viser le repli de la note.
+    await page.locator('summary').filter({ hasText: 'Résumé' }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText('secret', { exact: true })).toBeVisible()
     await page
