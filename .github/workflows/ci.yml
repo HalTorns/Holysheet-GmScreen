@@ -84,12 +84,18 @@ jobs:
       - name: Démarrer l'image et vérifier /robots.txt
         run: |
           docker run -d --name holysheet-ci -p 3000:3000 holysheet-ci
-          for _ in $(seq 1 60); do
-            if body="$(curl -fsS http://127.0.0.1:3000/robots.txt)"; then break; fi
+          expected='Sitemap: https://ci.example.test/sitemap.xml'
+          deadline=$((SECONDS + 60))
+          while (( SECONDS < deadline )); do
+            status="$(curl -sS --max-time 5 -o robots.txt -w '%{http_code}' http://127.0.0.1:3000/robots.txt || true)"
+            if [[ "$status" == 200 ]] && grep -Fxq "$expected" robots.txt; then
+              cat robots.txt
+              exit 0
+            fi
             sleep 1
           done
-          printf '%s\n' "$body"
-          grep -qx 'Sitemap: https://ci.example.test/sitemap.xml' <<<"$body"
+          echo "Aucune réponse 200 conforme de /robots.txt en 60 s (dernier statut : ${status:-aucun})"
+          exit 1
       - name: Journaux et arrêt du conteneur
         if: always()
         run: |
