@@ -1,5 +1,46 @@
 # Mises à jour
 
+## T0 — Exception d'audit Better Auth acceptée — 28 octobre 2026
+
+**Décision : option 3 approuvée explicitement par l'utilisateur le 2026-10-28.** Better Auth, passkey et la CLI `auth` restent en **1.6.22**, l'adaptateur en **0.12.5** ; aucun changement de lockfile, de schéma ou de secret. Réexamen **au plus tard le 2026-11-30**, ou dès qu'une version de `@convex-dev/better-auth` prend en charge Better Auth **>= 1.7.7**. Cette exception accepte les trois avis uniquement sous les conditions de non-exposition ci-dessous.
+
+### Options de mise à jour écartées
+
+Les plages officielles excluent une 1.6.x corrigée : GHSA-965c-763c-88jm (`>=1.4.0-beta.18 <1.7.7`), GHSA-q84f-53jg-9ppm (`>=1.3.8-beta.3 <1.7.0-rc.3`) et GHSA-r4xp-prcw-77qf (`>=1.5.0-beta.12 <1.7.7`). La [1.6.33](https://github.com/better-auth/better-auth/releases/tag/v1.6.33) n'annonce pas de rétroportage de ces correctifs.
+
+L'essai aligné en **1.7.12** avec override du pair de l'adaptateur a passé l'installation verrouillée et l'audit high, mais `auth:generate` et les tests backend échouent sur `ERR_PACKAGE_PATH_NOT_EXPORTED` : l'adaptateur importe `better-auth/plugins/oidc-provider`, supprimé en 1.7. La [source de l'adaptateur 0.12.6, ligne 11](https://github.com/get-convex/better-auth/blob/v0.12.6/src/plugins/convex/index.ts#L11) conserve cet import. L'essai a été retiré ; une simple dérogation de pair ne suffit pas.
+
+### Justification de non-exposition
+
+| Avis et condition officielle | Preuve dans le code conservé |
+| --- | --- |
+| [GHSA-965c-763c-88jm](https://github.com/advisories/GHSA-965c-763c-88jm), critique : le contournement officiel autorise Magic Link `storeToken: "hashed"` avec `verification.storeIdentifier` absent ou `"plain"`. | `convex/authOptions.ts:148` configure `storeToken: 'hashed'`. L'objet construit à `convex/authOptions.ts:82` ne définit pas `verification.storeIdentifier` ; le test vérifie cette valeur dans les options réelles. `convex/auth.ts:56` et `convex/auth.ts:66` ne construisent Google/GitHub que si leurs flags et identifiants privés sont renseignés. Le mode produit configuré par `scripts/configure-backend.mjs:81` impose `AUTH_PASSWORD_ONLY=true` ; `convex/lib/authHooks.ts:109` refuse alors Magic Link, les connexions sociales et leurs callbacks. `convex/lib/authHooks.ts:139` refuse aussi Magic Link quand son module est fermé. Le contournement par hachage reste la justification même si un module social est ouvert. |
+| [GHSA-q84f-53jg-9ppm](https://github.com/advisories/GHSA-q84f-53jg-9ppm), élevée : seul le plugin optionnel `deviceAuthorization()` expose ce chemin. | La liste de plugins de `convex/authOptions.ts:143`, utilisée par `convex/auth.ts:81`, ne contient pas ce plugin. Son ID réel en 1.6.22 est `device-authorization` (`node_modules/better-auth/dist/plugins/device-authorization/index.mjs:33`), absent des options contrôlées par le test. |
+| [GHSA-r4xp-prcw-77qf](https://github.com/advisories/GHSA-r4xp-prcw-77qf), élevée : le chemin exige le plugin OAuth Proxy. | Même liste `convex/authOptions.ts:143` : aucun plugin `oauth-proxy` (ID confirmé dans `node_modules/better-auth/dist/plugins/oauth-proxy/index.mjs:38`). `convex/authOptions.ts:93` désactive également le rattachement de comptes. `AUTH_PROXY_REQUIRED` dans `convex/lib/authHooks.ts:121` est un garde HTTP propre au projet, pas le plugin OAuth Proxy de Better Auth. |
+
+Ces preuves portent sur le code et la procédure de configuration du produit ; aucune configuration ni aucun secret de production n'a été lu. Elles ne prétendent pas vérifier l'état d'un déploiement distant.
+
+### Configuration pnpm et test de garde
+
+`pnpm-workspace.yaml` contient uniquement ces trois IDs dans **`auditConfig.ignoreGhsas`**. La [source pnpm 11.8.0](https://github.com/pnpm/pnpm/blob/v11.8.0/deps/compliance/commands/src/audit/audit.ts#L332) filtre les avis sur cette clé ; le [lecteur de configuration 11.8.0](https://github.com/pnpm/pnpm/blob/v11.8.0/config/reader/src/index.ts#L440) charge le manifeste workspace. Le binaire pnpm 11.8.0 installé normalise cette configuration en `audit.ignore`, visible avec `pnpm config get audit --json`. L'audit affiche explicitement **deux high ignorés et un critical ignoré**, avec code 0 au seuil high. La commande CI reste **`pnpm audit --prod --audit-level=high`**, inchangée dans `.github/workflows/ci.yml:37` ; les autres avis conservent leur traitement normal.
+
+`tests/backend/auth-advisories.test.ts` utilise l'instance réelle de `convex/betterAuth/auth.ts:17`, construite par `buildAuthOptions`, sans mock des plugins et sans grep du code d'authentification. Il contrôle le hachage Magic Link, l'absence de hachage global des identifiants, les deux IDs de plugins interdits et le rattachement désactivé. Il lit le manifeste et interroge le parseur pnpm pour refuser tout ajout ou retrait dans la liste approuvée. Enfin il autorise la période jusqu’au **2026-11-30 inclus en UTC** et échoue dès le 2026-12-01, avec un message français demandant de réexaminer l'exception. Les tests existants de transport et de politique password-only couvrent les refus HTTP ; ce nouveau garde protège les conditions déclaratives qui pourraient réintroduire l'exposition sans modifier ces parcours.
+
+Preuves locales du 2026-10-28, sous pnpm 11.8.0 : `pnpm install --frozen-lockfile` réussi ; `pnpm audit --prod --audit-level=high` code 0 avec exactement les trois avis ignorés ; `pnpm test:ci -- tests/backend/auth-advisories.test.ts tests/backend/auth-config.test.ts` réussi (la commande exécute toute la suite : 25 fichiers, 142 tests). `pnpm check` complet réussi : types, lint, formatage, Knip, ces 142 tests, 5 fichiers/7 tests navigateur et build. Les avertissements upstream de bundling restent ceux documentés ci-dessous. `pnpm format` et `pnpm format:check` réussissent ; les changements des documents de cadrage restent limités à leur mise en forme.
+
+### Sortie de l'exception et future montée
+
+Dès qu'un adaptateur compatible paraît :
+
+1. Réexaminer les trois avis et retirer leurs exceptions ; aligner Better Auth, passkey et CLI sur une version corrigée, avec le lockfile associé. Ne pas reporter aveuglément le patch de types de l'adaptateur.
+2. Relire toutes les migrations de la version retenue. Les [notes 1.7.0](https://github.com/better-auth/better-auth/releases/tag/v1.7.0) suppriment `oidc-provider` : l'adaptateur doit fournir une intégration compatible. Le [guide versionné 1.7.12](https://github.com/better-auth/better-auth/blob/v1.7.12/docs/content/docs/guides/1-7-upgrade-guide.mdx) exige de discriminer `enableTwoFactor().method` avant `totpURI`/`backupCodes` ; il précise aussi que `account.issuer`, introduit en 1.7.0–1.7.2, a été retiré en 1.7.3. La [note Action required de 1.7.12](https://github.com/better-auth/better-auth/releases/tag/v1.7.12) exige un `clientId` pour la connexion par ID token ; les fournisseurs actuels en reçoivent un dans `convex/auth.ts:60` et `convex/auth.ts:70`.
+3. Exécuter les preuves T0 **a–d** de `docs/PLAN.md` : `pnpm auth:generate`, revue des tables/index/suppressions et migration si nécessaire ; revue du hook twoFactor ; job CI `auth-modules` et E2E modules ; test en deux phases d'un compte créé en 1.6.22, avec mêmes données/secret et session témoin privée, puis vérification de connexion, révocation, projet/Screen/note lisibles et exportables. Le lanceur modules devra aussi sauvegarder/désactiver/restaurer `AUTH_PASSWORD_ONLY`, et ses attentes viser « Mes projets. ».
+4. Relancer audit, `pnpm check` et E2E sur services isolés ; sauvegarde vérifiée et déploiement manuel selon le guide, sans rotation de secret de dépannage.
+
+Le matcher twoFactor 1.7.12 examiné dans l'essai supprime toujours la session primaire sur `/sign-in/email` : l'exclusion spécifique actuelle reste nécessaire, sans retirer les contrôles `shouldRequirePassword`/`validatePassword`. La génération en 1.6.22 a réussi sans diff ; ce résultat ne valide pas un futur schéma 1.7.
+
+**Le job CI `auth-modules` et le test de compte antérieur sont différés à cette future montée, puisqu'aucune version ne change ici.** Les jobs existants restent inchangés. Les preuves locales de cette décision sont consignées dans le rapport de livraison ; aucune CI ni E2E avec services n'est revendiqué. Context7 MCP étant indisponible, les vérifications s'appuient sur les sources installées et officielles versionnées. La PR Dependabot #1 reste à traiter avec l'adaptateur compatible ; un simple rebase ne corrige pas son incompatibilité 1.7.12.
+
 ## Correctifs avant publication Holysheet — 26 octobre 2026
 
 L’audit de préparation Coolify signale deux alertes high dans le lockfile du socle. Mise à jour ciblée de Zod 4.6.5 vers 4.6.6 ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)), avec override des dépendances transitives Zod 4 encore épinglées avant 4.6.6, et override de Happy DOM 21.0.3 vers 21.0.4 ([GHSA-834v-8h66-3h79](https://github.com/advisories/GHSA-834v-8h66-3h79)), dépendance transitive de l’outillage Vitest. Les autres versions et les patches Better Auth/Playwright restent conservés.

@@ -28,7 +28,7 @@ Références : [BRIEF](BRIEF.md) · [PRD](../PRD.md) · [Avancement](product.md)
 ## Faits établis (reconnaissance du 28/10/2026)
 
 | Fait | Source |
-|---|---|
+| --- | --- |
 | La CI de `main` échoue depuis l'apparition d'avis de sécurité better-auth : 1 critique (« OAuth state can be used as a Magic Link », GHSA-965c-763c-88jm) et 2 élevés (approbation d'appareil, OAuth Proxy). Versions corrigées : ≥ 1.7.7. Installée : 1.6.22. | run 40670326258, étape `pnpm audit` |
 | `@convex-dev/better-auth` 0.12.6 (dernière) exige `better-auth >=1.6.11 <1.7.0`. Une montée directe en 1.7.x casse donc la contrainte de l'adaptateur Convex. La branche `release-1.6` de better-auth va jusqu'à la 1.6.33. | `npm view`, `pnpm-lock.yaml:592` |
 | Le plugin `magicLink` est chargé « pour garder le schéma stable », ses routes publiques étant « séparément bloquées dans auth.ts ». `socialProviders` dépend des modules google et github. | `convex/authOptions.ts:94-148` |
@@ -108,6 +108,7 @@ Aucune modification de code dans cette tranche, sauf les scripts d'inventaire pl
 #### Axes d'audit
 
 **A. Droits Convex.**
+
 - Script d'inventaire : il parcourt `convex/**/*.ts` (hors `_generated`) et liste chaque `query`, `mutation`, `action` et `httpAction` exporté en public.
 - Pour chaque fonction, on relève :
   - le helper d'authentification utilisé (`convex/lib/auth.ts` et `sessionAccess.ts`) ;
@@ -118,11 +119,13 @@ Aucune modification de code dans cette tranche, sauf les scripts d'inventaire pl
 - Contrôle croisé : les tests de refus existants dans `tests/backend/gm*.test.ts`. Toute fonction GM sans test de refus d'un tiers est **majeure**.
 
 **B. Données et migrations.**
+
 - Revue de `convex/schema.ts` : index, champs optionnels hérités, versions de contenu et de disposition.
 - Vérifier que l'export de compte, le nettoyage (`convex/cleanup.ts`) et la restauration couvrent toutes les tables métier. Une table oubliée est **bloquante**, car on perd des données ou on laisse des restes à la suppression.
 - Recommander un cadre de migration pour la suite, par exemple `@convex-dev/migrations` ou des migrations internes versionnées. La décision va dans un ADR si elle est coûteuse à inverser. Elle n'est pas implémentée ici, sauf si T3 en a besoin.
 
 **C. Sécurité applicative.**
+
 - Revue de `convex/auth.ts`, `authHooks.ts`, `authSecurity.ts`, `http.ts` et des routes serveur `src/routes/api`, ainsi que des en-têtes HTTP (CSP).
   - La preuve HTTP, origines et CSP en mode produit vient des tests `tests/e2e/holysheet.spec.ts:226-303`, lancés en CI.
   - `tests/e2e/security.spec.ts` est **incompatible avec le mode produit** (revue REV-03) : il attend un 200 sur les options passkey, une connexion OTP et le libellé « Adresse e-mail », alors que `AUTH_PASSWORD_ONLY` refuse ces routes (`convex/lib/authHooks.ts:109-120`).
@@ -131,24 +134,29 @@ Aucune modification de code dans cette tranche, sauf les scripts d'inventaire pl
 - Vérifier que les modules désactivés le sont réellement : organisations, magic link, OAuth, admin, passkey, MFA.
 
 **D. Tests et CI.**
+
 - Couverture du domaine GM : contrats backend, composants, E2E.
 - Instabilité de l'E2E après connexion et rechargement : reproduire à partir des artefacts CI s'ils sont disponibles, sinon par analyse du code (garde de route `_authenticated.tsx`, SSR et session), avec une hypothèse de cause.
 - Échecs passés de CI (`a669c54`) : identifier leur cause.
 
 **E. Dette et surface héritée du boilerplate.**
+
 - Lister les modules et routes non utilisés par le produit (organisations, ressources, admin, spotlight, dashboard, docs du boilerplate) avec leur coût : lignes, dépendances, tests, surface d'attaque.
 - La décision **conserver ou retirer** est proposée à l'utilisateur et n'est pas appliquée dans ce chantier. Seul un module actif et exploitable en prod peut être désactivé en T3, au titre d'un constat bloquant.
 
 **F. Dépendances.**
+
 - Trier les PR Dependabot #2 à #6 : fusionner, reporter ou fermer, avec la raison.
 - L'image Docker node 24 vers 26 (#2) est à aligner avec `.node-version` 26.11.0 et `engines`.
 - Les fusions éventuelles se font en T3, un commit par groupe, chacun prouvé par `pnpm check` et la CI.
 
 **G. Front et UX technique.**
+
 - Gestion du chargement et des erreurs, pertes de saisie (autosauvegarde, conflits), accessibilité de base.
 - Les irritants UX de l'éditeur sont **notés** comme matière pour le chantier 3. Ils ne sont pas corrigés ici.
 
 **H. Documentation et opérations.**
+
 - Docs obsolètes ou contradictoires (historique du boilerplate, WSL, garage-coolify).
 - Procédure de déploiement et de sauvegarde réellement suivie en prod.
 - Écart entre `docs/product.md` et le code.
@@ -172,7 +180,7 @@ Livrable : `docs/AUDIT.md`. Il contient une synthèse (nombre de constats par gr
 ## Risques
 
 | Risque | Mitigation |
-|---|---|
+| --- | --- |
 | better-auth 1.7 incompatible avec l'adaptateur Convex 0.12 | Arbre de décision T0, régénération du schéma auth, revue twoFactor, E2E modules et test d'un compte antérieur en CI, exception documentée en dernier recours |
 | Le job CI `auth-modules` allonge la CI | Déclenchement limité aux changements d'auth et à `workflow_dispatch` |
 | Commits directs sur `main` qui cassent la prod | `pnpm check` local obligatoire avant push ; déploiement manuel par l'utilisateur, donc un commit rouge n'arrive pas en prod de lui-même |
@@ -188,7 +196,7 @@ Livrable : `docs/AUDIT.md`. Il contient une synthèse (nombre de constats par gr
 ## Vérification
 
 | Étape | Commande | Attendu |
-|---|---|---|
+| --- | --- | --- |
 | T0 | `pnpm audit --prod --audit-level=high` | code 0, ou exceptions limitées aux GHSA documentés |
 | T0 | `pnpm test:ci -- tests/backend/auth tests/backend/pending-sign-in.test.ts tests/backend/identity-confirmation.test.ts` | tous verts |
 | T0 | `pnpm auth:generate && git diff --stat convex/betterAuth/` | diff relu et consigné ; tout changement est couvert par A7 |
@@ -196,7 +204,7 @@ Livrable : `docs/AUDIT.md`. Il contient une synthèse (nombre de constats par gr
 | Chaque commit | `pnpm check` | vert (ou étapes impossibles listées) |
 | Chaque push | `gh run watch $(gh run list -L1 --branch main --json databaseId -q '.[0].databaseId') --exit-status` | `success` |
 | T2 | script d'inventaire Convex | 0 fonction publique hors du tableau de l'axe A |
-| T2 | `grep -c '^| AUD-' docs/AUDIT.md` et revue manuelle | tous les axes A à H présents, chaque constat avec preuve et décision |
+| T2 | `grep -c '^\| AUD-' docs/AUDIT.md` et revue manuelle | tous les axes A à H présents, chaque constat avec preuve et décision |
 | T3 | tests de non-régression ajoutés | verts en local et en CI |
 
 Contrôle manuel : après le redéploiement par l'utilisateur, ouvrir la prod, se connecter, rouvrir un Screen existant et vérifier qu'aucune donnée n'est perdue.

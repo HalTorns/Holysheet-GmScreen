@@ -1,5 +1,13 @@
 packages:
   - .
+# Accord utilisateur du 2026-10-28 ; réexamen le 2026-11-30 ou dès qu'une
+# version de @convex-dev/better-auth prend en charge better-auth >= 1.7.7.
+# Justificatifs et garde : docs/upgrades.md, section T0.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-965c-763c-88jm
+    - GHSA-q84f-53jg-9ppm
+    - GHSA-r4xp-prcw-77qf
 minimumReleaseAge: 1440
 overrides:
   happy-dom: 21.0.4

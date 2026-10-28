@@ -3,7 +3,9 @@
 ## Présentation (verbatim)
 
 > Je veux reprendre tout le projet avec cette nouvelle méthode de travail pour avoir un meilleur résultat
+>
 > Je veux donc que dans ce projet on ré analyse, on vérifie que c'est carré, et on améliore l'interface et les fonctionnalités
+>
 > Je veux réutilisé le repo https://github.com/HalTorns/Holysheet-GmScreen car comme ça je n'ai pas a re compléter mes variable d'env dans coolify
 
 ## Objectif et critère de succès
@@ -15,6 +17,7 @@ Reprendre la V1 existante (repo `HalTorns/Holysheet-GmScreen`, branche `main`, d
 3. **UI** : nouvelle identité visuelle et refonte de l'UX de l'éditeur (irritant principal).
 
 C'est réussi quand :
+
 - l'audit est rendu, ses corrections bloquantes sont livrées et `pnpm check` passe ;
 - chaque tranche du PRD arrive sur `main` avec CI verte et sans perte de données en prod ;
 - l'éditeur refondu est jugé plus intuitif par l'utilisateur, avec la nouvelle identité visuelle appliquée partout.
@@ -30,6 +33,7 @@ Le [PRD](../PRD.md) V1 **reste la référence de périmètre, tel quel**. L'audi
 Déjà livré dans la V1 : authentification email et mot de passe, projets et dossiers, Screens (numériques ou A4), notes simples, éditeur (déplacement, redimensionnement, zoom, grille, calques, verrouillage, autosauvegarde, historique, profils), puis outils de notes (duplication, copier-coller, corbeille, groupes, alignement, styles).
 
 Reste à faire :
+
 - fiches et variables du projet ;
 - les 12 catégories de widgets ;
 - texte riche ;
@@ -43,6 +47,7 @@ Reste à faire :
 ## Hors périmètre
 
 Ce qui était hors périmètre en V1 le reste :
+
 - VTT ;
 - IA intégrée ;
 - organisations et collaboration entre comptes ;
@@ -53,6 +58,7 @@ Ce qui était hors périmètre en V1 le reste :
 ## Stack et architecture
 
 On conserve la stack V1, issue de `NathanDigiDev/boilerplate-v2` :
+
 - TanStack Start et Router (SSR), avec Query, Form et Zod ;
 - Convex pour les données, les droits et le temps réel (PostgreSQL comme persistance interne) ;
 - Better Auth Local Install ;
@@ -61,6 +67,7 @@ On conserve la stack V1, issue de `NathanDigiDev/boilerplate-v2` :
 - Node 24.5 à 26, pnpm 11.8.
 
 Organisation du code :
+
 - `src/features/` : interface métier ;
 - `src/routes/` : routes ;
 - `convex/` : backend ;

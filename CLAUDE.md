@@ -17,10 +17,11 @@ Brief : `docs/BRIEF.md` · Plan : `docs/PLAN.md` · Journal de review : `docs/PL
 ## Mode de travail : claudex
 
 <!-- claudex:start -->
+
 Claude est le **contrôleur**, Codex l'**exécutant**. But : qualité maximale pour un minimum de tokens Claude.
 
 | Rôle | Qui | Outil |
-|---|---|---|
+| --- | --- | --- |
 | Cadrage, plan, arbitrage, décisions | Claude | session courante |
 | Review indépendante du plan | Codex | `claudex-loop` |
 | Implémentation (work orders bornés) | Codex | `claudex-loop builder=codex` / `codex-build` |
@@ -28,9 +29,11 @@ Claude est le **contrôleur**, Codex l'**exécutant**. But : qualité maximale p
 | Second avis ponctuel / déblocage | selon `claudex-route` | `claudex-route` |
 
 Règles d'économie :
+
 - Claude ne réécrit pas ce que Codex peut faire : il rédige un **work order** précis (fichiers, critères d'acceptation, commandes de preuve) et délègue.
 - Claude lit les diffs et les résultats de tests, pas des fichiers entiers sans raison.
 - Rounds de review bornés (3 par défaut). Si Codex et Claude divergent après 2 allers-retours, Claude tranche et note la décision dans le journal.
 - Tâches triviales (typo, renommage, 1 fichier) : faites directement, sans boucle.
 - Chaque tâche finit par les commandes de preuve vertes avant commit.
+
 <!-- claudex:end -->

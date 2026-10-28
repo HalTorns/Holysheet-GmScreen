@@ -38,3 +38,15 @@
 - Limites déclarées : revue statique ; implémentation, migrations et CI à prouver dans les work orders ; prod et avis distants non vérifiés ; exception de branche `codex/t0-auth` en attente de l'accord utilisateur.
 - Note d'outillage : rounds 1b–3 exécutés hors runner (bac à sable bwrap indisponible) ; la vérification mécanique `runner.py check` n'est donc pas applicable — le hash ci-dessus a été vérifié manuellement.
 - Rounds utilisés : 3/3 (+1 échec opérationnel non compté).
+
+## Build T0 — 2026-10-28
+
+- Branche `codex/t0-auth`, base `9c83744`. Builder Codex (exec direct, `danger-full-access`, session `01a18231-ac6f-7761-b490-93845e5c5349`).
+- Build 1 : arrêt conforme à l'arbre T0 — option 1 impossible (aucun rétroportage 1.6.x ; plages corrigées ≥ 1.7.0-rc.3/1.7.7), option 2 incompatible (`@convex-dev/better-auth` 0.12.5/0.12.6 importe `better-auth/plugins/oidc-provider`, supprimé en 1.7). Vérifié par Claude (avis GHSA relus).
+- Décision utilisateur (2026-10-28) : **option 3 acceptée** — non-exposition établie par les conditions des avis eux-mêmes (magic link `storeToken: 'hashed'` sans `storeIdentifier` global ; plugins deviceAuthorization et oAuthProxy absents ; account linking désactivé).
+- Build 2 : `auditConfig.ignoreGhsas` (3 GHSA) dans `pnpm-workspace.yaml`, garde `tests/backend/auth-advisories.test.ts` (options réelles, liste pnpm effective, échéance 2026-11-30), décision dans `docs/upgrades.md`, reformatage oxfmt des docs.
+- Correction Claude (auteur) : restauration des sauts de ligne du verbatim dans `docs/BRIEF.md` (fusionnés par oxfmt).
+- `docs/PLAN.md` reformaté par oxfmt uniquement (diff `-w` : échappement `\|` dans un tableau) — contenu approuvé inchangé ; nouveau SHA256 `6ed3c2660c3e9ab9375f4386307c22d1a8f12fce1da4632c09a30bb0e4f26fee`.
+- T0 c/d (job `auth-modules`, test compte antérieur) reportés à la future montée de version : aucune version ne change dans T0.
+- Preuves Claude : `pnpm audit --prod --audit-level=high` → 0 ; `pnpm check` → 0.
+- Note : l'utilisateur demande désormais d'appliquer les recommandations sans le solliciter.

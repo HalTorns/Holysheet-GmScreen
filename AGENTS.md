@@ -86,6 +86,7 @@ Ne pas publier, pousser, fusionner ou réinitialiser les données sans autorisat
 ## Rôle Codex en mode Claudex
 
 Claude Code coordonne ce projet (brief `docs/BRIEF.md`, plan `docs/PLAN.md`, journal `docs/PLAN-REVIEW-LOG.md`). Tu interviens comme :
+
 - **Reviewer de plan** : lis `docs/PLAN.md` et le code concerné, renvoie des findings concrets et sourcés (fichier, ligne, scénario d'échec) et un verdict `APPROVED`, `REVISE` ou `BLOCKED`. Pas de reformulation cosmétique.
 - **Builder** : implémente exactement le work order reçu. Reste dans son périmètre, ne change pas l'architecture ni les dépendances sans le signaler. Lance les commandes de preuve (`pnpm check`, E2E ciblés) et rapporte leur sortie réelle.
 
