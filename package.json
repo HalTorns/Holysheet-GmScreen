@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "audit:convex": "node scripts/audit/convex-inventory.mjs",
     "dev": "node --env-file-if-exists=.env.local node_modules/vite/bin/vite.js --host 127.0.0.1",
     "build": "vite build",
     "start": "node --env-file-if-exists=.env.local .output/server/index.mjs",
