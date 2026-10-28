@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
+import { stripEventHandlers } from '../../src/features/gm/rich-text/paste'
 import {
   escapeNoteText,
   safeNoteUrl,
@@ -118,5 +119,18 @@ describe('note rendering through the sanitized React pipeline', () => {
     expect(html).toContain('**deep**')
     const many = '- item\n'.repeat(1800)
     expect(render(many)).toContain('limite de rendu dépassée')
+  })
+})
+
+describe('stripEventHandlers', () => {
+  it('retire les attributs on* des balises sans toucher au texte', () => {
+    expect(
+      stripEventHandlers(
+        '<img src="x" onerror="evil()" alt="a" onload=\'b()\'><p onclick=go>onion = légume</p>'
+      )
+    ).toBe('<img src="x" alt="a"><p>onion = légume</p>')
+    expect(
+      stripEventHandlers('<a href="https://x.test" ONMOUSEOVER="e()">l</a>')
+    ).toBe('<a href="https://x.test">l</a>')
   })
 })

@@ -6,6 +6,20 @@ export type PasteResult = {
   fallback: boolean
   requiresPlainPaste?: boolean
 }
+const eventHandler =
+  /(<[a-z][^>]*?)\s+on[a-z-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)/giu
+
+export function stripEventHandlers(html: string) {
+  let previous = ''
+  let current = html
+  // Une passe peut révéler un attribut suivant dans la même balise.
+  for (let pass = 0; pass < 64 && current !== previous; pass++) {
+    previous = current
+    current = current.replace(eventHandler, '$1')
+  }
+  return current
+}
+
 // The template lives in a separate inert document, never in the host document.
 // Template parsing has no browsing context and does not fetch subresources.
 export function convertNotePaste(html: string, plain: string): PasteResult {
@@ -26,7 +40,10 @@ export function convertNotePaste(html: string, plain: string): PasteResult {
     )
   const document_ = document.implementation.createHTMLDocument('')
   const template = document_.createElement('template')
-  template.innerHTML = html
+  // Chromium évalue la CSP des attributs on* dès l'analyse, même dans un
+  // document inerte : ils sont retirés des balises avant l'analyse (défense
+  // en profondeur ; le convertisseur ne lit de toute façon aucun attribut on*).
+  template.innerHTML = stripEventHandlers(html)
   let count = 0
   let exceeded = false
   let simplified = false
