@@ -1,5 +1,6 @@
 import { api } from '@convex/_generated/api'
-import type { Doc, Id } from '@convex/_generated/dataModel'
+import type { Id } from '@convex/_generated/dataModel'
+import type { Layout } from '@convex/lib/gmFormats'
 import { gmLayoutSize, gmTitle } from '@shared/gm'
 import { z } from '@shared/zod'
 import { useForm } from '@tanstack/react-form'
@@ -22,7 +23,7 @@ export function LayoutSettings({
   onApply,
   onCreated,
 }: {
-  layout: Doc<'gmLayouts'>
+  layout: Layout
   disabled: boolean
   onApply: (
     settings: { name: string; width: number; height: number },
@@ -92,7 +93,7 @@ function SettingsForm({
   layout,
   onApply,
 }: {
-  layout: Doc<'gmLayouts'>
+  layout: Layout
   onApply: (
     value: { name: string; width: number; height: number },
     version: number

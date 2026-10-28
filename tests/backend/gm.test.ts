@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { api, components, internal } from '../../convex/_generated/api'
 import { gmTables } from '../../shared/gm'
+import { readScreen } from '../helpers/gm-screen'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
 afterEach(() => vi.useRealTimers())
@@ -35,7 +36,7 @@ describe('Holysheet personal workspace', () => {
       expectedVersion: 0,
       body: 'Le marchand ferme au crépuscule.',
     })
-    const saved = await alice.client.query(api.gm.getScreen, { id: screenId })
+    const saved = await readScreen(alice.client, { id: screenId })
     expect(saved?.notes[0]).toMatchObject({
       body: 'Le marchand ferme au crépuscule.',
       version: 1,
@@ -44,11 +45,11 @@ describe('Holysheet personal workspace', () => {
       saved?.layouts.find((layout) => layout.kind === 'print')
     ).toMatchObject({ unit: 'mm', width: 297, height: 210 })
     expect(
-      saved?.layouts.every((layout) => layout.placements[0]?.noteId === noteId)
+      saved?.layouts.every(
+        (layout) => layout.placements[0]?.widgetId === noteId
+      )
     ).toBe(true)
-    expect(
-      await bob.client.query(api.gm.getScreen, { id: screenId })
-    ).toBeNull()
+    expect(await readScreen(bob.client, { id: screenId })).toBeNull()
     expect(
       await bob.client.query(api.gm.getProject, { id: projectId })
     ).toBeNull()
@@ -70,8 +71,7 @@ describe('Holysheet personal workspace', () => {
       })
     ).rejects.toThrow('CONFLICT')
     expect(
-      (await alice.client.query(api.gm.getScreen, { id: screenId }))?.notes[0]
-        ?.body
+      (await readScreen(alice.client, { id: screenId }))?.notes[0]?.body
     ).toBe(saved?.notes[0]?.body)
     const other = await alice.client.mutation(api.gm.createProject, {
       title: 'Autre campagne',
@@ -161,9 +161,7 @@ describe('Holysheet personal workspace', () => {
         where: [{ field: '_id', value: alice.sessionId }],
       },
     })
-    await expect(
-      alice.client.query(api.gm.getScreen, { id: screenId })
-    ).rejects.toThrow()
+    await expect(readScreen(alice.client, { id: screenId })).rejects.toThrow()
     await expect(
       alice.client.mutation(api.gm.addNote, { screenId })
     ).rejects.toThrow()

@@ -17,6 +17,9 @@ import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as gm from "../gm.js";
+import type * as gmWidgetMigrations from "../gmWidgetMigrations.js";
+import type * as lib_gmWidgetWriting from "../lib/gmWidgetWriting.js";
+import type * as lib_gmFormats from "../lib/gmFormats.js";
 import type * as gmEditor from "../gmEditor.js";
 import type * as gmSheets from "../gmSheets.js";
 import type * as gmVariables from "../gmVariables.js";
@@ -64,6 +67,9 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   emails: typeof emails;
   gm: typeof gm;
+  gmWidgetMigrations: typeof gmWidgetMigrations;
+  "lib/gmWidgetWriting": typeof lib_gmWidgetWriting;
+  "lib/gmFormats": typeof lib_gmFormats;
   gmEditor: typeof gmEditor;
   gmSheets: typeof gmSheets;
   gmVariables: typeof gmVariables;
@@ -123,6 +129,7 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
+  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
 };

@@ -175,6 +175,17 @@ test('password registration, project, folder and Screen survive reload, synchron
     await verifyLibrary(page, client)
     await verifyVariables(page, client)
     const report = await verifyLocalRestore()
+    expect(report.widgetRelations).toMatchObject({
+      valid: true,
+      kinds: ['note'],
+    })
+    for (const count of [
+      report.widgetRelations.payloads,
+      report.widgetRelations.nonEmptyNotes,
+      report.widgetRelations.trashed,
+      report.widgetRelations.revisions,
+    ])
+      expect(count).toBeGreaterThan(0)
     for (const table of gmTables)
       expect(report.tables[table]).toBeGreaterThan(0)
     await page.goto('/app/security')

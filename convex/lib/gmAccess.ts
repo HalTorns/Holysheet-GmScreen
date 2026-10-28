@@ -2,6 +2,7 @@ import { ConvexError } from 'convex/values'
 
 import type { Id } from '../_generated/dataModel'
 import type { QueryCtx } from '../_generated/server'
+import { normalizeLayout } from './gmFormats'
 
 export async function ownedProject(
   ctx: QueryCtx,
@@ -47,7 +48,7 @@ export async function ownedLayout(
   if (!layout || layout.ownerId !== ownerId)
     throw new ConvexError({ code: 'NOT_FOUND' })
   await ownedScreen(ctx, layout.screenId, ownerId)
-  return layout
+  return normalizeLayout(layout)
 }
 
 // Fiche du compte, vivante ou en corbeille : chaque fonction décide ensuite

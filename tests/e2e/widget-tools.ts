@@ -2,12 +2,12 @@ import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
-import { api } from '../../convex/_generated/api'
+import { readScreen } from '../helpers/gm-screen'
 
 export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   const id = new URL(page.url()).pathname.split('/').at(-1) ?? ''
   async function read() {
-    const data = await client.query(api.gm.getScreen, { id })
+    const data = await readScreen(client, { id })
     if (!data) throw new Error('Missing Screen')
     return data
   }
@@ -56,13 +56,13 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   await expect
     .poll(
       async () =>
-        (await profile()).placements.find((p) => p.noteId === first._id)
+        (await profile()).placements.find((p) => p.widgetId === first._id)
           ?.groupId
     )
     .toBe(first._id)
   const before = await profile()
-  const firstPlacement = before.placements.find((p) => p.noteId === first._id)
-  const copyPlacement = before.placements.find((p) => p.noteId === copy._id)
+  const firstPlacement = before.placements.find((p) => p.widgetId === first._id)
+  const copyPlacement = before.placements.find((p) => p.widgetId === copy._id)
   if (!firstPlacement || !copyPlacement)
     throw new Error('Missing group placements')
   const moveHandle = page.getByRole('button', {
@@ -74,11 +74,11 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   await expect
     .poll(
       async () =>
-        (await profile()).placements.find((p) => p.noteId === copy._id)?.x
+        (await profile()).placements.find((p) => p.widgetId === copy._id)?.x
     )
     .toBe(copyPlacement.x + 1)
   expect(
-    (await profile()).placements.find((p) => p.noteId === first._id)?.x
+    (await profile()).placements.find((p) => p.widgetId === first._id)?.x
   ).toBe(firstPlacement.x + 1)
   await page.getByText('Style des notes sélectionnées', { exact: true }).click()
   await page
@@ -87,12 +87,12 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   await expect
     .poll(
       async () =>
-        (await profile()).placements.find((p) => p.noteId === copy._id)?.style
+        (await profile()).placements.find((p) => p.widgetId === copy._id)?.style
           ?.fontSize
     )
     .toBe(20)
   expect(
-    (await profile()).placements.find((p) => p.noteId === first._id)?.style
+    (await profile()).placements.find((p) => p.widgetId === first._id)?.style
       ?.fontSize
   ).toBe(20)
   await expect(
@@ -143,7 +143,7 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(5)
   const restored = (await profile()).placements.find(
-    (p) => p.noteId === copy._id
+    (p) => p.widgetId === copy._id
   )
   expect(restored).toMatchObject({
     x: copyPlacement.x + 1,

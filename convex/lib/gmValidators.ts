@@ -39,60 +39,131 @@ const geometryFields = {
   groupId: v.optional(v.string()),
   style: v.optional(widgetStyleValidator),
 }
-export const noteFields = {
+const noteCommon = {
   ...owned,
   projectId: v.id('gmProjects'),
   screenId: v.id('gmScreens'),
-  body: v.string(),
   version: v.number(),
   deletedAt: v.optional(v.number()),
   trashPlacements: v.optional(
     v.array(v.object({ layoutId: v.id('gmLayouts'), ...geometryFields }))
   ),
 }
-export const placementValidator = v.object({
+const noteV1 = {
+  ...noteCommon,
+  body: v.string(),
+  formatVersion: v.optional(v.literal(1)),
+}
+const noteV2 = {
+  ...noteCommon,
+  formatVersion: v.literal(2),
+  kind: v.literal('note'),
+  config: v.object({}),
+  state: v.object({}),
+}
+export const noteFields = v.union(v.object(noteV1), v.object(noteV2))
+const noteSystem = { _id: v.id('gmNotes'), _creationTime: v.number() }
+const noteValidator = v.union(
+  v.object({ ...noteSystem, ...noteV1 }),
+  v.object({ ...noteSystem, ...noteV2 })
+)
+export const widgetValidator = v.object({ ...noteSystem, ...noteV2 })
+export const widgetContentFields = {
+  ...owned,
+  projectId: v.id('gmProjects'),
+  screenId: v.id('gmScreens'),
+  widgetId: v.id('gmNotes'),
+  body: v.string(),
+  formatVersion: v.literal(2),
+}
+const widgetContentValidator = v.object({
+  _id: v.id('gmWidgetContents'),
+  _creationTime: v.number(),
+  ...widgetContentFields,
+})
+const legacyPlacementValidator = v.object({
   noteId: v.id('gmNotes'),
+  ...geometryFields,
+})
+const placementValidator = v.object({
+  widgetId: v.id('gmNotes'),
   ...geometryFields,
 })
 export const digitalLayoutFields = {
   name: v.string(),
   width: v.number(),
   height: v.number(),
+  placements: v.array(v.union(legacyPlacementValidator, placementValidator)),
+}
+const digitalV2 = {
+  ...digitalLayoutFields,
   placements: v.array(placementValidator),
 }
-export const historySnapshot = v.union(
-  v.object({ kind: v.literal('note'), body: v.string() }),
-  v.object({ kind: v.literal('layout'), ...digitalLayoutFields })
-)
+const noteSnapshot = { kind: v.literal('note'), body: v.string() }
 export const historyTarget = v.union(
   v.object({ kind: v.literal('note'), id: v.id('gmNotes') }),
   v.object({ kind: v.literal('layout'), id: v.id('gmLayouts') })
 )
-export const historyFields = {
+const historyCommon = {
   ...owned,
   projectId: v.id('gmProjects'),
   screenId: v.id('gmScreens'),
   subjectId: v.union(v.id('gmNotes'), v.id('gmLayouts')),
   version: v.number(),
-  snapshot: historySnapshot,
 }
-export const historyValidator = v.object({
+const digitalV1 = {
+  ...digitalLayoutFields,
+  placements: v.array(legacyPlacementValidator),
+}
+const historyV1 = {
+  ...historyCommon,
+  formatVersion: v.optional(v.literal(1)),
+  snapshot: v.union(
+    v.object(noteSnapshot),
+    v.object({ kind: v.literal('layout'), ...digitalV1 })
+  ),
+}
+const historyV2 = {
+  ...historyCommon,
+  formatVersion: v.literal(2),
+  snapshot: v.union(
+    v.object({ ...noteSnapshot, config: v.object({}), state: v.object({}) }),
+    v.object({ kind: v.literal('layout'), ...digitalV2 })
+  ),
+}
+export const historyFields = v.union(v.object(historyV1), v.object(historyV2))
+const historySystem = {
   _id: v.id('gmEditorHistory'),
   _creationTime: v.number(),
-  ...historyFields,
-})
-export const layoutFields = {
+}
+export const historyValidator = v.union(
+  v.object({ ...historySystem, ...historyV1 }),
+  v.object({ ...historySystem, ...historyV2 })
+)
+const layoutCommon = {
   ...owned,
   projectId: v.id('gmProjects'),
   screenId: v.id('gmScreens'),
-  name: v.string(),
   kind: v.union(v.literal('digital'), v.literal('print')),
   unit: v.union(v.literal('px'), v.literal('mm')),
-  width: v.number(),
-  height: v.number(),
-  placements: v.array(placementValidator),
   version: v.number(),
 }
+const layoutV1 = {
+  ...layoutCommon,
+  ...digitalV1,
+  formatVersion: v.optional(v.literal(1)),
+}
+const layoutV2 = { ...layoutCommon, ...digitalV2, formatVersion: v.literal(2) }
+export const layoutFields = v.union(v.object(layoutV1), v.object(layoutV2))
+const layoutSystem = { _id: v.id('gmLayouts'), _creationTime: v.number() }
+export const normalizedLayoutValidator = v.object({
+  ...layoutSystem,
+  ...layoutV2,
+})
+const layoutValidator = v.union(
+  v.object({ ...layoutSystem, ...layoutV1 }),
+  v.object({ ...layoutSystem, ...layoutV2 })
+)
 export const projectValidator = v.object({
   _id: v.id('gmProjects'),
   _creationTime: v.number(),
@@ -107,16 +178,6 @@ export const screenValidator = v.object({
   _id: v.id('gmScreens'),
   _creationTime: v.number(),
   ...screenFields,
-})
-export const noteValidator = v.object({
-  _id: v.id('gmNotes'),
-  _creationTime: v.number(),
-  ...noteFields,
-})
-export const layoutValidator = v.object({
-  _id: v.id('gmLayouts'),
-  _creationTime: v.number(),
-  ...layoutFields,
 })
 export const sheetKindValidator = v.union(
   v.literal('npc'),
@@ -221,6 +282,7 @@ export const gmCollection = v.union(
   v.literal('gmFolders'),
   v.literal('gmScreens'),
   v.literal('gmNotes'),
+  v.literal('gmWidgetContents'),
   v.literal('gmLayouts'),
   v.literal('gmEditorHistory'),
   v.literal('gmSheets'),
@@ -233,6 +295,7 @@ export const gmDocument = v.union(
   folderValidator,
   screenValidator,
   noteValidator,
+  widgetContentValidator,
   layoutValidator,
   historyValidator,
   sheetValidator,

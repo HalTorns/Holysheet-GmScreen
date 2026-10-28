@@ -346,6 +346,7 @@ async function verifyRestore() {
           table.count,
         ])
       ),
+      widgetRelations: restored.widgetRelations,
       fileStorage: {
         files: Object.keys(source.files).length,
         nonEmptyPayloadVerified: Object.keys(source.files).length > 0,

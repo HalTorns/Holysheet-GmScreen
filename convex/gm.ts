@@ -1,25 +1,21 @@
 import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v } from 'convex/values'
 
-import {
-  GM_MAX_FOLDER_DEPTH,
-  GM_MAX_LAYOUTS,
-  GM_MAX_NOTES,
-  gmTitle,
-} from '../shared/gm'
+import { GM_MAX_FOLDER_DEPTH, GM_MAX_LAYOUTS, gmTitle } from '../shared/gm'
 import { mutation, query } from './_generated/server'
 import { requireUser, requireAccountUser } from './lib/auth'
-import { ownedProject, ownedScreen, ownedNote } from './lib/gmAccess'
+import { ownedProject, ownedNote } from './lib/gmAccess'
 import { saveNote } from './lib/gmEditing'
+import { normalizeLayout } from './lib/gmFormats'
 import {
   folderValidator,
   gmCollection,
   gmDocument,
-  layoutValidator,
-  noteValidator,
+  normalizedLayoutValidator,
   projectValidator,
   screenValidator,
 } from './lib/gmValidators'
+import { createNote } from './lib/gmWidgetWriting'
 import { limitUserOperation } from './lib/rateLimits'
 
 const pageFields = {
@@ -35,7 +31,14 @@ const pagination = { paginationOpts: paginationOptsValidator }
 // Un contenu de fiche peut peser environ 400 ko en UTF-8 : 10 par page
 // gardent l'export sous 4 Mo, loin du budget de 16 Mio par transaction.
 function exportPageLimit(collection: string) {
-  return collection === 'gmSheetContents' ? 10 : 50
+  return [
+    'gmNotes',
+    'gmWidgetContents',
+    'gmEditorHistory',
+    'gmSheetContents',
+  ].includes(collection)
+    ? 10
+    : 50
 }
 
 function title(value: string) {
@@ -197,6 +200,7 @@ export const createScreen = mutation({
       unit: 'px',
       width: format === 'digital' ? 1920 : 1123,
       height: format === 'digital' ? 1080 : 794,
+      formatVersion: 2,
       placements: [],
       version: 0,
     })
@@ -208,6 +212,7 @@ export const createScreen = mutation({
       unit: 'mm',
       width: 297,
       height: 210,
+      formatVersion: 2,
       placements: [],
       version: 0,
     })
@@ -221,8 +226,7 @@ export const getScreen = query({
     v.null(),
     v.object({
       screen: screenValidator,
-      notes: v.array(noteValidator),
-      layouts: v.array(layoutValidator),
+      layouts: v.array(normalizedLayoutValidator),
     })
   ),
   handler: async (ctx, { id }) => {
@@ -232,17 +236,11 @@ export const getScreen = query({
     const screen = await ctx.db.get('gmScreens', normalizedId)
     if (!screen || screen.ownerId !== user._id) return null
     await ownedProject(ctx, screen.projectId, user._id)
-    const notes = await ctx.db
-      .query('gmNotes')
-      .withIndex('by_screen_live', (q) =>
-        q.eq('screenId', normalizedId).eq('deletedAt', undefined)
-      )
-      .take(GM_MAX_NOTES)
     const layouts = await ctx.db
       .query('gmLayouts')
       .withIndex('by_screen', (q) => q.eq('screenId', normalizedId))
       .take(GM_MAX_LAYOUTS)
-    return { screen, notes, layouts }
+    return { screen, layouts: layouts.map(normalizeLayout) }
   },
 })
 
@@ -251,53 +249,7 @@ export const addNote = mutation({
   returns: v.id('gmNotes'),
   handler: async (ctx, { screenId }) => {
     const user = await requireUser(ctx)
-    const screen = await ownedScreen(ctx, screenId, user._id)
-    if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
-    const notes = await ctx.db
-      .query('gmNotes')
-      .withIndex('by_screen_live', (q) =>
-        q.eq('screenId', screenId).eq('deletedAt', undefined)
-      )
-      .take(GM_MAX_NOTES)
-    if (notes.length >= GM_MAX_NOTES)
-      throw new ConvexError({ code: 'SCREEN_LIMIT' })
-    await limitUserOperation(ctx, 'resourceWrite', user._id)
-    const id = await ctx.db.insert('gmNotes', {
-      ownerId: user._id,
-      projectId: screen.projectId,
-      screenId,
-      body: '',
-      version: 0,
-      updatedAt: Date.now(),
-    })
-    const layouts = await ctx.db
-      .query('gmLayouts')
-      .withIndex('by_screen', (q) => q.eq('screenId', screenId))
-      .take(GM_MAX_LAYOUTS)
-    for (const layout of layouts) {
-      const factor = layout.unit === 'mm' ? 0.2 : 1
-      const width = Math.min(400 * factor, layout.width - 24 * factor)
-      const height = Math.min(240 * factor, layout.height - 24 * factor)
-      await ctx.db.patch('gmLayouts', layout._id, {
-        placements: [
-          ...layout.placements,
-          {
-            noteId: id,
-            x: Math.min(24 * factor, layout.width - width),
-            y: Math.min(
-              (24 + (notes.length % 4) * 200) * factor,
-              layout.height - height
-            ),
-            width,
-            height,
-            layer: notes.length,
-          },
-        ],
-        version: layout.version + 1,
-        updatedAt: Date.now(),
-      })
-    }
-    return id
+    return createNote(ctx, screenId, user._id)
   },
 })
 

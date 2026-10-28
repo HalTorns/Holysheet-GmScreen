@@ -40,6 +40,7 @@ export const gmTables = [
   'gmFolders',
   'gmScreens',
   'gmNotes',
+  'gmWidgetContents',
   'gmLayouts',
   'gmEditorHistory',
   'gmSheets',
@@ -100,3 +101,17 @@ export const GM_MAX_VARIABLES = 200
 export const gmVariableName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,39}$/)
 export const gmVariableLabel = z.string().trim().max(120)
 export const gmVariableText = z.string().max(2000)
+
+// Union stricte F3a : seule la branche note est active.
+export const gmWidget = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('note'),
+      config: z.object({}).strict(),
+      state: z.object({}).strict(),
+    })
+    .strict(),
+])
+export const GM_WIDGET_BYTES = 16 * 1024
+export const GM_LAYOUT_BYTES = 48 * 1024
+export const GM_CONTENT_BYTES = 200 * 1024

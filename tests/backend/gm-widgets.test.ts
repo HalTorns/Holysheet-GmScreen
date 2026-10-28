@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { api, internal } from '../../convex/_generated/api'
 import { defaultWidgetStyle } from '../../shared/gm'
+import { readScreen } from '../helpers/gm-screen'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
 afterEach(() => vi.useRealTimers())
@@ -23,7 +24,7 @@ async function setup() {
   })
   const noteId = await alice.client.mutation(api.gm.addNote, { screenId })
   const read = async () => {
-    const data = await alice.client.query(api.gm.getScreen, { id: screenId })
+    const data = await readScreen(alice.client, { id: screenId })
     if (!data) throw new Error('Missing Screen')
     return data
   }
@@ -62,16 +63,29 @@ describe('Widget lifecycle and presentation', () => {
     const { backend, alice, screenId, projectId, noteId, request } =
       await setup()
     await backend.run(async (ctx) => {
-      for (let index = 0; index < 100; index++)
-        await ctx.db.insert('gmNotes', {
+      for (let index = 0; index < 100; index++) {
+        const widgetId = await ctx.db.insert('gmNotes', {
           ownerId: alice.userId,
           projectId,
           screenId,
-          body: `Supprimée ${index}`,
+          formatVersion: 2,
+          kind: 'note',
+          config: {},
+          state: {},
           version: 1,
           deletedAt: Date.now(),
           updatedAt: Date.now(),
         })
+        await ctx.db.insert('gmWidgetContents', {
+          ownerId: alice.userId,
+          projectId,
+          screenId,
+          widgetId,
+          body: `Supprimée ${index}`,
+          updatedAt: Date.now(),
+          formatVersion: 2,
+        })
+      }
     })
     await expect(
       alice.client.mutation(api.gmWidgets.changeNotes, await request('trash'))
@@ -124,7 +138,7 @@ describe('Widget lifecycle and presentation', () => {
     if (!copyId) throw new Error('Missing duplicate')
     expect((await read()).notes).toHaveLength(2)
     expect(
-      (await profile()).placements.find((p) => p.noteId === copyId)
+      (await profile()).placements.find((p) => p.widgetId === copyId)
     ).toMatchObject({ x: 424, style: { background: '#123456' } })
     await alice.client.mutation(api.gm.updateNote, {
       id: copyId,
@@ -142,7 +156,7 @@ describe('Widget lifecycle and presentation', () => {
     expect((await read()).notes.map((n) => n._id)).toEqual([copyId])
     expect(
       (await read()).layouts.every((p) =>
-        p.placements.every((item) => item.noteId !== noteId)
+        p.placements.every((item) => item.widgetId !== noteId)
       )
     ).toBe(true)
     await expect(
@@ -158,7 +172,7 @@ describe('Widget lifecycle and presentation', () => {
     })
     expect(trash.page[0]).toMatchObject({
       _id: noteId,
-      body: 'Référence commune',
+      kind: 'note',
       version: 2,
     })
     const exported = await alice.client.query(api.gm.exportCollection, {
@@ -182,8 +196,8 @@ describe('Widget lifecycle and presentation', () => {
     for (const original of before.layouts) {
       const restored = (await read()).layouts
         .find((p) => p._id === original._id)
-        ?.placements.find((p) => p.noteId === noteId)
-      const previous = original.placements.find((p) => p.noteId === noteId)
+        ?.placements.find((p) => p.widgetId === noteId)
+      const previous = original.placements.find((p) => p.widgetId === noteId)
       expect(restored).toMatchObject({
         x: previous?.x,
         y: previous?.y,
@@ -384,5 +398,211 @@ describe('Widget lifecycle and presentation', () => {
     })
     await backend.finishAllScheduledFunctions(() => vi.runAllTimers())
     expect(await backend.run((ctx) => ctx.db.get('gmNotes', noteId))).toBeNull()
+  })
+})
+
+// Observable regression: a maximum 20-note copy must retain all 8 profile
+// histories and never read 100 inline bodies just to count capacity.
+// convex-test doesn't enforce service read budgets; CI owns that proof.
+it('copies twenty full payloads with eight full histories and cleans all heavy tables in bounded passes', async () => {
+  vi.useFakeTimers()
+  const { backend, alice, screenId, projectId, noteId, profile } = await setup()
+  const sources = await backend.run(async (ctx) => {
+    const common = {
+      ownerId: alice.userId,
+      projectId,
+      screenId,
+      updatedAt: Date.now(),
+    }
+    const body = '界'.repeat(50_000)
+    await ctx.db.delete('gmNotes', noteId)
+    const oldContents = await ctx.db.query('gmWidgetContents').collect()
+    for (const content of oldContents)
+      await ctx.db.delete('gmWidgetContents', content._id)
+    const ids = []
+    for (let index = 0; index < 180; index++) {
+      const id = await ctx.db.insert('gmNotes', {
+        ...common,
+        formatVersion: 2,
+        kind: 'note',
+        config: {},
+        state: {},
+        version: 20,
+        ...(index >= 80 ? { deletedAt: Date.now() } : {}),
+      })
+      ids.push(id)
+      await ctx.db.insert('gmWidgetContents', {
+        ...common,
+        formatVersion: 2,
+        widgetId: id,
+        body,
+      })
+      if (index < 20)
+        for (let version = 0; version < 20; version++)
+          await ctx.db.insert('gmEditorHistory', {
+            ...common,
+            formatVersion: 2,
+            subjectId: id,
+            version,
+            snapshot: { kind: 'note', config: {}, state: {}, body },
+          })
+    }
+    const layouts = await ctx.db.query('gmLayouts').collect()
+    const source = layouts.find((p) => p.kind === 'digital')
+    if (!source) throw new Error('Missing layout')
+    for (let index = 0; index < 6; index++) {
+      const id = await ctx.db.insert('gmLayouts', {
+        ...common,
+        formatVersion: 2,
+        kind: 'digital',
+        unit: 'px',
+        name: `P${index}`,
+        width: 1920,
+        height: 1080,
+        placements: [],
+        version: 20,
+      })
+      layouts.push({ ...source, _id: id })
+    }
+    const placements = ids.slice(0, 100).map((widgetId, index) => ({
+      widgetId,
+      x: 24,
+      y: 24,
+      width: 400,
+      height: 240,
+      layer: index,
+      groupId: 'full',
+      style: defaultWidgetStyle,
+    }))
+    for (const layout of layouts) {
+      await ctx.db.patch('gmLayouts', layout._id, {
+        formatVersion: 2,
+        placements: placements.slice(0, 80),
+        version: 20,
+      })
+      for (let version = 0; version < 20; version++)
+        await ctx.db.insert('gmEditorHistory', {
+          ...common,
+          formatVersion: 2,
+          subjectId: layout._id,
+          version,
+          snapshot: {
+            kind: 'layout',
+            name: layout.name,
+            width: layout.width,
+            height: layout.height,
+            placements,
+          },
+        })
+    }
+    for (let index = 0; index < 6; index++) {
+      const sheetId = await ctx.db.insert('gmSheets', {
+        ownerId: alice.userId,
+        projectId,
+        updatedAt: Date.now(),
+        kind: 'note',
+        title: 'Pleine',
+        summary: '',
+        version: 0,
+      })
+      await ctx.db.insert('gmSheetContents', {
+        ownerId: alice.userId,
+        projectId,
+        updatedAt: Date.now(),
+        sheetId,
+        body,
+        fields: Array.from({ length: 40 }, () => ({
+          label: '界'.repeat(60),
+          value: '界'.repeat(2000),
+        })),
+      })
+    }
+    return ids.slice(0, 20)
+  })
+  const layout = await profile()
+  const copies = await alice.client.mutation(api.gmWidgets.changeNotes, {
+    layoutId: layout._id,
+    expectedVersion: layout.version,
+    operation: 'duplicate',
+    notes: sources.map((id) => ({ id, version: 20 })),
+  })
+  expect(copies).toHaveLength(20)
+  const metadata = await alice.client.query(api.gmWidgets.listScreenWidgets, {
+    screenId,
+    paginationOpts: { cursor: null, numItems: 100 },
+  })
+  expect(metadata.page).toHaveLength(10)
+  expect(metadata.page.every((n) => !('body' in n))).toBe(true)
+  for (const id of copies)
+    expect(
+      await alice.client.query(api.gmWidgets.getNoteContent, { id })
+    ).toEqual({ version: 0, body: '界'.repeat(50_000) })
+  for (const collection of [
+    'gmNotes',
+    'gmWidgetContents',
+    'gmEditorHistory',
+    'gmSheetContents',
+  ] as const) {
+    const page = await alice.client.query(api.gm.exportCollection, {
+      collection,
+      paginationOpts: { cursor: null, numItems: 100 },
+    })
+    expect(page.page.length).toBeLessThanOrEqual(10)
+  }
+  await backend.mutation(internal.cleanup.deletedAccount, {
+    userId: alice.userId,
+    email: 'widget-alice@example.test',
+  })
+  await backend.finishAllScheduledFunctions(() => vi.runAllTimers())
+  for (const table of [
+    'gmNotes',
+    'gmWidgetContents',
+    'gmEditorHistory',
+    'gmLayouts',
+    'gmSheetContents',
+  ] as const)
+    expect(await backend.run((ctx) => ctx.db.query(table).collect())).toEqual(
+      []
+    )
+})
+
+it('shares typed note writes with legacy facades without duplicating payloads or no-op history', async () => {
+  const { backend, alice, screenId } = await setup()
+  const id = await alice.client.mutation(api.gmWidgets.addWidget, {
+    screenId,
+    kind: 'note',
+  })
+  const args = {
+    id,
+    expectedVersion: 0,
+    kind: 'note' as const,
+    config: {},
+    state: {},
+    body: 'Texte typé 😀',
+  }
+  expect(await alice.client.mutation(api.gmWidgets.updateWidget, args)).toBe(1)
+  expect(
+    await alice.client.mutation(api.gm.updateNote, {
+      id,
+      expectedVersion: 1,
+      body: args.body,
+    })
+  ).toBe(1)
+  const payloads = await backend.run((ctx) =>
+    ctx.db
+      .query('gmWidgetContents')
+      .withIndex('by_widget', (q) => q.eq('widgetId', id))
+      .collect()
+  )
+  expect(payloads).toHaveLength(1)
+  expect(payloads[0]?.body).toBe(args.body)
+  const history = await alice.client.query(api.gmEditor.listHistory, {
+    target: { kind: 'note', id },
+    paginationOpts: { cursor: null, numItems: 10 },
+  })
+  expect(history.page).toHaveLength(1)
+  expect(history.page[0]).toMatchObject({
+    formatVersion: 2,
+    snapshot: { kind: 'note', config: {}, state: {}, body: '' },
   })
 })

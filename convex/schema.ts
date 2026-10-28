@@ -6,6 +6,7 @@ import {
   folderFields,
   screenFields,
   noteFields,
+  widgetContentFields,
   layoutFields,
   historyFields,
   sheetFields,
@@ -25,9 +26,13 @@ export default defineSchema({
   gmScreens: defineTable(screenFields)
     .index('by_owner', ['ownerId'])
     .index('by_folder', ['projectId', 'folderId']),
+  gmWidgetContents: defineTable(widgetContentFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_widget', ['widgetId']),
   gmNotes: defineTable(noteFields)
     .index('by_owner', ['ownerId'])
     .index('by_screen_live', ['screenId', 'deletedAt'])
+    .index('by_screen_format', ['screenId', 'formatVersion'])
     .index('by_screen', ['screenId']),
   gmLayouts: defineTable(layoutFields)
     .index('by_owner', ['ownerId'])

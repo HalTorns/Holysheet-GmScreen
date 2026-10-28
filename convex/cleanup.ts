@@ -9,14 +9,15 @@ import { clearUserRateLimits } from './lib/rateLimits'
 
 const BATCH_SIZE = 100
 // Notes and revisions can each hold 50,000 characters. Bound their joint read.
-const GM_BATCH_SIZE = 20
-// Un contenu de fiche peut atteindre environ 400 ko : lot réduit pour que
-// la somme des tables GM d'une transaction reste sous environ 8 Mo.
-const GM_SHEET_CONTENT_BATCH_SIZE = 5
 function gmBatchSize(table: (typeof gmTables)[number]) {
-  return table === 'gmSheetContents'
-    ? GM_SHEET_CONTENT_BATCH_SIZE
-    : GM_BATCH_SIZE
+  if (
+    table === 'gmNotes' ||
+    table === 'gmWidgetContents' ||
+    table === 'gmSheetContents'
+  )
+    return 5
+  if (table === 'gmEditorHistory') return 10
+  return 20
 }
 const SECURITY_EVENT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 const CLEANUP_RETRY_MS = 5 * 60 * 1000

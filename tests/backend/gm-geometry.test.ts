@@ -7,7 +7,7 @@ import {
 } from '../../shared/gm-geometry'
 
 const a = {
-  noteId: 'a',
+  widgetId: 'a',
   x: 10,
   y: 20,
   width: 160,
@@ -15,14 +15,14 @@ const a = {
   groupId: 'team',
 }
 const b = {
-  noteId: 'b',
+  widgetId: 'b',
   x: 220,
   y: 150,
   width: 160,
   height: 120,
   groupId: 'team',
 }
-const c = { noteId: 'c', x: 800, y: 400, width: 200, height: 200 }
+const c = { widgetId: 'c', x: 800, y: 400, width: 200, height: 200 }
 it('clamps a whole group at either boundary without changing relative coordinates or unrelated widgets', () => {
   const moved = moveWidgets([a, b, c], 'a', -100, -100)
   expect(moved.map((p) => [p.x, p.y])).toEqual([
@@ -37,7 +37,7 @@ it('clamps a whole group at either boundary without changing relative coordinate
 it('aligns groups as blocks and distributes independent rectangles with equal clear gaps', () => {
   const aligned = arrangeWidgets([a, b, c], ['a', 'c'], 'left')
   expect(aligned.map((p) => p.x)).toEqual([10, 220, 10])
-  const middle = { ...c, noteId: 'middle', x: 400, width: 100 }
+  const middle = { ...c, widgetId: 'middle', x: 400, width: 100 }
   const distributed = arrangeWidgets(
     [withoutGroup(a), middle, c],
     ['a', 'middle', 'c'],
@@ -47,7 +47,7 @@ it('aligns groups as blocks and distributes independent rectangles with equal cl
   expect(arrangeWidgets([a, b, c], ['a', 'b'], 'horizontal')).toEqual([a, b, c])
 })
 it('keeps a restored ungrouped note separate from the group originally named after its ID', () => {
-  const restored = { ...c, noteId: 'team' }
+  const restored = { ...c, widgetId: 'team' }
   const aligned = arrangeWidgets([a, b, restored], ['a', 'team'], 'left')
   expect(aligned.map((p) => p.x)).toEqual([10, 220, 10])
 })

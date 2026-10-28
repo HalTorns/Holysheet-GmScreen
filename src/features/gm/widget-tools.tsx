@@ -1,5 +1,6 @@
 import { api } from '@convex/_generated/api'
-import type { Doc, Id } from '@convex/_generated/dataModel'
+import type { Id } from '@convex/_generated/dataModel'
+import type { Layout, Widget } from '@convex/lib/gmFormats'
 import { defaultWidgetStyle } from '@shared/gm'
 import { arrangeWidgets, withoutGroup } from '@shared/gm-geometry'
 import { useMutation, usePaginatedQuery } from 'convex/react'
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { operationErrorMessage } from '@/features/auth/errors'
 
-type Placement = Doc<'gmLayouts'>['placements'][number]
+type Placement = Layout['placements'][number]
 export function WidgetTools({
   layout,
   placements,
@@ -25,9 +26,9 @@ export function WidgetTools({
   onChange,
   onPendingChange,
 }: {
-  layout: Doc<'gmLayouts'>
+  layout: Layout
   placements: Placement[]
-  notes: Doc<'gmNotes'>[]
+  notes: Widget[]
   activeId: Id<'gmNotes'> | undefined
   disabled: boolean
   draft: boolean
@@ -42,12 +43,12 @@ export function WidgetTools({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [trashOpen, setTrashOpen] = useState(false)
-  const selected = placements.filter((p) => selection.has(p.noteId))
+  const selected = placements.filter((p) => selection.has(p.widgetId))
   const chosen = selected.length
     ? selected
-    : placements.filter((p) => p.noteId === activeId)
-  const ids = new Set(chosen.map((p) => p.noteId))
-  const active = placements.find((p) => p.noteId === activeId)
+    : placements.filter((p) => p.widgetId === activeId)
+  const ids = new Set(chosen.map((p) => p.widgetId))
+  const active = placements.find((p) => p.widgetId === activeId)
   const style = active?.style ?? defaultWidgetStyle
   const blocked = disabled || pending
   function source() {
@@ -79,7 +80,7 @@ export function WidgetTools({
   function patchStyle(changes: Partial<NonNullable<Placement['style']>>) {
     onChange(
       placements.map((p) =>
-        ids.has(p.noteId)
+        ids.has(p.widgetId)
           ? { ...p, style: { ...(p.style ?? defaultWidgetStyle), ...changes } }
           : p
       )
@@ -87,11 +88,11 @@ export function WidgetTools({
   }
   function group(ungroup: boolean) {
     const affectedGroups = new Set(chosen.map((p) => p.groupId).filter(Boolean))
-    const groupId = chosen[0]?.noteId
+    const groupId = chosen[0]?.widgetId
     if (!groupId) return
     onChange(
       placements.map((p) =>
-        ids.has(p.noteId) || (p.groupId && affectedGroups.has(p.groupId))
+        ids.has(p.widgetId) || (p.groupId && affectedGroups.has(p.groupId))
           ? ungroup
             ? withoutGroup(p)
             : { ...p, groupId }
@@ -152,16 +153,16 @@ export function WidgetTools({
         </summary>
         <div className="my-2 flex max-h-32 flex-wrap gap-3 overflow-auto">
           {placements.map((p, i) => (
-            <label key={p.noteId} className="flex items-center gap-1 text-xs">
+            <label key={p.widgetId} className="flex items-center gap-1 text-xs">
               <input
                 type="checkbox"
-                checked={selection.has(p.noteId)}
+                checked={selection.has(p.widgetId)}
                 disabled={blocked}
                 onChange={(event) =>
                   setSelection((previous) => {
                     const next = new Set(previous)
-                    if (event.target.checked) next.add(p.noteId)
-                    else next.delete(p.noteId)
+                    if (event.target.checked) next.add(p.widgetId)
+                    else next.delete(p.widgetId)
                     return next
                   })
                 }
@@ -299,7 +300,7 @@ export function WidgetTools({
               onClick={() =>
                 onChange(
                   placements.map((p) =>
-                    ids.has(p.noteId)
+                    ids.has(p.widgetId)
                       ? (({ style: _style, ...rest }) => rest)(p)
                       : p
                   )
@@ -356,10 +357,10 @@ function TrashList({
   )
   const restore = useMutation(api.gmWidgets.restoreNote)
   const purge = useMutation(api.gmWidgets.purgeNote)
-  const [confirmation, setConfirmation] = useState<Doc<'gmNotes'> | null>(null)
+  const [confirmation, setConfirmation] = useState<Widget | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  async function apply(note: Doc<'gmNotes'>, permanently = false) {
+  async function apply(note: Widget, permanently = false) {
     setPending(true)
     onPendingChange(true)
     setError(null)
@@ -388,7 +389,7 @@ function TrashList({
       {results.map((note) => (
         <div key={note._id} className="rounded border p-2">
           <p className="max-h-20 overflow-auto text-sm whitespace-pre-wrap">
-            {note.body.slice(0, 240) || 'Note vide'}
+            {note.preview || 'Note vide'}
           </p>
           <Button
             size="sm"

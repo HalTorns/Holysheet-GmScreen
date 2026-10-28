@@ -44,7 +44,7 @@ jobs:
       - name: Vérifier types, Oxlint, Oxfmt, Knip, Vitest navigateur et build
         run: pnpm check
       - name: Parcours Holysheet et sécurité HTTP sur le serveur construit
-        run: pnpm test:e2e:ci tests/e2e/holysheet.spec.ts
+        run: pnpm test:e2e:ci tests/e2e/holysheet.spec.ts tests/e2e/widget-budgets.spec.ts
       - name: Arrêter les services
         if: always()
         run: pnpm services:down

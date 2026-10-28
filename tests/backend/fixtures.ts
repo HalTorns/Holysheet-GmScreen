@@ -1,3 +1,4 @@
+import { register as registerMigrations } from '@convex-dev/migrations/test'
 import { register as registerRateLimiter } from '@convex-dev/rate-limiter/test'
 import { convexTest } from 'convex-test'
 import { z } from 'zod'
@@ -16,6 +17,7 @@ export function createBackendTest() {
   // excludes passkeys. Register our actual local-install schema and adapter.
   backend.registerComponent('betterAuth', authSchema, authModules)
   registerRateLimiter(backend)
+  registerMigrations(backend)
   return backend
 }
 

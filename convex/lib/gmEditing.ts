@@ -2,6 +2,8 @@ import { ConvexError } from 'convex/values'
 
 import {
   GM_HISTORY_LIMIT,
+  GM_CONTENT_BYTES,
+  GM_LAYOUT_BYTES,
   GM_MAX_NOTES,
   GM_MAX_LAYOUTS,
   GM_MAX_DIMENSION,
@@ -14,19 +16,30 @@ import {
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { ownedScreen } from './gmAccess'
+import {
+  normalizeLayout,
+  normalizePlacement,
+  normalizeSnapshot,
+  convertNote,
+  noteBody,
+  writeContent,
+  requireMigratedScreen,
+  assertBudget,
+  layoutBudget,
+} from './gmFormats'
+import type { Layout } from './gmFormats'
 import { limitUserOperation } from './rateLimits'
 
-type LayoutState = Pick<
-  Doc<'gmLayouts'>,
-  'name' | 'width' | 'height' | 'placements'
->
+type LayoutState = Pick<Layout, 'name' | 'width' | 'height' | 'placements'>
 
-export function layoutState(layout: LayoutState): LayoutState {
+export function layoutState(
+  layout: Pick<Doc<'gmLayouts'>, 'name' | 'width' | 'height' | 'placements'>
+): LayoutState {
   return {
     name: layout.name,
     width: layout.width,
     height: layout.height,
-    placements: layout.placements,
+    placements: layout.placements.map(normalizePlacement),
   }
 }
 
@@ -41,13 +54,28 @@ export async function recordHistory(
   document: Doc<'gmNotes'> | Doc<'gmLayouts'>,
   snapshot: Doc<'gmEditorHistory'>['snapshot']
 ) {
+  const normalizedSnapshot = normalizeSnapshot(snapshot)
+  assertBudget(
+    {
+      ownerId: document.ownerId,
+      projectId: document.projectId,
+      screenId: document.screenId,
+      subjectId: document._id,
+      version: document.version,
+      updatedAt: Date.now(),
+      formatVersion: 2,
+      snapshot: normalizedSnapshot,
+    },
+    snapshot.kind === 'note' ? GM_CONTENT_BYTES : GM_LAYOUT_BYTES
+  )
   await ctx.db.insert('gmEditorHistory', {
+    formatVersion: 2,
     ownerId: document.ownerId,
     projectId: document.projectId,
     screenId: document.screenId,
     subjectId: document._id,
     version: document.version,
-    snapshot,
+    snapshot: normalizedSnapshot,
     updatedAt: Date.now(),
   })
   const revisions = await ctx.db
@@ -68,11 +96,13 @@ export async function saveNote(
   assertVersion(note.version, expectedVersion)
   if (!gmNote.safeParse(body).success)
     throw new ConvexError({ code: 'INVALID_INPUT' })
-  if (body === note.body) return note.version
+  const previousBody = await noteBody(ctx, note)
+  const normalized = await convertNote(ctx, note)
+  if (body === previousBody) return note.version
   await limitUserOperation(ctx, 'gmEditorWrite', note.ownerId)
-  await recordHistory(ctx, note, { kind: 'note', body: note.body })
+  await recordHistory(ctx, note, { kind: 'note', body: previousBody })
+  await writeContent(ctx, { ...normalized, updatedAt: Date.now() }, body)
   await ctx.db.patch('gmNotes', note._id, {
-    body,
     version: note.version + 1,
     updatedAt: Date.now(),
   })
@@ -83,8 +113,19 @@ export async function saveLayout(
   ctx: MutationCtx,
   layout: Doc<'gmLayouts'>,
   expectedVersion: number,
-  value: LayoutState
+  input: Omit<LayoutState, 'placements'> & {
+    placements: Doc<'gmLayouts'>['placements'][number][]
+  }
 ) {
+  await requireMigratedScreen(ctx, layout.screenId)
+  const forms = new Set(
+    input.placements.map((p) => ('widgetId' in p ? 'v2' : 'v1'))
+  )
+  if (forms.size > 1) throw new ConvexError({ code: 'INVALID_INPUT' })
+  const value = {
+    ...input,
+    placements: input.placements.map(normalizePlacement),
+  }
   assertVersion(layout.version, expectedVersion)
   const screen = await ownedScreen(ctx, layout.screenId, layout.ownerId)
   if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
@@ -100,8 +141,8 @@ export async function saveLayout(
     .withIndex('by_screen_live', (q) =>
       q.eq('screenId', layout.screenId).eq('deletedAt', undefined)
     )
-    .take(GM_MAX_NOTES)
-  const ids = new Set(value.placements.map((p) => p.noteId))
+    .take(GM_MAX_NOTES + 1)
+  const ids = new Set(value.placements.map((p) => p.widgetId))
   if (
     ids.size !== value.placements.length ||
     ids.size !== notes.length ||
@@ -153,7 +194,9 @@ export async function saveLayout(
     return layout.version
   await limitUserOperation(ctx, 'gmEditorWrite', layout.ownerId)
   await recordHistory(ctx, layout, { kind: 'layout', ...layoutState(layout) })
+  layoutBudget(normalizeLayout({ ...layout, ...state }))
   await ctx.db.patch('gmLayouts', layout._id, {
+    formatVersion: 2,
     ...state,
     version: layout.version + 1,
     updatedAt: Date.now(),

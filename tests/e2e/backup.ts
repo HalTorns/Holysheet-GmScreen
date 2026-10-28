@@ -9,6 +9,14 @@ const root = dirname(dirname(import.meta.dirname))
 const execute = promisify(execFile)
 const reportSchema = z.object({
   result: z.literal('passed'),
+  widgetRelations: z.object({
+    valid: z.boolean(),
+    kinds: z.array(z.string()),
+    payloads: z.number().int().nonnegative(),
+    nonEmptyNotes: z.number().int().nonnegative(),
+    trashed: z.number().int().nonnegative(),
+    revisions: z.number().int().nonnegative(),
+  }),
   tables: z.record(z.string(), z.number().int().nonnegative()),
   disposableResourcesRemoved: z.literal(true),
   mainEnvironmentFilesPreserved: z.literal(true),

@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
+import { readScreen } from '../helpers/gm-screen'
 
 async function drag(page: Page, handle: Locator, dx: number, dy: number) {
   await expect(handle).toBeEnabled()
@@ -27,7 +28,7 @@ export async function verifyScreenEditor(
   const id = new URL(page.url()).pathname.split('/').at(-1)
   if (!id) throw new Error('Missing Screen route')
   async function read() {
-    const result = await client.query(api.gm.getScreen, { id: id ?? '' })
+    const result = await readScreen(client, { id: id ?? '' })
     if (!result) throw new Error('Missing authenticated Screen')
     return result
   }
@@ -232,12 +233,13 @@ export async function verifyScreenEditor(
     .poll(
       async () =>
         (await profile(portable._id)).placements.find(
-          (p) => p.noteId === added._id
+          (p) => p.widgetId === added._id
         )?.layer
     )
     .toBe(0)
   expect(
-    (await profile(portable._id)).placements.find((p) => p.noteId === note._id)
-      ?.layer
+    (await profile(portable._id)).placements.find(
+      (p) => p.widgetId === note._id
+    )?.layer
   ).toBe(1)
 }

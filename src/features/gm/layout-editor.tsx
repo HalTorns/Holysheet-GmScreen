@@ -1,5 +1,6 @@
 import { api } from '@convex/_generated/api'
-import type { Doc, Id } from '@convex/_generated/dataModel'
+import type { Id } from '@convex/_generated/dataModel'
+import type { Layout, Widget } from '@convex/lib/gmFormats'
 import {
   GM_MAX_DIMENSION,
   GM_MIN_WIDGET_HEIGHT,
@@ -20,11 +21,8 @@ import { RevisionHistory } from './revision-history'
 import { useEditorDraft } from './use-editor-draft'
 import { WidgetTools } from './widget-tools'
 
-type Placement = Doc<'gmLayouts'>['placements'][number]
-type LayoutState = Pick<
-  Doc<'gmLayouts'>,
-  'name' | 'width' | 'height' | 'placements'
->
+type Placement = Layout['placements'][number]
+type LayoutState = Pick<Layout, 'name' | 'width' | 'height' | 'placements'>
 type Gesture = {
   pointerId: number
   kind: 'move' | 'resize'
@@ -80,8 +78,8 @@ export function LayoutEditor({
   onDirtyChange,
   onProfileCreated,
 }: {
-  layout: Doc<'gmLayouts'>
-  notes: Doc<'gmNotes'>[]
+  layout: Layout
+  notes: Widget[]
   readOnly: boolean
   locked: boolean
   autoSave: boolean
@@ -126,7 +124,7 @@ export function LayoutEditor({
   const scale = zoom / 100
   const current = editor.value
   const active =
-    current.placements.find((p) => p.noteId === selected) ??
+    current.placements.find((p) => p.widgetId === selected) ??
     current.placements[0]
   useEffect(() => {
     onDirtyChange(dirty)
@@ -149,7 +147,7 @@ export function LayoutEditor({
 
   function alter(id: Id<'gmNotes'>, changes: Partial<Placement>) {
     if (blocked || editor.pending || gesture) return
-    const original = current.placements.find((p) => p.noteId === id)
+    const original = current.placements.find((p) => p.widgetId === id)
     if (original && (changes.x !== undefined || changes.y !== undefined)) {
       editor.edit({
         ...current,
@@ -165,21 +163,21 @@ export function LayoutEditor({
     editor.edit({
       ...current,
       placements: current.placements.map((p) =>
-        p.noteId === id ? { ...p, ...changes } : p
+        p.widgetId === id ? { ...p, ...changes } : p
       ),
     })
   }
   function layer(front: boolean) {
     if (!active || blocked) return
     const others = current.placements
-      .filter((p) => p.noteId !== active.noteId)
+      .filter((p) => p.widgetId !== active.widgetId)
       .sort((a, b) => a.layer - b.layer)
     const ordered = front ? [...others, active] : [active, ...others]
     editor.edit({
       ...current,
       placements: current.placements.map((p) => ({
         ...p,
-        layer: ordered.findIndex((item) => item.noteId === p.noteId),
+        layer: ordered.findIndex((item) => item.widgetId === p.widgetId),
       })),
     })
   }
@@ -193,7 +191,7 @@ export function LayoutEditor({
     event.preventDefault()
     event.currentTarget.focus()
     event.currentTarget.setPointerCapture(event.pointerId)
-    setSelected(placement.noteId)
+    setSelected(placement.widgetId)
     setGesture({
       pointerId: event.pointerId,
       kind,
@@ -225,12 +223,12 @@ export function LayoutEditor({
           gesture.kind === 'move'
             ? moveWidgets(
                 gesture.state.placements,
-                next.noteId,
+                next.widgetId,
                 next.x - gesture.original.x,
                 next.y - gesture.original.y
               )
             : gesture.state.placements.map((p) =>
-                p.noteId === next.noteId ? next : p
+                p.widgetId === next.widgetId ? next : p
               ),
       },
       gesture.version
@@ -263,9 +261,9 @@ export function LayoutEditor({
       event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0
     const dy =
       event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0
-    setSelected(placement.noteId)
+    setSelected(placement.widgetId)
     alter(
-      placement.noteId,
+      placement.widgetId,
       kind === 'move'
         ? {
             x: clamp(placement.x + dx, 0, 2 * GM_MAX_DIMENSION),
@@ -394,18 +392,18 @@ export function LayoutEditor({
             Note sélectionnée
             <select
               aria-label="Note sélectionnée"
-              value={active.noteId}
+              value={active.widgetId}
               onChange={(event) =>
                 setSelected(
                   current.placements.find(
-                    (item) => item.noteId === event.target.value
-                  )?.noteId ?? null
+                    (item) => item.widgetId === event.target.value
+                  )?.widgetId ?? null
                 )
               }
               className="rounded border bg-background p-2"
             >
               {current.placements.map((p, index) => (
-                <option key={p.noteId} value={p.noteId}>
+                <option key={p.widgetId} value={p.widgetId}>
                   Note {index + 1}
                 </option>
               ))}
@@ -455,7 +453,7 @@ export function LayoutEditor({
                     event.target.value !== '' &&
                     Number.isFinite(event.target.valueAsNumber)
                   )
-                    alter(active.noteId, {
+                    alter(active.widgetId, {
                       [field.name]: clamp(
                         event.target.valueAsNumber,
                         field.min,
@@ -491,7 +489,7 @@ export function LayoutEditor({
         layout={layout}
         placements={current.placements}
         notes={notes}
-        activeId={active?.noteId}
+        activeId={active?.widgetId}
         disabled={blocked || editor.pending || gesture !== null}
         draft={editor.dirty || noteDrafts.size > 0}
         onChange={(placements) => editor.edit({ ...current, placements })}
@@ -530,21 +528,21 @@ export function LayoutEditor({
                 gesture?.kind === 'move'
                   ? (moveWidgets(
                       gesture.state.placements,
-                      gesture.original.noteId,
+                      gesture.original.widgetId,
                       gesture.preview.x - gesture.original.x,
                       gesture.preview.y - gesture.original.y
-                    ).find((p) => p.noteId === stored.noteId) ?? stored)
-                  : gesture?.original.noteId === stored.noteId
+                    ).find((p) => p.widgetId === stored.widgetId) ?? stored)
+                  : gesture?.original.widgetId === stored.widgetId
                     ? gesture.preview
                     : stored
-              const note = notes.find((item) => item._id === placement.noteId)
+              const note = notes.find((item) => item._id === placement.widgetId)
               if (!note) return null
               const widgetStyle = placement.style ?? defaultWidgetStyle
               return (
                 <section
                   key={note._id}
                   aria-label={`Widget note ${index + 1}`}
-                  className={`absolute flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm ${active?.noteId === note._id ? 'ring-2 ring-primary/40' : ''}`}
+                  className={`absolute flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm ${active?.widgetId === note._id ? 'ring-2 ring-primary/40' : ''}`}
                   style={{
                     left: placement.x,
                     top: placement.y,

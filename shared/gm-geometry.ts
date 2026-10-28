@@ -1,5 +1,5 @@
 type Rectangle = {
-  noteId: string
+  widgetId: string
   x: number
   y: number
   width: number
@@ -18,10 +18,10 @@ export function moveWidgets<T extends Rectangle>(
   dx: number,
   dy: number
 ): T[] {
-  const active = placements.find((p) => p.noteId === id)
+  const active = placements.find((p) => p.widgetId === id)
   if (!active) return placements
   const members = placements.filter(
-    (p) => p.noteId === id || (active.groupId && p.groupId === active.groupId)
+    (p) => p.widgetId === id || (active.groupId && p.groupId === active.groupId)
   )
   const x = Math.max(
     -Math.min(...members.map((p) => p.x)),
@@ -31,9 +31,9 @@ export function moveWidgets<T extends Rectangle>(
     -Math.min(...members.map((p) => p.y)),
     Math.min(16_384 - Math.max(...members.map((p) => p.y)), Math.round(dy))
   )
-  const ids = new Set(members.map((p) => p.noteId))
+  const ids = new Set(members.map((p) => p.widgetId))
   return placements.map((p) =>
-    ids.has(p.noteId) ? { ...p, x: p.x + x, y: p.y + y } : p
+    ids.has(p.widgetId) ? { ...p, x: p.x + x, y: p.y + y } : p
   )
 }
 
@@ -53,12 +53,12 @@ export function arrangeWidgets<T extends Rectangle>(
   const ids = new Set(selected)
   const keys = new Set(
     placements
-      .filter((p) => ids.has(p.noteId))
-      .map((p) => (p.groupId ? `group:${p.groupId}` : `note:${p.noteId}`))
+      .filter((p) => ids.has(p.widgetId))
+      .map((p) => (p.groupId ? `group:${p.groupId}` : `note:${p.widgetId}`))
   )
   const units = [...keys].map((key) => {
     const members = placements.filter(
-      (p) => (p.groupId ? `group:${p.groupId}` : `note:${p.noteId}`) === key
+      (p) => (p.groupId ? `group:${p.groupId}` : `note:${p.widgetId}`) === key
     )
     const x = Math.min(...members.map((p) => p.x))
     const y = Math.min(...members.map((p) => p.y))
@@ -112,9 +112,9 @@ export function arrangeWidgets<T extends Rectangle>(
       Math.min(16_384 - Math.max(...unit.members.map((p) => p.y)), dy)
     )
     for (const member of unit.members)
-      changes.set(member.noteId, { x: member.x + dx, y: member.y + dy })
+      changes.set(member.widgetId, { x: member.x + dx, y: member.y + dy })
   }
   return placements.map((p) =>
-    changes.has(p.noteId) ? { ...p, ...changes.get(p.noteId) } : p
+    changes.has(p.widgetId) ? { ...p, ...changes.get(p.widgetId) } : p
   )
 }

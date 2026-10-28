@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { api, components, internal } from '../../convex/_generated/api'
-import type { Doc } from '../../convex/_generated/dataModel'
-import { GM_HISTORY_LIMIT } from '../../shared/gm'
+import type { Layout } from '../../convex/lib/gmFormats'
+import { readScreen } from '../helpers/gm-screen'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
 afterEach(() => vi.useRealTimers())
@@ -20,14 +20,14 @@ async function setup() {
     format: 'digital',
   })
   const noteId = await alice.client.mutation(api.gm.addNote, { screenId })
-  const data = await alice.client.query(api.gm.getScreen, { id: screenId })
+  const data = await readScreen(alice.client, { id: screenId })
   const layout = data?.layouts.find((item) => item.kind === 'digital')
   const paper = data?.layouts.find((item) => item.kind === 'print')
   if (!layout || !paper) throw new Error('Missing fixture layouts')
   return { backend, alice, bob, projectId, screenId, noteId, layout, paper }
 }
 
-function change(layout: Doc<'gmLayouts'>, x = 300) {
+function change(layout: Layout, x = 300) {
   return {
     id: layout._id,
     expectedVersion: layout.version,
@@ -59,11 +59,11 @@ describe('Screen editor mutations', () => {
       id: revision._id,
       expectedVersion: version + 1,
     })
-    const result = await alice.client.query(api.gm.getScreen, { id: screenId })
+    const result = await readScreen(alice.client, { id: screenId })
     const restored = result?.layouts.find((item) => item._id === layout._id)
     expect(restored?.placements).toHaveLength(2)
-    expect(restored?.placements.find((p) => p.noteId === noteId)?.x).toBe(24)
-    expect(restored?.placements.some((p) => p.noteId === added)).toBe(true)
+    expect(restored?.placements.find((p) => p.widgetId === noteId)?.x).toBe(24)
+    expect(restored?.placements.some((p) => p.widgetId === added)).toBe(true)
   })
   it('clones named profiles, preserves paper and shares only content between digital profiles', async () => {
     const { alice, screenId, noteId, layout, paper } = await setup()
@@ -81,16 +81,16 @@ describe('Screen editor mutations', () => {
       expectedVersion: 0,
       body: 'Commun aux profils',
     })
-    const result = await alice.client.query(api.gm.getScreen, { id: screenId })
+    const result = await readScreen(alice.client, { id: screenId })
     expect(result?.layouts.find((p) => p._id === layout._id)).toMatchObject({
       width: 1440,
       height: 900,
-      placements: [{ noteId, x: 300 }],
+      placements: [{ widgetId: noteId, x: 300 }],
     })
     expect(result?.layouts.find((p) => p._id === profileId)).toMatchObject({
       name: 'Portable',
       width: 1920,
-      placements: [{ noteId, x: 24 }],
+      placements: [{ widgetId: noteId, x: 24 }],
     })
     expect(result?.layouts.find((p) => p._id === paper._id)).toEqual(paper)
     expect(result?.notes).toHaveLength(1)
@@ -163,7 +163,7 @@ describe('Screen editor mutations', () => {
     for (const placements of [
       [],
       [placement, placement],
-      [{ ...placement, noteId: foreignId }],
+      [{ ...placement, widgetId: foreignId }],
     ])
       await expect(
         alice.client.mutation(api.gmEditor.updateLayout, {
@@ -196,9 +196,9 @@ describe('Screen editor mutations', () => {
         alice.client.mutation(api.gmEditor.updateLayout, { ...base, ...patch })
       ).rejects.toThrow('INVALID_INPUT')
     expect(
-      (
-        await alice.client.query(api.gm.getScreen, { id: screenId })
-      )?.layouts.find((p) => p._id === layout._id)
+      (await readScreen(alice.client, { id: screenId }))?.layouts.find(
+        (p) => p._id === layout._id
+      )
     ).toEqual(layout)
   })
 
@@ -226,16 +226,16 @@ describe('Screen editor mutations', () => {
       })
     ).rejects.toThrow('CONFLICT')
     expect(
-      (
-        await alice.client.query(api.gm.getScreen, { id: screenId })
-      )?.layouts.find((p) => p._id === layout._id)
+      (await readScreen(alice.client, { id: screenId }))?.layouts.find(
+        (p) => p._id === layout._id
+      )
     ).toMatchObject({ width: 640, height: 480, placements: [{ x: 1700 }] })
     await alice.client.mutation(api.gmEditor.restoreRevision, {
       id: revision._id,
       expectedVersion: version,
     })
     const restored = (
-      await alice.client.query(api.gm.getScreen, { id: screenId })
+      await readScreen(alice.client, { id: screenId })
     )?.layouts.find((p) => p._id === layout._id)
     expect(restored).toMatchObject({
       width: 1920,
@@ -269,8 +269,7 @@ describe('Screen editor mutations', () => {
       expectedVersion: 0,
     })
     expect(
-      (await alice.client.query(api.gm.getScreen, { id: screenId }))?.screen
-        .layoutLocked
+      (await readScreen(alice.client, { id: screenId }))?.screen.layoutLocked
     ).toBe(true)
     await alice.client.mutation(api.gmEditor.setLayoutLocked, {
       screenId,
@@ -281,9 +280,9 @@ describe('Screen editor mutations', () => {
       alice.client.mutation(api.gmEditor.updateLayout, change(paper))
     ).rejects.toThrow('INVALID_INPUT')
     expect(
-      (
-        await alice.client.query(api.gm.getScreen, { id: screenId })
-      )?.layouts.find((p) => p._id === paper._id)
+      (await readScreen(alice.client, { id: screenId }))?.layouts.find(
+        (p) => p._id === paper._id
+      )
     ).toEqual(paper)
   })
 
@@ -312,7 +311,15 @@ describe('Screen editor mutations', () => {
       collection: 'gmEditorHistory',
       paginationOpts: { numItems: 50, cursor: null },
     })
-    expect(exported.page).toHaveLength(GM_HISTORY_LIMIT)
+    expect(exported.page).toHaveLength(10)
+    expect(exported.isDone).toBe(false)
+    const exportedRest = await alice.client.query(api.gm.exportCollection, {
+      collection: 'gmEditorHistory',
+      paginationOpts: { numItems: 50, cursor: exported.continueCursor },
+    })
+    expect([...exported.page, ...exportedRest.page]).toHaveLength(20)
+    expect(exportedRest.isDone).toBe(true)
+
     expect(exported.page.every((row) => row.ownerId === alice.userId)).toBe(
       true
     )
@@ -331,7 +338,7 @@ describe('Screen editor mutations', () => {
       expectedVersion: 25,
     })
     expect(
-      (await alice.client.query(api.gm.getScreen, { id: screenId }))?.notes[0]
+      (await readScreen(alice.client, { id: screenId }))?.notes[0]
     ).toMatchObject({ body: 'Texte 23', version: 26 })
     const count = (await alice.client.query(api.gmEditor.listHistory, args))
       .page.length

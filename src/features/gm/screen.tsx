@@ -1,8 +1,9 @@
 import { api } from '@convex/_generated/api'
 import type { Doc, Id } from '@convex/_generated/dataModel'
+import type { Layout } from '@convex/lib/gmFormats'
 import { Link } from '@tanstack/react-router'
-import { useMutation, useQuery } from 'convex/react'
-import { useCallback, useState } from 'react'
+import { useMutation, useQuery, usePaginatedQuery } from 'convex/react'
+import { useCallback, useState, useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
@@ -18,13 +19,23 @@ export function Screen({ screenId }: { screenId: string }) {
 
 function ScreenWorkspace({
   screen,
-  notes,
   layouts,
 }: {
   screen: Doc<'gmScreens'>
-  notes: Doc<'gmNotes'>[]
-  layouts: Doc<'gmLayouts'>[]
+  layouts: Layout[]
 }) {
+  const {
+    results: notes,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.gmWidgets.listScreenWidgets,
+    { screenId: screen._id },
+    { initialNumItems: 10 }
+  )
+  useEffect(() => {
+    if (status === 'CanLoadMore') loadMore(10)
+  }, [status, loadMore])
   const addNote = useMutation(api.gm.addNote)
   const setLocked = useMutation(api.gmEditor.setLayoutLocked)
   const [selected, setSelected] = useState<Id<'gmLayouts'> | null>(null)

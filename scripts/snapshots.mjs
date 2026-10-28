@@ -38,6 +38,7 @@ export async function archiveInventory(path) {
     .filter((name) => name && !name.endsWith('/'))
   const tables = {}
   const files = {}
+  const widgets = {}
   for (const name of names) {
     if (name.endsWith('/documents.jsonl')) {
       // Table-number metadata belongs to each backend. Application IDs and
@@ -58,7 +59,17 @@ export async function archiveInventory(path) {
       } catch {
         throw new Error('A snapshot contains invalid JSON documents.')
       }
-      tables[name.slice(0, -'/documents.jsonl'.length)] = {
+      const tableName = name.slice(0, -'/documents.jsonl'.length)
+      if (
+        [
+          'gmNotes',
+          'gmWidgetContents',
+          'gmLayouts',
+          'gmEditorHistory',
+        ].includes(tableName)
+      )
+        widgets[tableName] = documents.map((document) => JSON.parse(document))
+      tables[tableName] = {
         count: documents.length,
         checksum: checksum(documents.join('\n')),
       }
@@ -69,7 +80,70 @@ export async function archiveInventory(path) {
       files[name] = { bytes: payload.length, checksum: checksum(payload) }
     }
   }
-  return { tables, files }
+  // Only aggregate evidence leaves this function; no bodies, IDs or auth data
+  // enter the restore report. Canonical checksums above remain authoritative.
+  const notes = widgets.gmNotes ?? []
+  const contents = widgets.gmWidgetContents ?? []
+  const layouts = widgets.gmLayouts ?? []
+  const layoutById = new Map(layouts.map((layout) => [layout._id, layout]))
+  const noteById = new Map(notes.map((note) => [note._id, note]))
+  const contentByWidget = new Map(
+    contents.map((content) => [content.widgetId, content])
+  )
+  const valid =
+    contentByWidget.size === contents.length &&
+    contents.every((content) => {
+      const parent = noteById.get(content.widgetId)
+      return (
+        parent?.formatVersion === 2 &&
+        parent.ownerId === content.ownerId &&
+        parent.projectId === content.projectId &&
+        parent.screenId === content.screenId
+      )
+    }) &&
+    notes.every(
+      (note) =>
+        note.formatVersion !== 2 ||
+        (note.kind === 'note' && contentByWidget.has(note._id))
+    ) &&
+    (widgets.gmLayouts ?? []).every((layout) =>
+      layout.placements.every((placement) => {
+        const parent = noteById.get(placement.widgetId ?? placement.noteId)
+        return (
+          parent &&
+          parent.deletedAt === undefined &&
+          parent.screenId === layout.screenId &&
+          parent.ownerId === layout.ownerId &&
+          parent.projectId === layout.projectId
+        )
+      })
+    )
+  const validHistory = (widgets.gmEditorHistory ?? []).every((revision) => {
+    const subject =
+      revision.snapshot.kind === 'note'
+        ? noteById.get(revision.subjectId)
+        : layoutById.get(revision.subjectId)
+    return (
+      subject &&
+      subject.ownerId === revision.ownerId &&
+      subject.projectId === revision.projectId &&
+      subject.screenId === revision.screenId
+    )
+  })
+  const widgetRelations = {
+    valid: valid && validHistory,
+    kinds: [...new Set(notes.map((note) => note.kind ?? 'note'))].sort((a, b) =>
+      a.localeCompare(b)
+    ),
+    payloads: contents.length,
+    nonEmptyNotes: notes.filter(
+      (note) =>
+        (note.body ?? contentByWidget.get(note._id)?.body ?? '').length > 0
+    ).length,
+    trashed: notes.filter((note) => note.deletedAt !== undefined).length,
+    revisions: (widgets.gmEditorHistory ?? []).length,
+  }
+  return { tables, files, widgetRelations }
 }
 
 export function compareInventories(source, restored) {

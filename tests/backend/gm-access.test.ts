@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { api } from '../../convex/_generated/api'
+import { readScreen } from '../helpers/gm-screen'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
 const page = { paginationOpts: { numItems: 50, cursor: null } }
@@ -22,7 +23,7 @@ async function setup() {
     title: 'Références',
     format: 'digital',
   })
-  return { alice, bob, projectId, folderId, screenId }
+  return { backend, alice, bob, projectId, folderId, screenId }
 }
 
 // AUD-01 : chaque entrée publique GM refuse un autre compte sans révéler
@@ -92,14 +93,43 @@ describe('Refus des accès GM par un autre compte', () => {
 
   it('setLayoutLocked refuse le Screen d’un autre compte sans le modifier', async () => {
     const { alice, bob, screenId } = await setup()
-    const before = await alice.client.query(api.gm.getScreen, { id: screenId })
+    const before = await readScreen(alice.client, { id: screenId })
     await expect(
       bob.client.mutation(api.gmEditor.setLayoutLocked, {
         screenId,
         locked: true,
       })
     ).rejects.toThrow('NOT_FOUND')
-    const after = await alice.client.query(api.gm.getScreen, { id: screenId })
+    const after = await readScreen(alice.client, { id: screenId })
     expect(after?.screen).toEqual(before?.screen)
   })
+})
+
+it('refuses anonymous and foreign paginated metadata and single payload access', async () => {
+  const { backend, alice, bob, screenId } = await setup()
+  const id = await alice.client.mutation(api.gm.addNote, { screenId })
+  for (const client of [backend, bob.client]) {
+    await expect(
+      client.query(api.gmWidgets.listScreenWidgets, { ...page, screenId })
+    ).rejects.toThrow()
+    await expect(
+      client.query(api.gmWidgets.getNoteContent, { id })
+    ).rejects.toThrow()
+    await expect(
+      client.mutation(api.gmWidgets.addWidget, { screenId, kind: 'note' })
+    ).rejects.toThrow()
+    await expect(
+      client.mutation(api.gmWidgets.updateWidget, {
+        id,
+        expectedVersion: 0,
+        kind: 'note',
+        config: {},
+        state: {},
+        body: 'Intrus',
+      })
+    ).rejects.toThrow()
+  }
+  expect(
+    await alice.client.query(api.gmWidgets.getNoteContent, { id })
+  ).toEqual({ body: '', version: 0 })
 })

@@ -1,6 +1,7 @@
 import { api } from '@convex/_generated/api'
-import type { Doc } from '@convex/_generated/dataModel'
-import { useMutation } from 'convex/react'
+import type { Widget } from '@convex/lib/gmFormats'
+import { CatchBoundary } from '@tanstack/react-router'
+import { useMutation, useQuery } from 'convex/react'
 import { useCallback, useEffect } from 'react'
 
 import { DraftGuard } from '@/components/draft-guard'
@@ -9,14 +10,14 @@ import { Button } from '@/components/ui/button'
 import { RevisionHistory } from './revision-history'
 import { useEditorDraft } from './use-editor-draft'
 
-export function NoteEditor({
+function LoadedNoteEditor({
   note,
   readOnly,
   autoSave,
   index,
   onDirtyChange,
 }: {
-  note: Doc<'gmNotes'>
+  note: Widget & { body: string }
   readOnly: boolean
   autoSave: boolean
   index: number
@@ -128,5 +129,38 @@ export function NoteEditor({
         />
       </div>
     </div>
+  )
+}
+
+function NoteContent(props: {
+  note: Widget
+  readOnly: boolean
+  autoSave: boolean
+  index: number
+  onDirtyChange: (id: string, dirty: boolean) => void
+}) {
+  const content = useQuery(api.gmWidgets.getNoteContent, { id: props.note._id })
+  if (!content) return <p role="status">Chargement de la note…</p>
+  return <LoadedNoteEditor {...props} note={{ ...props.note, ...content }} />
+}
+
+function NoteContentError({ reset }: { reset?: () => void }) {
+  return (
+    <div role="alert">
+      <p>Le contenu de cette note est indisponible.</p>
+      <Button size="sm" variant="outline" onClick={reset}>
+        Réessayer le contenu
+      </Button>
+    </div>
+  )
+}
+export function NoteEditor(props: Parameters<typeof NoteContent>[0]) {
+  return (
+    <CatchBoundary
+      getResetKey={() => props.note._id}
+      errorComponent={NoteContentError}
+    >
+      <NoteContent {...props} />
+    </CatchBoundary>
   )
 }

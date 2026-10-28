@@ -3,12 +3,13 @@ import type { Page } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
+import { readScreen } from '../helpers/gm-screen'
 
 // Bibliothèque de fiches (F1) : création, édition, lien et rétrolien par
 // l'interface, vérifiés aussi côté serveur.
 export async function verifyLibrary(page: Page, client: ConvexHttpClient) {
   const screenId = new URL(page.url()).pathname.split('/').at(-1) ?? ''
-  const screen = await client.query(api.gm.getScreen, { id: screenId })
+  const screen = await readScreen(client, { id: screenId })
   if (!screen) throw new Error('Missing Screen')
   const projectId = screen.screen.projectId
   await page.goto(`/app/projects/${projectId}/library`)

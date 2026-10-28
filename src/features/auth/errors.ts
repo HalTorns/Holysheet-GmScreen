@@ -1,6 +1,9 @@
 import { ConvexError } from 'convex/values'
 
 const messages: Record<string, string> = {
+  MIGRATION_REQUIRED:
+    'Ce Screen est en maintenance. Le texte reste modifiable ; réessayez la disposition après la migration.',
+  DOCUMENT_LIMIT: 'Ce contenu dépasse le budget de taille autorisé.',
   LAYOUT_LOCKED:
     'La disposition de ce Screen est verrouillée. Déverrouillez-la pour la modifier.',
   LAYOUT_LIMIT: 'Ce Screen a atteint sa limite de profils de disposition.',

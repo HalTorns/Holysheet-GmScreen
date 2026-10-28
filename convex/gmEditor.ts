@@ -7,6 +7,11 @@ import { requireUser } from './lib/auth'
 import { ownedLayout, ownedNote, ownedScreen } from './lib/gmAccess'
 import { layoutState, saveLayout, saveNote } from './lib/gmEditing'
 import {
+  normalizeSnapshot,
+  requireMigratedScreen,
+  layoutBudget,
+} from './lib/gmFormats'
+import {
   digitalLayoutFields,
   historyTarget,
   historyValidator,
@@ -34,6 +39,7 @@ export const createProfile = mutation({
     const user = await requireUser(ctx)
     const source = await ownedLayout(ctx, sourceId, user._id)
     const screen = await ownedScreen(ctx, source.screenId, user._id)
+    await requireMigratedScreen(ctx, screen._id)
     if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
     const title = gmTitle.safeParse(name)
     if (source.kind !== 'digital' || !title.success)
@@ -54,7 +60,8 @@ export const createProfile = mutation({
       throw new ConvexError({ code: 'LAYOUT_NAME_TAKEN' })
     await limitUserOperation(ctx, 'resourceWrite', user._id)
     return ctx.db.insert('gmLayouts', {
-      ...layoutState(source),
+      ...layoutState(layoutBudget({ ...source, name: title.data })),
+      formatVersion: 2,
       name: title.data,
       ownerId: user._id,
       projectId: source.projectId,
@@ -101,7 +108,7 @@ export const listHistory = query({
     const user = await requireUser(ctx)
     if (target.kind === 'note') await ownedNote(ctx, target.id, user._id)
     else await ownedLayout(ctx, target.id, user._id)
-    return ctx.db
+    const result = await ctx.db
       .query('gmEditorHistory')
       .withIndex('by_subject', (q) => q.eq('subjectId', target.id))
       .order('desc')
@@ -109,6 +116,14 @@ export const listHistory = query({
         ...paginationOpts,
         numItems: Math.min(10, Math.max(1, paginationOpts.numItems)),
       })
+    return {
+      ...result,
+      page: result.page.map((revision) => ({
+        ...revision,
+        formatVersion: 2 as const,
+        snapshot: normalizeSnapshot(revision.snapshot),
+      })),
+    }
   },
 })
 
@@ -120,7 +135,7 @@ export const restoreRevision = mutation({
     const revision = await ctx.db.get('gmEditorHistory', id)
     if (!revision || revision.ownerId !== user._id)
       throw new ConvexError({ code: 'NOT_FOUND' })
-    const snapshot = revision.snapshot
+    const snapshot = normalizeSnapshot(revision.snapshot)
     if (snapshot.kind === 'note') {
       const noteId = ctx.db.normalizeId('gmNotes', revision.subjectId)
       if (!noteId) throw new ConvexError({ code: 'NOT_FOUND' })
@@ -138,7 +153,7 @@ export const restoreRevision = mutation({
     const placements = layout.placements.map(
       (current) =>
         snapshot.placements.find(
-          (previous) => previous.noteId === current.noteId
+          (previous) => previous.widgetId === current.widgetId
         ) ?? current
     )
     return saveLayout(ctx, layout, expectedVersion, {
