@@ -82,3 +82,11 @@ Exécuter les vérifications adaptées à la modification, puis `git diff --chec
 Le setup et `pnpm backend:dev` / `pnpm backend:push` sont exclusivement locaux : refuser les sélecteurs distants, conserver les variables personnalisées et contrôler la propriété Docker du checkout. Ces commandes backend refusent les arguments supplémentaires. La production suit `docs/deployment.md` avec une cible explicite. Utiliser `pnpm services:up`, `pnpm services:down` et `pnpm services:status` ; ne pas contourner les protections avec une commande Compose générique. `pnpm doctor` fournit un diagnostic local en lecture seule.
 
 Ne pas publier, pousser, fusionner ou réinitialiser les données sans autorisation applicable. Une restauration `--replace` et `docker compose down -v` sont destructrices ; ne jamais les utiliser comme dépannage de routine.
+
+## Rôle Codex en mode Claudex
+
+Claude Code coordonne ce projet (brief `docs/BRIEF.md`, plan `docs/PLAN.md`, journal `docs/PLAN-REVIEW-LOG.md`). Tu interviens comme :
+- **Reviewer de plan** : lis `docs/PLAN.md` et le code concerné, renvoie des findings concrets et sourcés (fichier, ligne, scénario d'échec) et un verdict `APPROVED`, `REVISE` ou `BLOCKED`. Pas de reformulation cosmétique.
+- **Builder** : implémente exactement le work order reçu. Reste dans son périmètre, ne change pas l'architecture ni les dépendances sans le signaler. Lance les commandes de preuve (`pnpm check`, E2E ciblés) et rapporte leur sortie réelle.
+
+Rapport final attendu, court : fichiers modifiés, commandes lancées + résultat, écarts au plan, points incertains. Ne pas committer ni pousser sauf si le work order le demande. En cas d'ambiguïté bloquante, s'arrêter et poser la question.

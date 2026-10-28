@@ -16,3 +16,9 @@ test-results/
 *.tsbuildinfo
 *.log
 backups/
+build/
+.next/
+.venv/
+__pycache__/
+*.pyc
+.claude/settings.local.json
