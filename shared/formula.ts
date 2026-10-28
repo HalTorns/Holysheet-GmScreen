@@ -242,8 +242,8 @@ export type ComputedValue =
         | 'INVALID_FORMULA'
     }
 
-// Évalue toutes les variables d'un projet (au plus quelques centaines) avec
-// mémoïsation ; un cycle déjà présent en base est rapporté, jamais suivi.
+// Évalue les dépendances par ordre topologique avec une pile explicite.
+// La récursion de l'AST reste bornée et ne traverse jamais les variables.
 export function evaluateProject(
   variables: { name: string; definition: VariableDefinition }[]
 ): Map<string, ComputedValue> {
@@ -251,51 +251,23 @@ export function evaluateProject(
     variables.map((v) => [normalizeName(v.name), v.definition])
   )
   const results = new Map<string, ComputedValue>()
-  const visiting = new Set<string>()
-  const resolve = (name: string): ComputedValue => {
-    const known = results.get(name)
-    if (known) return known
-    const definition = byName.get(name)
-    if (!definition) return { error: 'UNKNOWN_VARIABLE' }
-    if (definition.type !== 'formula') {
-      const result = { value: definition.value }
-      results.set(name, result)
-      return result
-    }
-    if (visiting.has(name)) return { error: 'CYCLE' }
-    visiting.add(name)
-    let result: ComputedValue
-    const parsed = parseFormula(definition.expression)
-    if (parsed.ok)
-      try {
-        result = { value: evaluate(parsed.node) }
-      } catch (error) {
-        if (!(error instanceof FormulaFailureError) || !error.evaluation)
-          throw error
-        result = { error: error.evaluation }
-      }
-    else result = { error: 'INVALID_FORMULA' }
-    visiting.delete(name)
-    results.set(name, result)
-    return result
-  }
+  const parsed = new Map<string, FormulaParseResult>()
+  for (const [name, definition] of byName)
+    if (definition.type === 'formula')
+      parsed.set(name, parseFormula(definition.expression))
   const evaluate = (node: FormulaNode): number => {
-    if (node.type === 'number') return node.value
-    if (node.type === 'neg') return -evaluate(node.operand)
+    if (node.type === 'number') return finite(node.value)
+    if (node.type === 'neg') return finite(-evaluate(node.operand))
     if (node.type === 'call')
       return finite(functions[node.name](node.args.map(evaluate)))
     if (node.type === 'ref') {
-      const target = resolve(node.name)
+      const target = results.get(node.name)
+      if (!target) throw new FormulaFailureError(undefined, 'UNKNOWN_VARIABLE')
       if ('error' in target)
-        throw new FormulaFailureError(
-          undefined,
-          target.error === 'UNKNOWN_VARIABLE' || target.error === 'CYCLE'
-            ? target.error
-            : 'DEPENDENCY_ERROR'
-        )
+        throw new FormulaFailureError(undefined, 'DEPENDENCY_ERROR')
       if (typeof target.value !== 'number')
         throw new FormulaFailureError(undefined, 'NOT_A_NUMBER')
-      return target.value
+      return finite(target.value)
     }
     const left = evaluate(node.left)
     const right = evaluate(node.right)
@@ -303,7 +275,58 @@ export function evaluateProject(
       throw new FormulaFailureError(undefined, 'DIVISION_BY_ZERO')
     return finite(binaryOperators[node.op](left, right))
   }
-  for (const name of byName.keys()) resolve(name)
+  const state = new Map<string, 'visiting' | 'done'>()
+  for (const root of byName.keys()) {
+    if (state.has(root)) continue
+    const stack = [{ name: root, cursor: 0 }]
+    state.set(root, 'visiting')
+    while (stack.length > 0) {
+      const frame = stack.at(-1)
+      if (!frame) break
+      const formula = parsed.get(frame.name)
+      const dependencies = formula?.ok ? formula.dependencies : []
+      const dependency = dependencies[frame.cursor]
+      if (dependency !== undefined) {
+        frame.cursor++
+        if (!byName.has(dependency) || state.get(dependency) === 'done')
+          continue
+        if (state.get(dependency) === 'visiting') {
+          const start = stack.findIndex((entry) => entry.name === dependency)
+          for (const entry of stack.slice(start))
+            results.set(entry.name, { error: 'CYCLE' })
+          continue
+        }
+        state.set(dependency, 'visiting')
+        stack.push({ name: dependency, cursor: 0 })
+        continue
+      }
+      if (!results.has(frame.name)) {
+        const definition = byName.get(frame.name)
+        try {
+          if (definition && definition.type !== 'formula')
+            results.set(frame.name, {
+              value:
+                definition.type === 'number'
+                  ? finite(definition.value)
+                  : definition.value,
+            })
+          else
+            results.set(
+              frame.name,
+              formula?.ok
+                ? { value: finite(evaluate(formula.node)) }
+                : { error: 'INVALID_FORMULA' }
+            )
+        } catch (error) {
+          if (!(error instanceof FormulaFailureError) || !error.evaluation)
+            throw error
+          results.set(frame.name, { error: error.evaluation })
+        }
+      }
+      state.set(frame.name, 'done')
+      stack.pop()
+    }
+  }
   return results
 }
 

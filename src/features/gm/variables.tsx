@@ -8,6 +8,9 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { convexErrorCode, operationErrorMessage } from '@/features/auth/errors'
 
+import { reconcileDraft } from './sheet-draft'
+import { definitionFrom } from './variable-input'
+
 type Row = FunctionReturnType<typeof api.gmVariables.listVariables>[number]
 type VariableType = Doc<'gmVariables'>['type']
 
@@ -31,14 +34,6 @@ const computedErrors: Record<string, string> = {
 function variableTypeOf(value: string): VariableType {
   const types: VariableType[] = ['number', 'text', 'boolean', 'formula']
   return types.find((type) => type === value) ?? 'number'
-}
-
-// Valeur saisie sous forme de texte, convertie selon le type.
-function definitionFrom(type: VariableType, input: string) {
-  if (type === 'number') return { type, value: Number(input) } as const
-  if (type === 'text') return { type, value: input } as const
-  if (type === 'boolean') return { type, value: input === 'true' } as const
-  return { type, expression: input } as const
 }
 
 function inputOf(variable: Doc<'gmVariables'>) {
@@ -106,10 +101,7 @@ function VariablesContent({ project }: { project: Doc<'gmProjects'> }) {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <VariableRow
-                    key={`${row.variable._id}-${row.variable.version}`}
-                    row={row}
-                  />
+                  <VariableRow key={row.variable._id} row={row} />
                 ))}
               </tbody>
             </table>
@@ -134,13 +126,18 @@ function CreateVariable({ projectId }: { projectId: Id<'gmProjects'> }) {
       aria-label="Nouvelle variable"
       onSubmit={(event) => {
         event.preventDefault()
+        const converted = definitionFrom(type, input)
+        if ('error' in converted) {
+          setError(converted.error)
+          return
+        }
         setPending(true)
         setError(null)
         create({
           projectId,
           name,
           label,
-          definition: definitionFrom(type, input),
+          definition: converted.definition,
         })
           .then(() => {
             setName('')
@@ -177,10 +174,14 @@ function CreateVariable({ projectId }: { projectId: Id<'gmProjects'> }) {
           className="rounded border bg-background p-2"
           value={type}
           onChange={(event) => {
-            const next = variableTypeOf(event.target.value)
-            setType(next)
+            const selectedType = variableTypeOf(event.target.value)
+            setType(selectedType)
             setInput(
-              next === 'number' ? '0' : next === 'boolean' ? 'false' : ''
+              selectedType === 'number'
+                ? '0'
+                : selectedType === 'boolean'
+                  ? 'false'
+                  : ''
             )
           }}
         >
@@ -265,47 +266,115 @@ function variableError(error: unknown) {
 
 function VariableRow({ row }: { row: Row }) {
   const { variable, computed } = row
-  const setValue = useMutation(api.gmVariables.setVariableValue)
   const update = useMutation(api.gmVariables.updateVariable)
   const remove = useMutation(api.gmVariables.deleteVariable)
-  const initial = inputOf(variable)
-  const [input, setInput] = useState(initial)
+  const serverDraft = {
+    name: variable.name,
+    label: variable.label,
+    input: inputOf(variable),
+    type: variable.type,
+    min: variable.type === 'number' ? variable.min : undefined,
+    max: variable.type === 'number' ? variable.max : undefined,
+  }
+  const [base, setBase] = useState({
+    version: variable.version,
+    draft: serverDraft,
+  })
+  const [draft, setDraft] = useState(base.draft)
+  const [saving, setSaving] = useState(false)
+  const [conflict, setConflict] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const dirty = JSON.stringify(draft) !== JSON.stringify(base.draft)
+  const synced = reconcileDraft(
+    { base, draft, saving },
+    { version: variable.version, draft: serverDraft }
+  )
+  if (synced) {
+    setBase(synced)
+    setDraft(synced.draft)
+  }
   const run = (action: () => Promise<unknown>) => {
     setError(null)
     action().catch((error_: unknown) => setError(variableError(error_)))
   }
-  const save = () =>
-    run(() => {
-      const definition = definitionFrom(variable.type, input)
-      if (definition.type === 'formula')
-        return update({
-          id: variable._id,
-          expectedVersion: variable.version,
-          name: variable.name,
-          label: variable.label,
-          definition,
-        })
-      return setValue({ id: variable._id, value: definition.value })
-    })
+  const save = async () => {
+    const converted = definitionFrom(draft.type, draft.input)
+    if ('error' in converted) {
+      setError(converted.error)
+      return
+    }
+    setSaving(true)
+    setError(null)
+    const submitted = draft
+    const definition = converted.definition
+    try {
+      const version = await update({
+        id: variable._id,
+        expectedVersion: base.version,
+        name: submitted.name,
+        label: submitted.label,
+        definition:
+          definition.type === 'number'
+            ? {
+                ...definition,
+                ...(submitted.min === undefined ? {} : { min: submitted.min }),
+                ...(submitted.max === undefined ? {} : { max: submitted.max }),
+              }
+            : definition,
+      })
+      setBase({ version, draft: submitted })
+      setConflict(false)
+    } catch (error_) {
+      if (convexErrorCode(error_) === 'CONFLICT') setConflict(true)
+      setError(variableError(error_))
+    } finally {
+      setSaving(false)
+    }
+  }
+  const loadSaved = () => {
+    setBase({ version: variable.version, draft: serverDraft })
+    setDraft(serverDraft)
+    setConflict(false)
+    setError(null)
+  }
   return (
     <tr className="border-t align-top">
-      <th scope="row" className="py-2 pr-3 font-mono">
-        {variable.name}
-        {variable.label && (
-          <span className="block font-sans text-xs text-muted-foreground">
-            {variable.label}
-          </span>
-        )}
+      <th
+        scope="row"
+        aria-label={variable.name}
+        className="py-2 pr-3 font-mono"
+      >
+        <label className="grid gap-1">
+          <span className="sr-only">Nom de {variable.name}</span>
+          <input
+            className="rounded border bg-background p-2"
+            value={draft.name}
+            maxLength={40}
+            onChange={(event) =>
+              setDraft({ ...draft, name: event.target.value })
+            }
+          />
+        </label>
+        <label className="grid gap-1 font-sans">
+          <span className="sr-only">Libellé de {variable.name}</span>
+          <input
+            className="rounded border bg-background p-2"
+            value={draft.label}
+            maxLength={120}
+            onChange={(event) =>
+              setDraft({ ...draft, label: event.target.value })
+            }
+          />
+        </label>
       </th>
       <td className="py-2 pr-3">{typeLabels[variable.type]}</td>
       <td className="py-2 pr-3">
         <ValueInput
-          type={variable.type}
-          value={input}
+          type={draft.type}
+          value={draft.input}
           label={`Valeur de ${variable.name}`}
-          onChange={setInput}
+          onChange={(input) => setDraft({ ...draft, input })}
         />
         {error && (
           <p className="field-error" role="alert">
@@ -319,12 +388,17 @@ function VariableRow({ row }: { row: Row }) {
       <td className="flex flex-wrap gap-1 py-2">
         <Button
           variant="outline"
-          disabled={input === initial}
-          onClick={save}
+          disabled={!dirty || saving || conflict}
+          onClick={() => void save()}
           aria-label={`Enregistrer ${variable.name}`}
         >
           Enregistrer
         </Button>
+        {conflict && (
+          <Button variant="outline" disabled={saving} onClick={loadSaved}>
+            Charger la version enregistrée
+          </Button>
+        )}
         {confirming ? (
           <Button
             variant="destructive"

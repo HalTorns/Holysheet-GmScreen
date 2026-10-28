@@ -111,6 +111,49 @@ describe('evaluateProject', () => {
     expect(results.get('suivante')).toEqual({ error: 'DEPENDENCY_ERROR' })
   })
 
+  it('évalue 200 variables et leurs AST associatifs profonds sans récursion entre variables', () => {
+    const variables: { name: string; definition: VariableDefinition }[] = [
+      { name: 'v0', definition: { type: 'number', value: 0 } },
+    ]
+    for (let index = 1; index < 200; index++) {
+      const expression = `v${index - 1}${'+1'.repeat(99)}`
+      expect(parseFormula(expression).ok).toBe(true)
+      variables.unshift({
+        name: `v${index}`,
+        definition: { type: 'formula', expression },
+      })
+    }
+    // L'ordre inverse force le parcours de toute la chaîne avant son calcul.
+    expect(evaluateProject(variables).get('v199')).toEqual({
+      value: 19_701,
+    })
+  })
+
+  it('refuse les littéraux débordants, leur négation et leur passage aux fonctions', () => {
+    const literal = '9'.repeat(309)
+    for (const expression of [literal, `-${literal}`, `abs(${literal})`]) {
+      expect(parseFormula(expression).ok).toBe(true)
+      expect(value(expression)).toEqual({ error: 'NON_FINITE' })
+    }
+  })
+
+  it('propage un littéral débordant référencé en DEPENDENCY_ERROR', () => {
+    expect(
+      value('debordement', {
+        debordement: { type: 'formula', expression: '9'.repeat(309) },
+      })
+    ).toEqual({ error: 'DEPENDENCY_ERROR' })
+  })
+
+  it('refuse une valeur numérique non finie et propage son erreur aux références', () => {
+    const results = evaluateProject([
+      { name: 'source', definition: { type: 'number', value: Infinity } },
+      { name: 'ref', definition: { type: 'formula', expression: '-source' } },
+    ])
+    expect(results.get('source')).toEqual({ error: 'NON_FINITE' })
+    expect(results.get('ref')).toEqual({ error: 'DEPENDENCY_ERROR' })
+  })
+
   it('rapporte un cycle déjà stocké sans boucler', () => {
     const results = evaluateProject([
       { name: 'a', definition: { type: 'formula', expression: 'b + 1' } },
@@ -118,7 +161,7 @@ describe('evaluateProject', () => {
       { name: 'c', definition: { type: 'formula', expression: 'a + 1' } },
     ])
     for (const name of ['a', 'b', 'c'])
-      expect(results.get(name)).toHaveProperty('error')
+      expect(results.get(name)).toEqual({ error: 'CYCLE' })
   })
 })
 
