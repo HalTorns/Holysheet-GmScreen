@@ -99,3 +99,7 @@
   - F1-01 (high) : une saisie faite pendant un enregistrement pouvait être écrasée par la synchronisation. → fonction pure `reconcileDraft` (pas de synchronisation pendant l'envoi ; la base devient la version soumise), test unitaire `tests/unit/sheet-draft.test.ts` sur le scénario A→B→A.
   - F1-02 (medium) : l'édition des liens supprimait les liens masqués vers des fiches en corbeille. → `setSheetLinks` est remplacé par les opérations atomiques `addSheetLink` et `removeSheetLink` ; la borne de 50 compte les liens masqués ; tests de conservation après restauration. Le plan a été mis à jour.
 - Réinspection F1 (session Codex neuve, ciblée) : **APPROVED**. CI `40712402517` sur `1bc8e21` : application, image Docker et secrets **success**. Fast-forward de `main`. Auteur du code F1 : Claude ; Codex : review du plan (2 rounds) et 2 inspections.
+
+## Chantier 2 — tranche F2 (variables et formules) — 2026-10-28
+
+- Plan `docs/PLAN-F2.md` (Claude). Review Codex, session neuve, 1 round : **REVISE**, 3 constats moyens acceptés — F2-01 (une écriture rapide incrémente la version, `CONFLICT` pour un éditeur obsolète), F2-02 (`name` ajouté au contrat de mise à jour), F2-03 (fixture du test d'export à compléter). Clarifications sans autre effet : pas de second round (quota). SHA256 du plan final : `712eb95bbece0938ce804c69769a113face9feb35f7cc1e3326ccd531e845581`.

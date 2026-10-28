@@ -46,8 +46,8 @@ Chaque fonction applique `requireUser`, `ownedProject` ou un nouveau `ownedVaria
 | --- | --- |
 | `listVariables` | `projectId` → toutes les variables du projet (au plus 200) avec, pour chacune, `computed` : `{ value }` ou `{ error }`, issu de `evaluateProject` côté serveur |
 | `createVariable` | `projectId`, `name`, `label`, définition typée ; refus du nom invalide (`INVALID_INPUT`), du doublon (`NAME_TAKEN`), de la limite (`VARIABLE_LIMIT`) ; une formule est analysée (`INVALID_FORMULA`), puis on refuse le cycle en simulant le graphe avec la nouvelle variable (`CYCLE`) |
-| `updateVariable` | `id`, `expectedVersion`, `label`, définition typée ; renommage autorisé si aucune formule ne référence l'ancien nom (`REFERENCED`), sinon refus ; le changement de type est autorisé, avec le même contrôle de cycle ; `CONFLICT` si la version est obsolète |
-| `setVariableValue` | `id`, `value` : écriture rapide de la valeur d'une variable non-formule, sans version (usage en partie : compteurs) ; validation du type et des bornes |
+| `updateVariable` | `id`, `expectedVersion`, `name`, `label`, définition typée ; le nom suit les mêmes règles qu'à la création (identifiant, `nameKey` normalisé, unicité insensible à la casse) (F2-02) ; renommage autorisé si aucune formule ne référence l'ancien nom (`REFERENCED`), sinon refus ; le changement de type est autorisé, avec le même contrôle de cycle ; `CONFLICT` si la version est obsolète |
+| `setVariableValue` | `id`, `value` : écriture rapide de la valeur d'une variable non-formule, sans `expectedVersion` (usage en partie : compteurs), mais qui **incrémente atomiquement `version` et `updatedAt`**. Un éditeur resté sur une version antérieure reçoit donc `CONFLICT` (F2-01). Validation du type et des bornes |
 | `deleteVariable` | refus si une autre formule la référence (`REFERENCED`), sinon suppression définitive. C'est un petit objet de configuration ; la corbeille n'est pas utile en F2 et pourra s'ajouter avec les widgets |
 
 Le contrôle de cycle et de références porte sur les variables du projet (au plus 200 petits documents), toutes lues dans la transaction d'écriture, ce qui l'isole d'écritures concurrentes.
@@ -84,10 +84,11 @@ Widgets compteurs ou fiches liés aux variables (F3, F4), variables propres à u
    - cycle direct, cycle indirect et autoréférence refusés à la création comme à la mise à jour ;
    - recalcul après `setVariableValue` ;
    - renommage et suppression refusés si la variable est référencée ;
-   - `CONFLICT` ;
+   - `CONFLICT`, y compris pour un `updateVariable` fait avec la version qui précède une écriture rapide (F2-01) ;
    - limite de 200 variables ;
    - refus de chaque fonction publique pour un autre compte ;
-   - export et nettoyage de `gmVariables`.
+   - export et nettoyage de `gmVariables` ;
+   - mise à jour de la fixture du test d'export existant (`tests/backend/gm.test.ts`), qui exige une ligne par table de `gmTables` (F2-03).
 3. **Vérification et inventaire** : `pnpm check` vert sous Node 26.11.1 ; `pnpm audit:convex` sort en code 0, avec l'inventaire de l'audit mis à jour.
 4. **E2E Holysheet** : sur la page Variables, créer `force = 3` et `bonus = force * 2 + 1`, puis vérifier `7` ; passer `force` à 5 et vérifier `11` ; vérifier qu'une formule cyclique est refusée avec un message. La restauration compte au moins une ligne `gmVariables`.
 5. **CI** de la branche verte, puis inspection Codex neuve : APPROVED.
