@@ -144,7 +144,13 @@ export const restoreRevision = mutation({
       if (note.screenId !== revision.screenId)
         throw new ConvexError({ code: 'NOT_FOUND' })
       if (snapshot.kind === 'note')
-        return saveNote(ctx, note, expectedVersion, snapshot.body)
+        return saveNote(
+          ctx,
+          note,
+          expectedVersion,
+          snapshot.body,
+          snapshot.bodyFormat
+        )
       return saveWidget(ctx, note, expectedVersion, snapshot, 'restore')
     }
     const layoutId = ctx.db.normalizeId('gmLayouts', revision.subjectId)

@@ -188,7 +188,7 @@ export async function verifyScreenEditor(
   await page.getByRole('button', { name: 'Lecture seule', exact: true }).click()
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
-  ).not.toBeEditable()
+  ).toHaveCount(0)
   await page
     .getByRole('button', { name: 'Reprendre l’édition', exact: true })
     .click()

@@ -1,5 +1,10 @@
 import { v } from 'convex/values'
 
+export const bodyFormatValidator = v.union(
+  v.literal('plain'),
+  v.literal('markdown-v1')
+)
+
 const owned = { ownerId: v.string(), updatedAt: v.number() }
 export const projectFields = {
   ...owned,
@@ -121,6 +126,7 @@ export const widgetUpdateValidator = v.union(
     config: noteV2.config,
     state: noteV2.state,
     body: v.string(),
+    bodyFormat: v.optional(bodyFormatValidator),
   }),
   v.object({ ...checklistShape }),
   v.object({ ...counterShape }),
@@ -171,6 +177,7 @@ export const widgetContentFields = {
   screenId: v.id('gmScreens'),
   widgetId: v.id('gmNotes'),
   body: v.string(),
+  bodyFormat: v.optional(bodyFormatValidator),
   formatVersion: v.literal(2),
 }
 const widgetContentValidator = v.object({
@@ -196,7 +203,11 @@ const digitalV2 = {
   ...digitalLayoutFields,
   placements: v.array(placementValidator),
 }
-const noteSnapshot = { kind: v.literal('note'), body: v.string() }
+const noteSnapshot = {
+  kind: v.literal('note'),
+  body: v.string(),
+  bodyFormat: v.optional(bodyFormatValidator),
+}
 export const historyTarget = v.union(
   v.object({ kind: v.literal('note'), id: v.id('gmNotes') }),
   v.object({ kind: v.literal('layout'), id: v.id('gmLayouts') })

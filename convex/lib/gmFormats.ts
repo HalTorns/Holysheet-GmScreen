@@ -1,6 +1,7 @@
 import type { Value } from 'convex/values'
 import { getDocumentSize, ConvexError } from 'convex/values'
 
+import type { NoteValue } from '../../shared/gm'
 import {
   GM_CONTENT_BYTES,
   GM_LAYOUT_BYTES,
@@ -42,7 +43,13 @@ export function normalizeSnapshot(
   snapshot: Doc<'gmEditorHistory'>['snapshot']
 ) {
   if (snapshot.kind !== 'layout' && snapshot.kind !== 'note') return snapshot
-  if (snapshot.kind === 'note') return { ...snapshot, config: {}, state: {} }
+  if (snapshot.kind === 'note')
+    return {
+      ...snapshot,
+      bodyFormat: snapshot.bodyFormat ?? 'plain',
+      config: {},
+      state: {},
+    }
   return {
     ...snapshot,
     placements: snapshot.placements.map(normalizePlacement),
@@ -72,7 +79,13 @@ export function layoutBudget(layout: Layout) {
   return layout
 }
 export async function noteBody(ctx: QueryCtx, note: Doc<'gmNotes'>) {
-  if (note.formatVersion !== 2) return note.body
+  return (await noteValue(ctx, note)).body
+}
+export async function noteValue(
+  ctx: QueryCtx,
+  note: Doc<'gmNotes'>
+): Promise<NoteValue> {
+  if (note.formatVersion !== 2) return { body: note.body, bodyFormat: 'plain' }
   if (note.kind !== 'note') throw new ConvexError({ code: 'NOT_FOUND' })
   const content = await ctx.db
     .query('gmWidgetContents')
@@ -85,12 +98,13 @@ export async function noteBody(ctx: QueryCtx, note: Doc<'gmNotes'>) {
     content.screenId !== note.screenId
   )
     throw new ConvexError({ code: 'CONTENT_INTEGRITY' })
-  return content.body
+  return { body: content.body, bodyFormat: content.bodyFormat ?? 'plain' }
 }
 export async function writeContent(
   ctx: MutationCtx,
   note: Widget,
-  body: string
+  body: string,
+  bodyFormat: NoteValue['bodyFormat'] = 'plain'
 ) {
   const value = {
     ownerId: note.ownerId,
@@ -98,6 +112,7 @@ export async function writeContent(
     screenId: note.screenId,
     widgetId: note._id,
     body,
+    bodyFormat,
     updatedAt: note.updatedAt,
     formatVersion: 2 as const,
   }

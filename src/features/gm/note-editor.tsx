@@ -1,13 +1,16 @@
 import { api } from '@convex/_generated/api'
 import type { Widget } from '@convex/lib/gmFormats'
+import type { NoteValue } from '@shared/gm'
 import { CatchBoundary } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 
 import { DraftGuard } from '@/components/draft-guard'
 import { Button } from '@/components/ui/button'
 
 import { RevisionHistory } from './revision-history'
+import { NoteInput } from './rich-text/input'
+import { NoteRender } from './rich-text/render'
 import { useEditorDraft } from './use-editor-draft'
 
 function LoadedNoteEditor({
@@ -17,7 +20,7 @@ function LoadedNoteEditor({
   index,
   onDirtyChange,
 }: {
-  note: Widget & { body: string }
+  note: Widget & NoteValue
   readOnly: boolean
   autoSave: boolean
   index: number
@@ -25,12 +28,16 @@ function LoadedNoteEditor({
 }) {
   const update = useMutation(api.gm.updateNote)
   const persist = useCallback(
-    (body: string, expectedVersion: number) =>
-      update({ id: note._id, body, expectedVersion }),
+    (value: NoteValue, expectedVersion: number) =>
+      update({ id: note._id, ...value, expectedVersion }),
     [note._id, update]
   )
+  const value = useMemo(
+    () => ({ body: note.body, bodyFormat: note.bodyFormat }),
+    [note.body, note.bodyFormat]
+  )
   const editor = useEditorDraft({
-    value: note.body,
+    value,
     version: note.version,
     onSave: persist,
     autoSave,
@@ -46,26 +53,18 @@ function LoadedNoteEditor({
     },
     [note._id, onDirtyChange]
   )
+  if (readOnly) return <NoteRender {...editor.value} />
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-auto">
       <DraftGuard dirty={editor.dirty} />
       <label className="text-xs font-semibold" htmlFor={`note-${note._id}`}>
         Note {index + 1}
       </label>
-      <textarea
+      <NoteInput
         id={`note-${note._id}`}
-        aria-label="Contenu de la note"
-        className="min-h-10 flex-1 resize-none rounded border bg-background p-2 text-sm"
         value={editor.value}
         readOnly={readOnly}
-        maxLength={50_000}
-        style={{
-          backgroundColor: 'transparent',
-          color: 'inherit',
-          fontSize: 'inherit',
-          fontFamily: 'inherit',
-        }}
-        onChange={(event) => editor.edit(event.target.value)}
+        onEdit={(changed) => editor.edit(changed)}
       />
       {editor.conflict && (
         <div className="text-xs" role="alert">

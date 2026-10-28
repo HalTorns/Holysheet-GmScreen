@@ -2,6 +2,11 @@ import { parseDice } from './dice'
 import { z } from './zod'
 
 export const gmTitle = z.string().trim().min(1).max(120)
+export const gmBodyFormat = z.enum(['plain', 'markdown-v1'])
+export type NoteValue = {
+  body: string
+  bodyFormat: z.infer<typeof gmBodyFormat>
+}
 export const gmNote = z.string().max(50_000)
 export const GM_MAX_NOTES = 100
 export const GM_MAX_LAYOUTS = 8

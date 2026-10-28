@@ -132,3 +132,4 @@
 ## Chantier 2 — tranche F4b (texte riche) — 2026-10-28
 
 - Quota Codex remis à zéro à 19 h 14 UTC (3 % au moment de l'arbitrage). ADR `docs/decisions/rich-text.md` et plan `docs/PLAN-F4b.md` rédigés par Codex, **arbitrés par Claude** : Markdown explicite sans migration, limites de collage acceptées, dépendances de rendu sûres.
+- Build F4b (**Codex**, session neuve) : `bodyFormat` optionnel, rendu `react-markdown` + `remark-directive` + `rehype-sanitize`, barre d'outils, aperçu, collage HTML converti, bloc repliable `:::details`, tests unitaires (XSS, schémas de liens), backend, navigateur et E2E. Bundle +45,5 Kio gzip. **Inspection Claude** : aucun `dangerouslySetInnerHTML` ni `rehype-raw` ; collage analysé dans un `template` d'un document inerte ; liens limités à http, https et mailto, avec double contrôle. Preuves relancées par Claude : `pnpm check` et `pnpm audit` verts.

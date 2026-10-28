@@ -11,6 +11,7 @@ import { defaultWidgetStyle, gmTables } from '../../shared/gm'
 import { readScreen } from '../helpers/gm-screen'
 import {
   completeProfile,
+  waitForHydration,
   createEmail,
   deleteAccountWithClient,
   getAuthenticatedClient,
@@ -30,6 +31,7 @@ test('maximum note duplication, retention, export and cleanup fit the real backe
   let client: Awaited<ReturnType<typeof getAuthenticatedClient>> | undefined
   try {
     await page.goto('/sign-in')
+    await waitForHydration(page)
     await page
       .getByRole('button', { name: 'Créer un compte', exact: true })
       .click()

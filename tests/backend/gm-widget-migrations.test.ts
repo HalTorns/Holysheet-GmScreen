@@ -207,7 +207,7 @@ it('runs the real ordered component runner offline, preserves V1 data and repeat
   })
   expect(
     await alice.client.query(api.gmWidgets.getNoteContent, { id: noteId })
-  ).toEqual({ body: fullBody, version: 21 })
+  ).toEqual({ body: fullBody, bodyFormat: 'plain', version: 21 })
   await alice.client.mutation(api.gmWidgets.purgeNote, {
     id: deleted,
     expectedVersion: 20,
@@ -289,7 +289,7 @@ it('does not overwrite a concurrent edit when a stopped pass restarts and allows
   await backend.finishAllScheduledFunctions(() => vi.runAllTimers())
   expect(
     await alice.client.query(api.gmWidgets.getNoteContent, { id: edited })
-  ).toEqual({ body: 'édition conservée', version: 21 })
+  ).toEqual({ body: 'édition conservée', bodyFormat: 'plain', version: 21 })
   await alice.client.mutation(api.gm.addNote, { screenId })
   expect(
     (await readScreen(alice.client, { id: screenId }))?.notes

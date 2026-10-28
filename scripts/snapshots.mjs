@@ -183,6 +183,14 @@ export async function archiveInventory(path) {
       a.localeCompare(b)
     ),
     payloads: contents.length,
+    richNotes: contents.filter(
+      (content) => content.bodyFormat === 'markdown-v1'
+    ).length,
+    plainNoteRevisions: (widgets.gmEditorHistory ?? []).filter(
+      (revision) =>
+        revision.snapshot.kind === 'note' &&
+        (revision.snapshot.bodyFormat ?? 'plain') === 'plain'
+    ).length,
     nonEmptyNotes: notes.filter(
       (note) =>
         (note.body ?? contentByWidget.get(note._id)?.body ?? '').length > 0

@@ -14,6 +14,7 @@ import {
   normalizedLayoutValidator,
   projectValidator,
   screenValidator,
+  bodyFormatValidator,
 } from './lib/gmValidators'
 import { createNote } from './lib/gmWidgetWriting'
 import { limitUserOperation } from './lib/rateLimits'
@@ -254,12 +255,17 @@ export const addNote = mutation({
 })
 
 export const updateNote = mutation({
-  args: { id: v.id('gmNotes'), expectedVersion: v.number(), body: v.string() },
+  args: {
+    id: v.id('gmNotes'),
+    expectedVersion: v.number(),
+    body: v.string(),
+    bodyFormat: v.optional(bodyFormatValidator),
+  },
   returns: v.number(),
-  handler: async (ctx, { id, expectedVersion, body }) => {
+  handler: async (ctx, { id, expectedVersion, body, bodyFormat }) => {
     const user = await requireUser(ctx)
     const note = await ownedNote(ctx, id, user._id)
-    return saveNote(ctx, note, expectedVersion, body)
+    return saveNote(ctx, note, expectedVersion, body, bodyFormat)
   },
 })
 

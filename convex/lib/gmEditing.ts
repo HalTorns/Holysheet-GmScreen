@@ -12,6 +12,7 @@ import {
   GM_MIN_WIDGET_HEIGHT,
   gmLayoutSize,
   gmNote,
+  gmBodyFormat,
   gmWidgetStyle,
 } from '../../shared/gm'
 import type { Doc } from '../_generated/dataModel'
@@ -22,7 +23,7 @@ import {
   normalizePlacement,
   normalizeSnapshot,
   convertNote,
-  noteBody,
+  noteValue,
   writeContent,
   requireMigratedScreen,
   assertBudget,
@@ -96,17 +97,27 @@ export async function saveNote(
   ctx: MutationCtx,
   note: Doc<'gmNotes'>,
   expectedVersion: number,
-  body: string
+  body: string,
+  bodyFormat?: 'plain' | 'markdown-v1'
 ) {
   assertVersion(note.version, expectedVersion)
   if (!gmNote.safeParse(body).success)
     throw new ConvexError({ code: 'INVALID_INPUT' })
-  const previousBody = await noteBody(ctx, note)
+  if (bodyFormat !== undefined && !gmBodyFormat.safeParse(bodyFormat).success)
+    throw new ConvexError({ code: 'INVALID_INPUT' })
+  const previous = await noteValue(ctx, note)
+  const format = bodyFormat ?? previous.bodyFormat
   const normalized = await convertNote(ctx, note)
-  if (body === previousBody) return note.version
+  if (body === previous.body && format === previous.bodyFormat)
+    return note.version
   await limitUserOperation(ctx, 'gmEditorWrite', note.ownerId)
-  await recordHistory(ctx, note, { kind: 'note', body: previousBody })
-  await writeContent(ctx, { ...normalized, updatedAt: Date.now() }, body)
+  await recordHistory(ctx, note, { kind: 'note', ...previous })
+  await writeContent(
+    ctx,
+    { ...normalized, updatedAt: Date.now() },
+    body,
+    format
+  )
   await ctx.db.patch('gmNotes', note._id, {
     version: note.version + 1,
     updatedAt: Date.now(),

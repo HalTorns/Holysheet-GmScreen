@@ -183,6 +183,30 @@ test('password registration, project, folder and Screen survive reload, synchron
     await page.goto(kindsScreenUrl)
     await waitForHydration(page)
     await verifyWidgetKinds(page, secondPage, client)
+    const restoreSource = await client.query(api.gm.getScreen, {
+      id: kindsScreenUrl.split('/').at(-1) ?? '',
+    })
+    if (!restoreSource) throw new Error('Missing restore Screen')
+    const richScreen = await client.mutation(api.gm.createScreen, {
+      projectId: restoreSource.screen.projectId,
+      title: 'Restauration riche',
+      format: 'digital',
+    })
+    const richNote = await client.mutation(api.gm.addNote, {
+      screenId: richScreen,
+    })
+    await client.mutation(api.gm.updateNote, {
+      id: richNote,
+      expectedVersion: 0,
+      body: '# brut',
+      bodyFormat: 'plain',
+    })
+    await client.mutation(api.gm.updateNote, {
+      id: richNote,
+      expectedVersion: 1,
+      body: '**riche restauré**',
+      bodyFormat: 'markdown-v1',
+    })
     const report = await verifyLocalRestore()
     expect(report.widgetRelations).toMatchObject({
       valid: true,
@@ -196,6 +220,8 @@ test('password registration, project, folder and Screen survive reload, synchron
       report.widgetRelations.nonEmptyNotes,
       report.widgetRelations.trashed,
       report.widgetRelations.revisions,
+      report.widgetRelations.richNotes,
+      report.widgetRelations.plainNoteRevisions,
     ])
       expect(count).toBeGreaterThan(0)
     for (const table of gmTables)

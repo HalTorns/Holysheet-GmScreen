@@ -128,5 +128,5 @@ it('refuses anonymous and foreign paginated metadata and single payload access',
   }
   expect(
     await alice.client.query(api.gmWidgets.getNoteContent, { id })
-  ).toEqual({ body: '', version: 0 })
+  ).toEqual({ body: '', bodyFormat: 'plain', version: 0 })
 })

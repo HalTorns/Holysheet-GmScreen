@@ -43,8 +43,10 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Vérifier types, Oxlint, Oxfmt, Knip, Vitest navigateur et build
         run: pnpm check
+      - name: Mesurer le rendu riche de production sur Chromium
+        run: node scripts/measure-rich-text.mjs --render-only
       - name: Parcours Holysheet et sécurité HTTP sur le serveur construit
-        run: pnpm test:e2e:ci tests/e2e/holysheet.spec.ts tests/e2e/widget-budgets.spec.ts
+        run: pnpm test:e2e:ci tests/e2e/holysheet.spec.ts tests/e2e/widget-budgets.spec.ts tests/e2e/rich-text.spec.ts
       - name: Arrêter les services
         if: always()
         run: pnpm services:down

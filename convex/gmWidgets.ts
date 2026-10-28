@@ -20,6 +20,7 @@ import {
   normalizeLayout,
   normalizePlacement,
   noteBody,
+  noteValue,
   writeContent,
   requireMigratedScreen,
   widgetBudget,
@@ -33,6 +34,7 @@ import {
   trashWidgetValidator,
   sheetKindValidator,
   sheetFieldValidator,
+  bodyFormatValidator,
 } from './lib/gmValidators'
 import { saveWidget } from './lib/gmWidgetState'
 import { createNote } from './lib/gmWidgetWriting'
@@ -135,12 +137,15 @@ export const changeNotes = mutation({
         })
         const copy = await ctx.db.get('gmNotes', id)
         if (!copy) throw new ConvexError({ code: 'NOT_FOUND' })
-        if (normalizeWidget(note).kind === 'note')
+        if (normalizeWidget(note).kind === 'note') {
+          const content = await noteValue(ctx, note)
           await writeContent(
             ctx,
             widgetBudget(normalizeWidget(copy)),
-            await noteBody(ctx, note)
+            content.body,
+            content.bodyFormat
           )
+        }
         created.set(note._id, id)
       } else {
         const trashPlacements = profiles.flatMap((profile) =>
@@ -369,11 +374,15 @@ export const listScreenWidgets = query({
 })
 export const getNoteContent = query({
   args: { id: v.id('gmNotes') },
-  returns: v.object({ body: v.string(), version: v.number() }),
+  returns: v.object({
+    body: v.string(),
+    bodyFormat: bodyFormatValidator,
+    version: v.number(),
+  }),
   handler: async (ctx, { id }) => {
     const user = await requireUser(ctx)
     const note = await ownedNote(ctx, id, user._id)
-    return { body: await noteBody(ctx, note), version: note.version }
+    return { ...(await noteValue(ctx, note)), version: note.version }
   },
 })
 
@@ -404,7 +413,13 @@ export const updateWidget = mutation({
     if (input.kind === 'note') {
       if (normalizeWidget(widget).kind !== 'note')
         throw new ConvexError({ code: 'INVALID_INPUT' })
-      return saveNote(ctx, widget, expectedVersion, input.body)
+      return saveNote(
+        ctx,
+        widget,
+        expectedVersion,
+        input.body,
+        input.bodyFormat
+      )
     }
     return saveWidget(ctx, widget, expectedVersion, input)
   },

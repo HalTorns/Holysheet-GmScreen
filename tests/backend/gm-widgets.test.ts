@@ -536,7 +536,7 @@ it('copies twenty full payloads with eight full histories and cleans all heavy t
   for (const id of copies)
     expect(
       await alice.client.query(api.gmWidgets.getNoteContent, { id })
-    ).toEqual({ version: 0, body: '界'.repeat(50_000) })
+    ).toEqual({ version: 0, body: '界'.repeat(50_000), bodyFormat: 'plain' })
   for (const collection of [
     'gmNotes',
     'gmWidgetContents',

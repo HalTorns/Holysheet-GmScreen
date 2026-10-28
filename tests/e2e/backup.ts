@@ -15,6 +15,8 @@ const reportSchema = z.object({
     availableCounters: z.number().int().nonnegative(),
     checkedItems: z.number().int().nonnegative(),
     kinds: z.array(z.string()),
+    richNotes: z.number().int().nonnegative(),
+    plainNoteRevisions: z.number().int().nonnegative(),
     payloads: z.number().int().nonnegative(),
     nonEmptyNotes: z.number().int().nonnegative(),
     trashed: z.number().int().nonnegative(),
