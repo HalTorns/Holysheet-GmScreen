@@ -72,3 +72,10 @@
 - **T2** (Codex, exec direct sans sandbox) : `docs/AUDIT.md` (27 constats : 1 bloquant, 8 majeurs, 18 mineurs) et `scripts/audit/convex-inventory.mjs` (`pnpm audit:convex`, contrôle A6 durable) (`0bd7b8a`). Vérifié par Claude : AUD-02 reproduit dans le code, inventaire exit 0, et l'inventaire détecte bien une fonction publique ajoutée sans ligne d'audit.
 - Décision : l'utilisateur délègue les choix à Claude et demande d'économiser le quota Codex → Claude code T3, Codex garde la review de plan et l'inspection finale.
 - **T3** (Claude, auteur) : correctif AUD-02 — `account.exportApplicationEvents` (paginé `by_actor`, 100 max, événement + date), ajout `applicationEvents` au téléchargement, test `tests/backend/account-events.test.ts` ; inventaire et AUD-02 mis à jour dans l'audit. `pnpm check` : 146 + 7 tests verts. Constats majeurs et décisions de dette : planifiés (voir `docs/AUDIT.md`), non traités dans ce chantier.
+
+## Tranche C1 — consolidation (2026-10-28)
+
+- Plan `docs/PLAN-C1.md` (Claude). Review Codex ciblée, 1 round, session neuve : **REVISE**, 3 constats acceptés — C1-01 (exiger 200 + contenu de `/robots.txt`, arrêt garanti du conteneur), C1-02 (vérifier `node --version` de l'image contre `.node-version`), C1-03 (réécrire les liens sortants des docs archivées). Le garde d'empreinte a signalé une modification : elle vient de Claude (création de branche + commit L1 pendant la review), pas du reviewer.
+- L2 révisé après mesure : contention générale, pas de test lourd isolé → `testTimeout` 15 s documenté, sans retry.
+- Pas de second round de review du plan (économie du quota Codex, changements uniquement restrictifs) : l'inspection finale couvre la tranche. SHA256 du plan révisé : `343d3c3e228e303191ef81661ec3cbd9f6f8aebcb71ce55fed63819d7ddb8c38`.
+- L1 : `tests/backend/gm-access.test.ts` (4 tests) ; contrôle par mutation : retrait du contrôle `ownedScreen` de `setLayoutLocked` → échec du test, puis restauration.
