@@ -2,9 +2,9 @@ import { api } from '@convex/_generated/api'
 import type { Doc } from '@convex/_generated/dataModel'
 import type { Widget } from '@convex/lib/gmFormats'
 import { rollDice } from '@shared/dice'
-import { gmWidgetLabels } from '@shared/gm'
-import { Link } from '@tanstack/react-router'
-import { useMutation } from 'convex/react'
+import { gmSheetKindLabels, gmWidgetLabels } from '@shared/gm'
+import { CatchBoundary, Link } from '@tanstack/react-router'
+import { useMutation, useQuery } from 'convex/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { DraftGuard } from '@/components/draft-guard'
@@ -75,6 +75,7 @@ function WidgetStatic({
         {counterSource(widget, variables)?.value ?? 'Variable indisponible'}
       </p>
     )
+  if (widget.kind === 'sheet') return <SheetPreview widget={widget} />
   return <p>{widget.config.expression} · Résultat indisponible</p>
 }
 export function WidgetContent(props: Props) {
@@ -83,7 +84,9 @@ export function WidgetContent(props: Props) {
   if (props.readOnly)
     return (
       <div>
-        <h3>{note.config.title || gmWidgetLabels[note.kind]}</h3>
+        {note.kind !== 'sheet' && (
+          <h3>{note.config.title || gmWidgetLabels[note.kind]}</h3>
+        )}
         <WidgetStatic widget={note} variables={variables} />
       </div>
     )
@@ -114,6 +117,16 @@ function TypedWidgetEditor({
           },
         })
       if (value.kind === 'counter')
+        return update({
+          id: widget._id,
+          expectedVersion,
+          widget: {
+            kind: value.kind,
+            config: value.config,
+            state: value.state,
+          },
+        })
+      if (value.kind === 'sheet')
         return update({
           id: widget._id,
           expectedVersion,
@@ -185,6 +198,8 @@ function TypedWidgetEditor({
       editor.edit({ ...current, config: { ...current.config, title: value } })
     else if (current.kind === 'counter')
       editor.edit({ ...current, config: { ...current.config, title: value } })
+    else if (current.kind === 'sheet')
+      editor.edit({ ...current, config: { ...current.config, title: value } })
     else
       editor.edit({ ...current, config: { ...current.config, title: value } })
   }
@@ -240,6 +255,21 @@ function TypedWidgetEditor({
           onChange={(event) => editTitle(event.target.value)}
         />
       </label>
+      {current.kind === 'sheet' && (
+        <>
+          <SheetPreview widget={widget.kind === 'sheet' ? widget : current} />
+          <CatchBoundary
+            getResetKey={() => current.config.sheetId ?? ''}
+            errorComponent={SheetSearchError}
+          >
+            <SheetSettings
+              widget={current}
+              disabled={locked || pending || readOnly || editor.pending}
+              onEdit={(value) => editor.edit(value)}
+            />
+          </CatchBoundary>
+        </>
+      )}
       {current.kind === 'checklist' && (
         <>
           <ul>
@@ -650,4 +680,154 @@ function TypedWidgetEditor({
       />
     </div>
   )
+}
+
+type SheetWidget = Extract<Widget, { kind: 'sheet' }>
+function SheetPreview({ widget }: { widget: SheetWidget }) {
+  return (
+    <CatchBoundary
+      getResetKey={() => `${widget._id}:${widget.version}`}
+      errorComponent={SheetContentError}
+    >
+      <ResolvedSheet widget={widget} />
+    </CatchBoundary>
+  )
+}
+function ResolvedSheet({ widget }: { widget: SheetWidget }) {
+  const preview = useQuery(api.gmWidgets.getSheetPreview, {
+    widgetId: widget._id,
+  })
+  if (!preview) return <p role="status">Chargement de la fiche…</p>
+  if (preview.status === 'missing')
+    return (
+      <p>
+        {widget.config.sheetId ? 'Fiche indisponible' : 'Choisir une fiche'}
+      </p>
+    )
+  return (
+    <div>
+      <p>{gmSheetKindLabels[preview.sheet.kind]}</p>
+      <h3>{widget.config.title || preview.sheet.title}</h3>
+      <p>{preview.sheet.summary}</p>
+      {preview.fields && (
+        <dl>
+          {preview.fields.map((field, index) => (
+            <div key={`${field.label}-${index}`}>
+              <dt>{field.label}</dt>
+              <dd>{field.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {preview.body !== undefined && (
+        <p className="whitespace-pre-wrap">{preview.body}</p>
+      )}
+      <Link to="/app/sheets/$sheetId" params={{ sheetId: preview.sheet._id }}>
+        Ouvrir la fiche
+      </Link>
+    </div>
+  )
+}
+function SheetSettings({
+  widget,
+  disabled,
+  onEdit,
+}: {
+  widget: SheetWidget
+  disabled: boolean
+  onEdit: (value: SheetWidget) => void
+}) {
+  const [text, setText] = useState('')
+  const results = useQuery(api.gmSheets.searchSheets, {
+    projectId: widget.projectId,
+    text,
+  })
+  const sheet = useQuery(
+    api.gmSheets.getSheet,
+    widget.config.sheetId ? { id: widget.config.sheetId } : 'skip'
+  )
+  const labels = [...new Set(sheet?.fields.map((field) => field.label))]
+  return (
+    <>
+      <label>
+        Rechercher une fiche
+        <input
+          value={text}
+          disabled={disabled}
+          maxLength={100}
+          onChange={(event) => setText(event.target.value)}
+        />
+      </label>
+      {results?.map((result) => (
+        <Button
+          key={result._id}
+          disabled={disabled}
+          onClick={() =>
+            onEdit({
+              ...widget,
+              config: {
+                ...widget.config,
+                sheetId: result._id,
+                fieldLabels: [],
+              },
+            })
+          }
+        >
+          Afficher « {result.title} »
+        </Button>
+      ))}
+      <label>
+        Affichage de la fiche
+        <select
+          value={widget.config.display}
+          disabled={disabled}
+          onChange={(event) => {
+            const display = event.target.value
+            if (
+              display === 'summary' ||
+              display === 'fields' ||
+              display === 'full'
+            )
+              onEdit({ ...widget, config: { ...widget.config, display } })
+          }}
+        >
+          <option value="summary">Résumé</option>
+          <option value="fields">Champs</option>
+          <option value="full">Complet</option>
+        </select>
+      </label>
+      {widget.config.display !== 'summary' && (
+        <fieldset disabled={disabled}>
+          <legend>Champs affichés (aucune sélection : tous)</legend>
+          {labels.map((label) => (
+            <label key={label}>
+              <input
+                type="checkbox"
+                checked={widget.config.fieldLabels.includes(label)}
+                onChange={(event) => {
+                  const fieldLabels = event.target.checked
+                    ? [...widget.config.fieldLabels, label]
+                    : widget.config.fieldLabels.filter(
+                        (entry) => entry !== label
+                      )
+                  onEdit({
+                    ...widget,
+                    config: { ...widget.config, fieldLabels },
+                  })
+                }}
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+      )}
+    </>
+  )
+}
+
+function SheetSearchError() {
+  return <p role="alert">Recherche de fiche indisponible.</p>
+}
+function SheetContentError() {
+  return <p role="alert">Le contenu de cette fiche est indisponible.</p>
 }

@@ -12,6 +12,7 @@ type Definition =
   | Pick<Extract<Widget, { kind: 'checklist' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'counter' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'dice' }>, 'kind' | 'config' | 'state'>
+  | Pick<Extract<Widget, { kind: 'sheet' }>, 'kind' | 'config' | 'state'>
 
 export async function saveWidget(
   ctx: MutationCtx,
@@ -34,6 +35,8 @@ export async function saveWidget(
   if (input.kind === 'checklist')
     definition = { kind: input.kind, config: input.config, state: input.state }
   else if (input.kind === 'counter')
+    definition = { kind: input.kind, config: input.config, state: input.state }
+  else if (input.kind === 'sheet')
     definition = { kind: input.kind, config: input.config, state: input.state }
   else
     definition = { kind: input.kind, config: input.config, state: input.state }
@@ -94,6 +97,16 @@ export async function saveWidget(
     )
       throw new ConvexError({ code: 'INVALID_INPUT' })
   }
+  if (definition.kind === 'sheet' && definition.config.sheetId) {
+    const sheet = await ctx.db.get('gmSheets', definition.config.sheetId)
+    if (
+      !sheet ||
+      sheet.ownerId !== widget.ownerId ||
+      sheet.projectId !== widget.projectId ||
+      sheet.deletedAt !== undefined
+    )
+      throw new ConvexError({ code: 'NOT_FOUND' })
+  }
   const updated = widgetBudget({
     ...widget,
     ...definition,
@@ -116,6 +129,12 @@ export async function saveWidget(
       state: widget.state,
     })
   else if (widget.kind === 'counter')
+    await recordHistory(ctx, widget, {
+      kind: widget.kind,
+      config: widget.config,
+      state: widget.state,
+    })
+  else if (widget.kind === 'sheet')
     await recordHistory(ctx, widget, {
       kind: widget.kind,
       config: widget.config,

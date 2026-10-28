@@ -247,4 +247,41 @@ export async function verifyWidgetKinds(
       )
     })
     .toBe(true)
+  // F1 runs before this scenario, in the same project. Keep earlier widget indices stable.
+  await add('sheet')
+  const sheetWidget = page.getByRole('region', {
+    name: 'Widget fiche 6',
+    exact: true,
+  })
+  await expect(sheetWidget).toContainText('Choisir une fiche')
+  await sheetWidget
+    .getByLabel('Rechercher une fiche', { exact: true })
+    .fill('Aubergiste')
+  await sheetWidget
+    .getByRole('button', { name: 'Afficher « Aubergiste »', exact: true })
+    .click()
+  await sheetWidget
+    .getByRole('button', { name: 'Enregistrer le widget', exact: true })
+    .click()
+  await expect(sheetWidget).toContainText('Sait tout sur tout le monde')
+  const sheetUrl = await sheetWidget
+    .getByRole('link', { name: 'Ouvrir la fiche', exact: true })
+    .getAttribute('href')
+  if (!sheetUrl) throw new Error('Missing linked sheet')
+  await other.goto(sheetUrl)
+  await other
+    .getByLabel('Résumé', { exact: true })
+    .fill('Connaît le passage secret')
+  await other
+    .getByRole('button', { name: 'Enregistrer la fiche', exact: true })
+    .click()
+  await expect(
+    other.getByRole('button', { name: 'Enregistrer la fiche', exact: true })
+  ).toBeDisabled()
+  await expect(sheetWidget).toContainText('Connaît le passage secret')
+  await page.getByRole('button', { name: 'Lecture seule', exact: true }).click()
+  await expect(sheetWidget).toContainText('Connaît le passage secret')
+  await expect(
+    sheetWidget.getByRole('link', { name: 'Ouvrir la fiche', exact: true })
+  ).toBeVisible()
 }

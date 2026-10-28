@@ -65,7 +65,8 @@ export const widgetKindValidator = v.union(
   v.literal('note'),
   v.literal('checklist'),
   v.literal('counter'),
-  v.literal('dice')
+  v.literal('dice'),
+  v.literal('sheet')
 )
 const checklistShape = {
   kind: v.literal('checklist'),
@@ -95,6 +96,20 @@ const counterShape = {
   }),
   state: v.union(v.object({ value: v.number() }), v.object({})),
 }
+const sheetShape = {
+  kind: v.literal('sheet'),
+  config: v.object({
+    title: v.string(),
+    sheetId: v.optional(v.id('gmSheets')),
+    display: v.union(
+      v.literal('summary'),
+      v.literal('fields'),
+      v.literal('full')
+    ),
+    fieldLabels: v.array(v.string()),
+  }),
+  state: v.object({}),
+}
 const diceShape = {
   kind: v.literal('dice'),
   config: v.object({ title: v.string(), expression: v.string() }),
@@ -109,7 +124,8 @@ export const widgetUpdateValidator = v.union(
   }),
   v.object({ ...checklistShape }),
   v.object({ ...counterShape }),
-  v.object({ ...diceShape })
+  v.object({ ...diceShape }),
+  v.object(sheetShape)
 )
 const v2Common = { ...noteCommon, formatVersion: v.literal(2) }
 export const noteFields = v.union(
@@ -117,14 +133,16 @@ export const noteFields = v.union(
   v.object(noteV2),
   v.object({ ...v2Common, ...checklistShape }),
   v.object({ ...v2Common, ...counterShape }),
-  v.object({ ...v2Common, ...diceShape })
+  v.object({ ...v2Common, ...diceShape }),
+  v.object({ ...v2Common, ...sheetShape })
 )
 const noteSystem = { _id: v.id('gmNotes'), _creationTime: v.number() }
 export const widgetValidator = v.union(
   v.object({ ...noteSystem, ...noteV2 }),
   v.object({ ...noteSystem, ...v2Common, ...checklistShape }),
   v.object({ ...noteSystem, ...v2Common, ...counterShape }),
-  v.object({ ...noteSystem, ...v2Common, ...diceShape })
+  v.object({ ...noteSystem, ...v2Common, ...diceShape }),
+  v.object({ ...noteSystem, ...v2Common, ...sheetShape })
 )
 const noteValidator = v.union(
   v.object({ ...noteSystem, ...noteV1 }),
@@ -144,7 +162,8 @@ export const trashWidgetValidator = v.union(
     ...counterShape,
     preview: v.string(),
   }),
-  v.object({ ...noteSystem, ...v2Common, ...diceShape, preview: v.string() })
+  v.object({ ...noteSystem, ...v2Common, ...diceShape, preview: v.string() }),
+  v.object({ ...noteSystem, ...v2Common, ...sheetShape, preview: v.string() })
 )
 export const widgetContentFields = {
   ...owned,
@@ -209,6 +228,7 @@ const historyV2 = {
     v.object(checklistShape),
     v.object(counterShape),
     v.object(diceShape),
+    v.object(sheetShape),
     v.object({ kind: v.literal('layout'), ...digitalV2 })
   ),
 }

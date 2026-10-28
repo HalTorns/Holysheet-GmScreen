@@ -31,6 +31,8 @@ import {
   widgetKindValidator,
   widgetUpdateValidator,
   trashWidgetValidator,
+  sheetKindValidator,
+  sheetFieldValidator,
 } from './lib/gmValidators'
 import { saveWidget } from './lib/gmWidgetState'
 import { createNote } from './lib/gmWidgetWriting'
@@ -376,11 +378,17 @@ export const getNoteContent = query({
 })
 
 export const addWidget = mutation({
-  args: { screenId: v.id('gmScreens'), kind: widgetKindValidator },
+  args: {
+    screenId: v.id('gmScreens'),
+    kind: widgetKindValidator,
+    sheetId: v.optional(v.id('gmSheets')),
+  },
   returns: v.id('gmNotes'),
-  handler: async (ctx, { screenId, kind }) => {
+  handler: async (ctx, { screenId, kind, sheetId }) => {
     const user = await requireUser(ctx)
-    return createNote(ctx, screenId, user._id, kind)
+    if (sheetId && kind !== 'sheet')
+      throw new ConvexError({ code: 'INVALID_INPUT' })
+    return createNote(ctx, screenId, user._id, kind, sheetId)
   },
 })
 export const updateWidget = mutation({
@@ -448,6 +456,8 @@ function widgetDefinition(widget: Widget) {
     return { kind: widget.kind, config: widget.config, state: widget.state }
   if (widget.kind === 'checklist')
     return { kind: widget.kind, config: widget.config, state: widget.state }
+  if (widget.kind === 'sheet')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
   if (widget.kind === 'counter')
     return { kind: widget.kind, config: widget.config, state: widget.state }
   return { kind: widget.kind, config: widget.config, state: widget.state }
@@ -456,3 +466,68 @@ function widgetPreview(widget: Widget) {
   if (widget.kind === 'note') return ''
   return widget.config.title || widget.kind
 }
+
+export const getSheetPreview = query({
+  args: { widgetId: v.id('gmNotes') },
+  returns: v.union(
+    v.object({ status: v.literal('missing') }),
+    v.object({
+      status: v.literal('ok'),
+      sheet: v.object({
+        _id: v.id('gmSheets'),
+        kind: sheetKindValidator,
+        title: v.string(),
+        summary: v.string(),
+      }),
+      fields: v.optional(v.array(sheetFieldValidator)),
+      body: v.optional(v.string()),
+    })
+  ),
+  handler: async (ctx, { widgetId }) => {
+    const user = await requireUser(ctx)
+    const widget = normalizeWidget(await ownedNote(ctx, widgetId, user._id))
+    if (widget.kind !== 'sheet')
+      throw new ConvexError({ code: 'INVALID_INPUT' })
+    const sheet = widget.config.sheetId
+      ? await ctx.db.get('gmSheets', widget.config.sheetId)
+      : null
+    if (
+      !sheet ||
+      sheet.ownerId !== user._id ||
+      sheet.projectId !== widget.projectId ||
+      sheet.deletedAt !== undefined
+    )
+      return { status: 'missing' as const }
+    const metadata = {
+      _id: sheet._id,
+      kind: sheet.kind,
+      title: sheet.title,
+      summary: sheet.summary,
+    }
+    if (widget.config.display === 'summary')
+      return { status: 'ok' as const, sheet: metadata }
+    const content = await ctx.db
+      .query('gmSheetContents')
+      .withIndex('by_sheet', (q) => q.eq('sheetId', sheet._id))
+      .unique()
+    if (
+      !content ||
+      content.ownerId !== user._id ||
+      content.projectId !== widget.projectId
+    )
+      return { status: 'missing' as const }
+    const fields = content.fields.filter(
+      (field) =>
+        widget.config.fieldLabels.length === 0 ||
+        widget.config.fieldLabels.includes(field.label)
+    )
+    if (widget.config.display === 'full')
+      return {
+        status: 'ok' as const,
+        sheet: metadata,
+        fields,
+        body: content.body,
+      }
+    return { status: 'ok' as const, sheet: metadata, fields }
+  },
+})

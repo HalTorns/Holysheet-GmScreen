@@ -19,9 +19,20 @@ export async function createNote(
   ctx: MutationCtx,
   screenId: Id<'gmScreens'>,
   ownerId: string,
-  kind: (typeof gmWidgetKinds)[number] = 'note'
+  kind: (typeof gmWidgetKinds)[number] = 'note',
+  sheetId?: Id<'gmSheets'>
 ) {
   const screen = await ownedScreen(ctx, screenId, ownerId)
+  if (sheetId) {
+    const sheet = await ctx.db.get('gmSheets', sheetId)
+    if (
+      !sheet ||
+      sheet.ownerId !== ownerId ||
+      sheet.projectId !== screen.projectId ||
+      sheet.deletedAt !== undefined
+    )
+      throw new ConvexError({ code: 'NOT_FOUND' })
+  }
   await requireMigratedScreen(ctx, screenId)
   if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
   const notes = await ctx.db
@@ -33,12 +44,15 @@ export async function createNote(
   if (notes.length >= GM_MAX_NOTES)
     throw new ConvexError({ code: 'SCREEN_LIMIT' })
   await limitUserOperation(ctx, 'resourceWrite', ownerId)
+  const definition = initialWidget(kind)
+  if (definition.kind === 'sheet' && sheetId)
+    Object.assign(definition.config, { sheetId })
   const id = await ctx.db.insert('gmNotes', {
     ownerId,
     projectId: screen.projectId,
     screenId,
     formatVersion: 2,
-    ...initialWidget(kind),
+    ...definition,
     version: 0,
     updatedAt: Date.now(),
   })

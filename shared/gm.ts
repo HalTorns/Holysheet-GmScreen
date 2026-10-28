@@ -103,12 +103,19 @@ export const gmVariableName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,39}$/)
 export const gmVariableLabel = z.string().trim().max(120)
 export const gmVariableText = z.string().max(2000)
 
-export const gmWidgetKinds = ['note', 'checklist', 'counter', 'dice'] as const
+export const gmWidgetKinds = [
+  'note',
+  'checklist',
+  'counter',
+  'dice',
+  'sheet',
+] as const
 export const gmWidgetLabels = {
   note: 'Note',
   checklist: 'Checklist',
   counter: 'Compteur',
   dice: 'Dés',
+  sheet: 'Fiche',
 } as const
 const widgetTitle = z.string().max(120)
 const finiteNumber = z.number()
@@ -176,6 +183,23 @@ export const gmWidget = z
       .strict(),
     z
       .object({
+        kind: z.literal('sheet'),
+        config: z
+          .object({
+            title: widgetTitle,
+            sheetId: z.string().min(1).optional(),
+            display: z.enum(['summary', 'fields', 'full']),
+            fieldLabels: z
+              .array(z.string().min(1).max(60))
+              .max(40)
+              .refine((labels) => new Set(labels).size === labels.length),
+          })
+          .strict(),
+        state: z.object({}).strict(),
+      })
+      .strict(),
+    z
+      .object({
         kind: z.literal('dice'),
         config: z
           .object({
@@ -222,6 +246,12 @@ export function initialWidget(kind: (typeof gmWidgetKinds)[number]) {
       kind,
       config: { title: '', source: { type: 'local' as const, step: 1 } },
       state: { value: 0 },
+    }
+  if (kind === 'sheet')
+    return {
+      kind,
+      config: { title: '', display: 'summary' as const, fieldLabels: [] },
+      state: {},
     }
   if (kind === 'dice')
     return { kind, config: { title: '', expression: '1d20' }, state: {} }

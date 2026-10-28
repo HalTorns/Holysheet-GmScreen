@@ -123,3 +123,4 @@
 ## Chantier 2 — tranche F4a (widget fiche) — 2026-10-28
 
 - Plan `docs/PLAN-F4.md` (Claude) ; découpage F4a (widget fiche) et F4b (texte riche, avec ADR). **Pas de review du plan par Codex**, pour économiser son quota (54 % de la fenêtre de 5 h ; arrêt demandé par l'utilisateur à 70 %). Build par Codex dans une session neuve, inspection par Claude.
+- Build F4a (**Codex**, session neuve) : kind `sheet`, query `getSheetPreview`, interface de liaison et d'affichage, tests backend et E2E. **Inspection Claude** : propriété vérifiée sur le widget, la fiche et le contenu ; filtrage des champs côté serveur ; statut `missing` sans suppression du widget. `pnpm check` relancé par Claude : vert. Quota Codex : 61 %.
