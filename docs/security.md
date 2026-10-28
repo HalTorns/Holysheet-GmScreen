@@ -20,7 +20,7 @@ Les changements de rôles, départs et suppressions de comptes protègent le der
 
 ## Configuration à conserver
 
-Le dashboard Docker est un outil admin local, séparé du navigateur de l’application. Sa clé n’est pas injectée dans son HTML ou sa configuration publique ; le développeur la saisit et l’image officielle épinglée la conserve uniquement dans la session de l’onglet. `pnpm dashboard` la transmet au presse-papiers macOS sans l’afficher, après validation du checkout et du backend. Se déconnecter et remplacer le presse-papiers après usage. Cette clé contourne les droits métier : le dashboard ne sert pas à prouver les permissions utilisateur. Tous les services restent liés à loopback. Voir [la procédure dashboard](new-project.md#utiliser-le-dashboard).
+Le dashboard Docker est un outil admin local, séparé du navigateur de l’application. Sa clé n’est pas injectée dans son HTML ou sa configuration publique ; le développeur la saisit et l’image officielle épinglée la conserve uniquement dans la session de l’onglet. `pnpm dashboard` la transmet au presse-papiers macOS sans l’afficher, après validation du checkout et du backend. Se déconnecter et remplacer le presse-papiers après usage. Cette clé contourne les droits métier : le dashboard ne sert pas à prouver les permissions utilisateur. Tous les services restent liés à loopback. Voir [la procédure dashboard](archive/new-project.md#utiliser-le-dashboard).
 
 - Secrets du backend dans Convex. `.env.local` n’est pas versionné. `VITE_*` contient uniquement des URLs, flags, DSN Sentry publics et clés publiques de projet PostHog ; aucun secret admin, OAuth ou serveur.
 - HTTPS en production ; cookies `HttpOnly`, `Secure` et `SameSite=Lax` adaptés au même domaine.

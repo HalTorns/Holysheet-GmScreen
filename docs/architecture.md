@@ -10,7 +10,7 @@ flowchart LR
   Browser -->|WebSocket authentifié| Convex
   Auth --> Sessions[Composant local : users, sessions, passkeys]
   Convex --> Resources[Ressources privées]
-  Auth --> Email[Mailpit local ou Resend production]
+  Auth --> Email[Mailpit local ou relais SMTP en production]
 ```
 
 Le navigateur peut appeler Convex directement. Toute autorisation métier appartient donc au backend, indépendamment des routes et boutons visibles. Les fonctions SSR transmettent l’authentification du visiteur ; elles ne disposent pas d’une identité admin implicite.

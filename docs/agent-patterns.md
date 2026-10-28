@@ -4,7 +4,7 @@ Suivre le tableau de lecture d’`AGENTS.md` et le brief du produit lorsqu’il 
 
 ## Un nouveau produit
 
-Suivre [project-start.md](project-start.md) pour cadrer le MVP, remplir [product.md](product.md), décider de la propriété des données et livrer une première fonctionnalité complète. [adopting.md](adopting.md) décrit l’adaptation technique et le remplacement du domaine ressources.
+Suivre [project-start.md](archive/project-start.md) pour cadrer le MVP, remplir [product.md](product.md), décider de la propriété des données et livrer une première fonctionnalité complète. [adopting.md](adopting.md) décrit l’adaptation technique et le remplacement du domaine ressources.
 
 ## Choisir les outils du socle
 

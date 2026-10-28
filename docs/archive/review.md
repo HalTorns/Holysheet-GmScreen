@@ -1,6 +1,6 @@
 # Revue du socle — 12 octobre 2026
 
-> **Historique, non prescriptif.** Ce rapport décrit la version revue le 12 octobre 2026. Ses outils, règles d’authentification, limites et résultats ne décrivent pas nécessairement le code actuel. Pour travailler sur le socle, suivre [AGENTS.md](../AGENTS.md), [les patterns](agent-patterns.md), [les comptes](accounts.md) et [la sécurité](security.md). Les actions sensibles actuelles utilisent une preuve ponctuelle liée à la session et à l’opération ; la session récente reste réservée au support.
+> **Historique, non prescriptif.** Ce rapport décrit la version revue le 12 octobre 2026. Ses outils, règles d’authentification, limites et résultats ne décrivent pas nécessairement le code actuel. Pour travailler sur le socle, suivre [AGENTS.md](../../AGENTS.md), [les patterns](../agent-patterns.md), [les comptes](../accounts.md) et [la sécurité](../security.md). Les actions sensibles actuelles utilisent une preuve ponctuelle liée à la session et à l’opération ; la session récente reste réservée au support.
 
 La revue porte sur l’ensemble du socle local : architecture SSR et cache, auth et autorisations Convex, formulaires, accessibilité, tests, dépendances, setup Docker, CI et restauration. Trois revues indépendantes ont examiné les standards/opérations, les exigences d’adaptation et le frontend/tests ; la revue principale a vérifié les frontières de sécurité et les corrections.
 
@@ -28,7 +28,7 @@ Code concerné : `scripts/local-config.mjs`, `scripts/setup-local.mjs`, `scripts
 | Important | Ajouter un domaine n’explicitait pas sa participation à l’export et au nettoyage du compte. | Guide d’adoption avec les fichiers à modifier, règles de propriété, pagination, nettoyage par lots, migration et preuves de restauration. |
 | Amélioration | UI « Socle », noms de passkeys/emails « Boilerplate », métadonnées et formats dispersés. | `shared/app-config.ts` public et typé, partagé par UI/backend ; navigation vérifiée dans `src/config/navigation.ts`. |
 
-Le [guide d’adoption](adopting.md) décrit comment renommer le produit, remplacer la démonstration et ajouter un premier domaine complet. Le nom de présentation des passkeys est séparé du domaine/RP ID stable. Les formats et la langue déclarée ne constituent pas une traduction des écrans.
+Le [guide d’adoption](../adopting.md) décrit comment renommer le produit, remplacer la démonstration et ajouter un premier domaine complet. Le nom de présentation des passkeys est séparé du domaine/RP ID stable. Les formats et la langue déclarée ne constituent pas une traduction des écrans.
 
 ## Sécurité et interface
 
@@ -53,8 +53,8 @@ Le [bilan de vérification](verification.md) consigne les résultats des contrô
 - Les ports locaux restent fixes : un projet actif à la fois. L’isolation du stockage n’implique pas une configuration de ports simultanés.
 - L’infrastructure publique doit encore définir ses origines HTTPS, fournisseur email, supervision, sauvegardes hors serveur et frontière réseau de confiance. Le quota auth partagé limite le débit global ; un quota par IP exige une entrée impossible à contourner.
 - La première CI distante, la restauration de fichiers non vides et la reconnexion effective après restauration restent à vérifier sur leurs surfaces réelles.
-- Nitro est verrouillé sur une version bêta. Le correctif de types du provider Convex/Better Auth et le nettoyage upstream détaché des quotas sont documentés dans [Mises à jour](upgrades.md).
+- Nitro est verrouillé sur une version bêta. Le correctif de types du provider Convex/Better Auth et le nettoyage upstream détaché des quotas sont documentés dans [Mises à jour](../upgrades.md).
 - Une query dépendant de l’heure ne réévalue pas son abonnement uniquement parce que le temps passe. L’UI peut conserver une donnée déjà reçue ; une minuterie client ne constitue jamais une autorisation. Les mutations sensibles revalident la session côté serveur. Examiner ce contrat avant d’introduire des permissions à expiration ou des abonnements de données sensibles.
 - L’export actuel assemble ses pages en mémoire dans le navigateur. Pour un volume métier important, prévoir une tâche bornée et un téléchargement privé.
 
-Les ajouts prioritaires dépendent du premier produit : organisations et permissions pour une application partagée ; supervision et sauvegardes durables pour une ouverture publique. Paiements, fichiers, IA et traduction complète s’ajoutent avec un parcours réel et les règles du [guide des modules](modules.md).
+Les ajouts prioritaires dépendent du premier produit : organisations et permissions pour une application partagée ; supervision et sauvegardes durables pour une ouverture publique. Paiements, fichiers, IA et traduction complète s’ajoutent avec un parcours réel et les règles du [guide des modules](../modules.md).

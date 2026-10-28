@@ -4,9 +4,9 @@ Ce guide s’adresse au développeur et aux agents de code. L’objectif est de 
 
 ## 1. Comprendre le produit et conserver les décisions
 
-Lire `AGENTS.md`, `README.md`, [architecture.md](architecture.md), [security.md](security.md) et [la carte des outils](agent-patterns.md#choisir-les-outils-du-socle). Examiner `package.json`, le lockfile, `shared/app-config.ts` et le parcours ressources avant de choisir une implémentation.
+Lire `AGENTS.md`, `README.md`, [architecture.md](../architecture.md), [security.md](../security.md) et [la carte des outils](../agent-patterns.md#choisir-les-outils-du-socle). Examiner `package.json`, le lockfile, `shared/app-config.ts` et le parcours ressources avant de choisir une implémentation.
 
-Compléter [docs/product.md](product.md) dans le nouveau projet à partir de la demande : problème, utilisateurs, parcours principal, critère de réussite, MVP, hors périmètre et contraintes connues. Identifier les domaines par leur responsabilité métier, avec leurs données, invariants, droits et cycle de vie. Ne pas produire une architecture générique à partir du seul mot « SaaS ».
+Compléter [docs/product.md](../product.md) dans le nouveau projet à partir de la demande : problème, utilisateurs, parcours principal, critère de réussite, MVP, hors périmètre et contraintes connues. Identifier les domaines par leur responsabilité métier, avec leurs données, invariants, droits et cycle de vie. Ne pas produire une architecture générique à partir du seul mot « SaaS ».
 
 Réutiliser les informations déjà données. Poser une question ciblée si une inconnue change les droits, les données ou le premier résultat ; avancer sur les travaux indépendants. Pour les choix réversibles, retenir une hypothèse raisonnable et l’écrire. Cette étape ne demande pas une approbation systématique d’un document ou d’un plan.
 
@@ -57,7 +57,7 @@ Ne pas créer une couche de permissions générique ou installer un module de pa
 
 ## Appliquer et faire évoluer le choix
 
-Pour le personnel, conserver les données liées à l’ID stable du compte, avec index par propriétaire, export et nettoyage de compte. Pour les organisations, suivre [le guide du module](organizations.md) : activation backend sur l’environnement choisi, index de tenant et contrôle de membership/permission pour chaque accès. Les permissions effectives restent dans Convex.
+Pour le personnel, conserver les données liées à l’ID stable du compte, avec index par propriétaire, export et nettoyage de compte. Pour les organisations, suivre [le guide du module](../organizations.md) : activation backend sur l’environnement choisi, index de tenant et contrôle de membership/permission pour chaque accès. Les permissions effectives restent dans Convex.
 
 Pour une application existante, examiner sa décision, sa configuration et ses données avant de proposer un changement. Préserver son mode jusqu’à ce que la modification fasse partie du travail demandé. Activer le module ne transfère aucune donnée personnelle ; le désactiver ne supprime pas les données d’équipe et ne libère pas le dernier propriétaire. Un transfert de propriété demande une migration bornée, sauvegardée et vérifiée, ainsi qu’un choix explicite des droits et du devenir des données.
 
@@ -65,19 +65,19 @@ Les tests E2E ordinaires suivent les capacités réelles du backend. `pnpm test:
 
 ## 3. Choisir les outils et les modules nécessaires
 
-Pour chaque besoin du MVP, choisir d’abord l’outil et l’exemple de [agent-patterns.md](agent-patterns.md#choisir-les-outils-du-socle). Conserver Start pour les routes/SSR, Convex pour le métier et les droits, Query pour les données serveur, Form/Zod pour les formulaires et les composants shadcn sur Base UI pour l’interface. PostgreSQL est le moteur interne de Convex ; ne pas créer d’accès métier SQL parallèle.
+Pour chaque besoin du MVP, choisir d’abord l’outil et l’exemple de [agent-patterns.md](../agent-patterns.md#choisir-les-outils-du-socle). Conserver Start pour les routes/SSR, Convex pour le métier et les droits, Query pour les données serveur, Form/Zod pour les formulaires et les composants shadcn sur Base UI pour l’interface. PostgreSQL est le moteur interne de Convex ; ne pas créer d’accès métier SQL parallèle.
 
-Lire [modules.md](modules.md), puis noter dans le brief les modules retenus, leur raison et ceux différés. Organisations, paiements, IA, stockage externe et observabilité répondent à des besoins explicites. Une dépendance présente peut rester désactivée ; ne pas supprimer son schéma d’auth ou ses données sans migration. Les origines, secrets et flags privés sont configurés par environnement, hors du brief et de `appConfig`.
+Lire [modules.md](../modules.md), puis noter dans le brief les modules retenus, leur raison et ceux différés. Organisations, paiements, IA, stockage externe et observabilité répondent à des besoins explicites. Une dépendance présente peut rester désactivée ; ne pas supprimer son schéma d’auth ou ses données sans migration. Les origines, secrets et flags privés sont configurés par environnement, hors du brief et de `appConfig`.
 
-Les versions installées et [leurs correctifs](upgrades.md) guident les recherches Context7. Une recommandation trouvée dans les dernières docs ne déclenche pas une migration de stack.
+Les versions installées et [leurs correctifs](../upgrades.md) guident les recherches Context7. Une recommandation trouvée dans les dernières docs ne déclenche pas une migration de stack.
 
 ## 4. Définir puis livrer une première fonctionnalité complète
 
 Choisir le plus petit parcours qui donne un résultat utile à l’utilisateur. Écrire dans le brief un scénario accepté et un refus/échec significatif avec leurs résultats observables. Par exemple, pour un produit de suivi individuel : créer puis retrouver une tâche après reload, avec refus de lecture depuis un autre compte.
 
-Décrire les tables/indexes, queries/mutations, interface, route et conséquences sur export/suppression/restauration. Utiliser l’organisation de [architecture.md](architecture.md) : `convex/<domaine>.ts`, règles spécifiques dans `convex/lib/`, contraintes partagées dans `shared/`, interface dans `src/features/<domaine>/`, routes fines dans `src/routes/`. Ajouter des sous-dossiers ou abstractions lorsque le domaine les justifie.
+Décrire les tables/indexes, queries/mutations, interface, route et conséquences sur export/suppression/restauration. Utiliser l’organisation de [architecture.md](../architecture.md) : `convex/<domaine>.ts`, règles spécifiques dans `convex/lib/`, contraintes partagées dans `shared/`, interface dans `src/features/<domaine>/`, routes fines dans `src/routes/`. Ajouter des sous-dossiers ou abstractions lorsque le domaine les justifie.
 
-Suivre [adopting.md](adopting.md#ajouter-une-fonctionnalité-complète) pour l’implémentation et le retrait progressif de la démonstration. Garder les preuves transverses d’authentification, d’isolation et de cycle de vie. Choisir les contrôles dans [la matrice de validation](agent-patterns.md#choisir-les-vérifications), puis rapporter les résultats réellement exécutés et les limites.
+Suivre [adopting.md](../adopting.md#ajouter-une-fonctionnalité-complète) pour l’implémentation et le retrait progressif de la démonstration. Garder les preuves transverses d’authentification, d’isolation et de cycle de vie. Choisir les contrôles dans [la matrice de validation](../agent-patterns.md#choisir-les-vérifications), puis rapporter les résultats réellement exécutés et les limites.
 
 ## 5. Permettre la reprise du projet
 

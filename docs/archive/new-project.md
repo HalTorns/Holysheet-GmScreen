@@ -59,9 +59,9 @@ Le dashboard reçoit uniquement l’URL publique du backend via Docker. La clé 
 
 ## Personnaliser avant le premier domaine
 
-1. Suivre [le guide de démarrage produit](project-start.md) : renseigner [le brief](product.md), délimiter le MVP et les domaines, décider de leur propriété dans `docs/decisions/access-model.md` et définir le premier parcours avec ses critères d’acceptation. Utiliser [les outils et exemples du socle](agent-patterns.md#choisir-les-outils-du-socle).
-2. Modifier le `name` de `package.json`, puis l’identité publique dans `shared/app-config.ts` : nom, marque, description, formats et préfixe d’export. Adapter écrans, navigation et styles selon [le guide d’adoption](adopting.md).
-3. Pour des données réellement partagées entre équipes, activer `ORGANIZATIONS_ENABLED=true` dans les variables du **backend de ce projet**, selon [le module organisations](organizations.md). Ne pas transformer ce réglage en flag public `VITE_*`.
+1. Suivre [le guide de démarrage produit](project-start.md) : renseigner [le brief](../product.md), délimiter le MVP et les domaines, décider de leur propriété dans `docs/decisions/access-model.md` et définir le premier parcours avec ses critères d’acceptation. Utiliser [les outils et exemples du socle](../agent-patterns.md#choisir-les-outils-du-socle).
+2. Modifier le `name` de `package.json`, puis l’identité publique dans `shared/app-config.ts` : nom, marque, description, formats et préfixe d’export. Adapter écrans, navigation et styles selon [le guide d’adoption](../adopting.md).
+3. Pour des données réellement partagées entre équipes, activer `ORGANIZATIONS_ENABLED=true` dans les variables du **backend de ce projet**, selon [le module organisations](../organizations.md). Ne pas transformer ce réglage en flag public `VITE_*`.
 4. Garder secrets et paramètres d’intégrations hors de `appConfig`. Ajouter seulement les modules nécessaires au premier parcours, avec leurs droits, quotas, export et nettoyage.
 5. Déployer la configuration backend et vérifier le produit :
 
@@ -75,7 +75,7 @@ Le dashboard reçoit uniquement l’URL publique du backend via Docker. La clé 
 
 La dernière commande active les organisations pour les tests puis restaure le réglage initial. Sur une même instance locale, laisser au moins une minute entre deux suites complètes : les tests utilisent les vrais quotas d’authentification et des passes rapprochées peuvent produire des 429. Ne pas désactiver ces protections pour les tests. Les deux modes sont aussi validés dans GitHub Actions à chaque push et pull request, avec une instance distincte par mode. Vérifier que les Actions sont autorisées dans le nouveau dépôt ; le template ne copie pas ses résultats de CI ni ses protections de branche.
 
-Les commandes backend locales contrôlent les sélecteurs et la propriété des services avant d’appeler Convex. Elles refusent les options supplémentaires, notamment celles permettant de choisir un autre déploiement. Un shell conservant une clé distante doit être nettoyé avant de les utiliser ; la publication suit un checkout et un fichier d’environnement explicitement dédiés selon [deployment.md](deployment.md).
+Les commandes backend locales contrôlent les sélecteurs et la propriété des services avant d’appeler Convex. Elles refusent les options supplémentaires, notamment celles permettant de choisir un autre déploiement. Un shell conservant une clé distante doit être nettoyé avant de les utiliser ; la publication suit un checkout et un fichier d’environnement explicitement dédiés selon [deployment.md](../deployment.md).
 
 ## Arrêter et reprendre un projet
 
@@ -87,10 +87,10 @@ pnpm services:down
 
 Dans le projet suivant, utiliser `pnpm setup` pour sa première installation, ou `pnpm services:up` puis `pnpm doctor` pour reprendre une instance déjà initialisée. Relancer les deux serveurs de développement. Chaque projet retrouve ses propres données ; un conflit de port Docker est refusé avant création de services.
 
-Utiliser les wrappers du projet. Ne pas lancer `docker compose down -v`, importer avec `--replace` ou supprimer un volume pour dépanner. Consulter [la sauvegarde/restauration](backup-restore.md) et [le diagnostic local](development.md) si nécessaire.
+Utiliser les wrappers du projet. Ne pas lancer `docker compose down -v`, importer avec `--replace` ou supprimer un volume pour dépanner. Consulter [la sauvegarde/restauration](../backup-restore.md) et [le diagnostic local](../development.md) si nécessaire.
 
 ## Déploiement futur
 
-Ce parcours simule l’application en local. Le [Compose Coolify](../docker-compose.coolify.yml) et le [guide de déploiement](deployment.md) préparent une étape distincte : domaines HTTPS stables, secrets dédiés, volumes persistants, email réel, proxy, sauvegardes et contrôle des accès administratifs devront être configurés sur cette cible. Ne pas réutiliser le Compose de développement tel quel sur un serveur public.
+Ce parcours simule l’application en local. Le [Compose Coolify](../../docker-compose.coolify.yml) et le [guide de déploiement](../deployment.md) préparent une étape distincte : domaines HTTPS stables, secrets dédiés, volumes persistants, email réel, proxy, sauvegardes et contrôle des accès administratifs devront être configurés sur cette cible. Ne pas réutiliser le Compose de développement tel quel sur un serveur public.
 
-Pour choisir les fonctionnalités : lire [les modules auth](auth-modules.md) et [les intégrations optionnelles](observability.md). Aucun secret, compte opérateur, clé analytics ou projet Sentry du template n’est réutilisé. Activer Spotlight avec `pnpm services:up --spotlight` si le produit a besoin de diagnostic local.
+Pour choisir les fonctionnalités : lire [les modules auth](../auth-modules.md) et [les intégrations optionnelles](../observability.md). Aucun secret, compte opérateur, clé analytics ou projet Sentry du template n’est réutilisé. Activer Spotlight avec `pnpm services:up --spotlight` si le produit a besoin de diagnostic local.

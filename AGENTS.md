@@ -8,19 +8,19 @@ Lire les versions de `package.json`, du lockfile et les correctifs de `docs/upgr
 
 | Travail | Documents à lire |
 | --- | --- |
-| Nouveau produit | `docs/new-project.md`, `docs/project-start.md`, puis compléter `docs/product.md` et `docs/decisions/access-model.md` dans le nouveau projet |
+| Nouveau produit (socle, archivé) | `docs/archive/new-project.md`, `docs/archive/project-start.md`, puis compléter `docs/product.md` et `docs/decisions/access-model.md` dans le nouveau projet |
 | Fonctionnalité ou reprise d’un produit | `docs/product.md`, s’il est renseigné, `docs/agent-patterns.md`, `docs/adopting.md` et les décisions du domaine |
 | Auth, comptes ou organisations | `docs/accounts.md`, `docs/auth-modules.md`, `docs/organizations.md` selon la surface touchée |
 | Intégration optionnelle | `docs/modules.md`, puis le guide du module retenu |
 | Exploitation ou dépendances | `docs/development.md`, `docs/deployment.md`, `docs/backup-restore.md` ou `docs/upgrades.md` selon le changement |
 
-Les guides courants et le code font autorité. `docs/review.md`, `docs/organizations-review.md` et `docs/verification.md` sont des comptes rendus historiques, pas des consignes pour implémenter le comportement actuel. Le brief produit contient les choix métier ; les règles de ce socle restent dans les guides spécialisés.
+Les guides courants et le code font autorité. `docs/archive/` (dont `review.md`, `organizations-review.md`, `verification.md`) contient des comptes rendus historiques, pas des consignes pour implémenter le comportement actuel. Le brief produit contient les choix métier ; les règles de ce socle restent dans les guides spécialisés.
 
 ## Architecture
 
 Lire `README.md`, `docs/architecture.md` et `docs/security.md` avant une modification structurante.
 
-Avant le premier domaine d’un nouveau produit, suivre `docs/project-start.md` : cadrer le MVP, recommander personnel/organisations selon la propriété des données, consigner les décisions et choisir une première fonctionnalité complète. Conserver le défaut personnel sans besoin partagé établi. Avancer avec les informations disponibles, noter les hypothèses et ne demander que les informations qui changent réellement la solution. Préserver le mode et les données d’un projet existant jusqu’à une demande de changement.
+Avant le premier domaine d’un nouveau produit, suivre `docs/archive/project-start.md` : cadrer le MVP, recommander personnel/organisations selon la propriété des données, consigner les décisions et choisir une première fonctionnalité complète. Conserver le défaut personnel sans besoin partagé établi. Avancer avec les informations disponibles, noter les hypothèses et ne demander que les informations qui changent réellement la solution. Préserver le mode et les données d’un projet existant jusqu’à une demande de changement.
 
 Pour adapter le produit ou ajouter/remplacer un domaine, lire `docs/adopting.md`. La configuration publique est dans `shared/app-config.ts`, la navigation dans `src/config/navigation.ts` ; aucun de ces fichiers n’autorise un accès backend. Intégrer les nouvelles données personnelles à l’export de compte, au nettoyage borné et aux fixtures de restauration.
 

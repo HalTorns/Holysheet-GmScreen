@@ -1,6 +1,6 @@
 # Vérifications du socle
 
-> **Historique des preuves, non prescriptif.** Chaque entrée décrit les commandes et résultats observés à sa date et dans son périmètre. Un ancien succès ne valide pas le checkout courant ou la production. Pour choisir les contrôles actuels, suivre [la matrice agents](agent-patterns.md#choisir-les-vérifications) et [development.md](development.md).
+> **Historique des preuves, non prescriptif.** Chaque entrée décrit les commandes et résultats observés à sa date et dans son périmètre. Un ancien succès ne valide pas le checkout courant ou la production. Pour choisir les contrôles actuels, suivre [la matrice agents](../agent-patterns.md#choisir-les-vérifications) et [development.md](../development.md).
 
 ## Revue approfondie des corrections d’adoption — 22 octobre 2026
 
@@ -85,7 +85,7 @@ Les scripts backend locaux refusent les cibles distantes, les options supplémen
 
 La première passe organisations a rencontré un timeout dans le choix initial du pseudo, avant le scénario de changement de compte. Trois répétitions ciblées avec les organisations actives, puis la relance complète ont réussi. Aucun délai ni garde d’authentification n’a été assoupli et le parcours n’a pas été modifié pour contourner cet échec ; sa cause reste indéterminée.
 
-Trois relectures indépendantes ont examiné standards/documentation, conformité à la demande et backend/sécurité/tests, sans constat actionnable restant ; le patch de confidentialité a été relu séparément. La reprise sans scheduler est prouvée au niveau métier ; l’E2E de restauration reste propriétaire de l’import réel des tables et du composant d’auth. Les suites modules, les échanges SaaS et la production n’ont pas été validés à nouveau dans ce passage. La protection réseau publique reste à configurer et vérifier sur l’hébergement selon [deployment.md](deployment.md).
+Trois relectures indépendantes ont examiné standards/documentation, conformité à la demande et backend/sécurité/tests, sans constat actionnable restant ; le patch de confidentialité a été relu séparément. La reprise sans scheduler est prouvée au niveau métier ; l’E2E de restauration reste propriétaire de l’import réel des tables et du composant d’auth. Les suites modules, les échanges SaaS et la production n’ont pas été validés à nouveau dans ce passage. La protection réseau publique reste à configurer et vérifier sur l’hébergement selon [deployment.md](../deployment.md).
 
 ## Revue approfondie des comptes et sessions — 17 octobre 2026
 
@@ -114,7 +114,7 @@ Production/outillage : **+3520 / −181 lignes** ; tests et helpers : **+2284 / 
 
 ## Comptes, administration et continuité de connexion — 17 octobre 2026
 
-La stack et le mode personnel par défaut sont conservés. Les comportements génériques du projet Truffothèque ont servi de référence en lecture seule ; aucune donnée ou configuration privée de ce projet n’est importée. La politique, le bootstrap opérateur et la migration sont décrits dans [Comptes](accounts.md).
+La stack et le mode personnel par défaut sont conservés. Les comportements génériques du projet Truffothèque ont servi de référence en lecture seule ; aucune donnée ou configuration privée de ce projet n’est importée. La politique, le bootstrap opérateur et la migration sont décrits dans [Comptes](../accounts.md).
 
 | Vérification finale | Résultat observé |
 | --- | --- |
@@ -162,11 +162,11 @@ Le premier passage E2E a révélé le défaut du sélecteur de mode. Une passe p
 
 La première CI de publication a échoué pendant le téléchargement Docker : le registre `ghcr.io/get-convex` refuse les accès anonymes (HTTP 403). Les mêmes manifestes, avec exactement les mêmes digests et les plateformes amd64/arm64, sont accessibles sous `ghcr.io/convex`. Les deux Compose et le vérificateur de restauration utilisent ce namespace ; les versions et les données restent identiques.
 
-Les fichiers `docker-compose.coolify.yml`, `Dockerfile`, `.dockerignore` et `.env.coolify.example` préparent la publication. Ce contrôle local ne prouve ni un déploiement Coolify, ni DNS/TLS, ni les règles du proxy, ni l’envoi email de production. Les domaines et secrets réels restent à configurer selon [le guide](deployment.md). La restauration sans fichier ne prouve pas un stockage de fichiers non vide. Les tâches planifiées ne sont pas transférées par l’export Convex ; les volumes et secrets exigent toujours une sauvegarde cohérente hors serveur.
+Les fichiers `docker-compose.coolify.yml`, `Dockerfile`, `.dockerignore` et `.env.coolify.example` préparent la publication. Ce contrôle local ne prouve ni un déploiement Coolify, ni DNS/TLS, ni les règles du proxy, ni l’envoi email de production. Les domaines et secrets réels restent à configurer selon [le guide](../deployment.md). La restauration sans fichier ne prouve pas un stockage de fichiers non vide. Les tâches planifiées ne sont pas transférées par l’export Convex ; les volumes et secrets exigent toujours une sauvegarde cohérente hors serveur.
 
 ## Enrichissement DX, auth et observabilité — 14 octobre 2026
 
-La stack initiale et le mode personnel par défaut sont conservés. Les modules et leurs conditions d’activation sont décrits dans [auth-modules.md](auth-modules.md), [observability.md](observability.md) et [agent-patterns.md](agent-patterns.md).
+La stack initiale et le mode personnel par défaut sont conservés. Les modules et leurs conditions d’activation sont décrits dans [auth-modules.md](../auth-modules.md), [observability.md](../observability.md) et [agent-patterns.md](../agent-patterns.md).
 
 | Vérification | Résultat observé |
 | --- | --- |
@@ -215,7 +215,7 @@ La CI est rédigée. Sa commande Gitleaks exacte a été vérifiée localement, 
 
 ## Module organisations — 13 octobre 2026
 
-Le [module optionnel](organizations.md) ajoute les organisations et rôles sans activer le mode partagé par défaut.
+Le [module optionnel](../organizations.md) ajoute les organisations et rôles sans activer le mode partagé par défaut.
 
 | Vérification | Résultat observé |
 | --- | --- |

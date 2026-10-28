@@ -41,7 +41,7 @@ Les lots ci-dessous sont indépendants et chacun est commité séparément. On t
 - Les montées sont appliquées sur la branche avec pnpm 11.8.0 et un lockfile régénéré. Dependabot ferme ses PR de lui-même une fois `main` à jour. On ne fait aucune action manuelle sur les PR.
 - Le paquet `vite` et le lockfile sont changés dans un commit, et `Dockerfile` dans un autre.
 - **Preuve de l'image (AUD-16)** : ajouter au workflow un job `docker-image`. Il construit l'étape finale avec des `VITE_*` factices et non secrets, lance le conteneur, puis exige **HTTP 200 et le contenu attendu** de `/robots.txt` sur le port 3000. Le job échoue explicitement au bout de 60 s et arrête le conteneur dans tous les cas, même en cas d'échec. Il vérifie aussi `node --version` dans l'image finale et le compare à `.node-version`. Si le digest Dependabot ne donne pas 26.11.0, on retient le digest qui correspond à 26.11.0 ou l'on documente l'écart (C1-01, C1-02).
-  - Il se déclenche sur les changements de `Dockerfile`, `package.json`, `pnpm-lock.yaml`, `.node-version` et du workflow, ainsi que sur `workflow_dispatch`.
+  - **Écart retenu** : le job tourne à chaque exécution du workflow, ce qui est plus simple qu'un filtre de chemins, pour quelques minutes de CI. Aucun tag 26.11.0 n'est publié : `.node-version`, la CI et l'image sont alignés sur **26.11.1**.
   - Il n'a pas besoin de backend Convex. Si `/robots.txt` en exige un, choisir une route qui n'en dépend pas et le justifier.
 - #3 (qualité, rouge) et #4 (Vitest 5, rouge) restent **reportées**, sans action. #1 reste ouverte (T0).
 

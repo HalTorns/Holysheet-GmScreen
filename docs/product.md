@@ -8,6 +8,16 @@ Parcours : connexion → projet et dossiers → contenus et Screen → compositi
 
 Hors périmètre : VTT, IA intégrée, organisations, collaboration entre comptes, partage privé, mode hors ligne et synchronisation avec les sources importées. Extraction PDF/Word et OCR après V1 ; affichage PDF dès V1.
 
+## État consolidé — 28 octobre 2026
+
+- **En production (`main`)** : inscription, vérification et récupération par email et mot de passe (`AUTH_PASSWORD_ONLY`) ; projets et dossiers imbriqués ; Screens numériques ou A4 paysage ; notes texte simples ; éditeur de disposition (déplacement, redimensionnement, zoom, grille, calques, verrouillage, profils, autosauvegarde, historique) ; outils de notes (duplication, copier-coller, corbeille restaurable, groupes, alignement, styles) ; export, nettoyage et restauration du compte.
+- **Reprise V2 en mode Claudex** : cadrage dans [BRIEF](BRIEF.md). Le chantier 1 (audit) est clos, avec [l’audit](AUDIT.md), l’exception better-auth encadrée ([upgrades](upgrades.md)) et le correctif d’export AUD-02. La consolidation C1 couvre les tests de refus, les délais mesurés, les dépendances, l’image Node 26.11.1 et l’[ADR des migrations](decisions/migrations.md).
+- **Reste de la V1 (PRD)** : bibliothèque de fiches et variables, douze catégories de widgets, texte riche, pop-ups et multi-fenêtres, recherche et palette, impression et PDF, import et export de projet, communauté. C’est le chantier 2. La nouvelle identité visuelle et la refonte de l’UX de l’éditeur forment le chantier 3.
+- **Dette planifiée (tranche C2)** : retrait des surfaces du socle hors produit (organisations, ressources de démo, impersonation, Spotlight, PostHog et Arcjet), voir AUD-10 à AUD-14.
+- **Poste de développement** : Linux sans Docker ([development](development.md)). Les preuves des services et les E2E passent par la CI GitHub.
+
+Les sections suivantes sont l’historique daté des jalons.
+
 ## Décisions opérationnelles
 
 - Accès personnel via ID stable Better Auth ; voir [modèle d’accès](decisions/access-model.md).

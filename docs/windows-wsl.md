@@ -27,6 +27,6 @@ Les commandes `services:up`, `services:down`, `services:status`, `backend:push`,
 - Le montage Windows utilise les métadonnées de permissions WSL : les fichiers `.env.local` et `.env.docker` doivent rester privés, mode `600`, et ignorés par Git. Ne jamais les recopier entre projets.
 - Les commandes ci-dessus utilisent explicitement l’utilisateur root de cette nouvelle distribution. Un passage à un utilisateur Linux dédié devra transférer les permissions des outils et du cache avant utilisation.
 
-Le premier setup et les vérifications effectives sont consignés dans [l’état local](local-setup-status.md). Les données du projet restent dans ses volumes Docker dédiés. Un arrêt normal passe par `services:down` et conserve ces volumes.
+Le premier setup et les vérifications effectives sont consignés dans [l’état local](archive/local-setup-status.md). Les données du projet restent dans ses volumes Docker dédiés. Un arrêt normal passe par `services:down` et conserve ces volumes.
 
 Le setup du produit active `AUTH_PASSWORD_ONLY=true` dans le backend local : inscription, vérification d’adresse, connexion email/mot de passe et récupération par code. La vérification ne connecte pas l’utilisateur ; une récupération invalide ses sessions existantes. Les endpoints OTP de connexion, passkeys et fournisseurs sociaux sont fermés dans ce mode. Configurer aussi cette politique sur la cible de production avant toute ouverture.

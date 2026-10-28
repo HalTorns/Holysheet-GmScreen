@@ -79,3 +79,7 @@
 - L2 révisé après mesure : contention générale, pas de test lourd isolé → `testTimeout` 15 s documenté, sans retry.
 - Pas de second round de review du plan (économie du quota Codex, changements uniquement restrictifs) : l'inspection finale couvre la tranche. SHA256 du plan révisé : `343d3c3e228e303191ef81661ec3cbd9f6f8aebcb71ce55fed63819d7ddb8c38`.
 - L1 : `tests/backend/gm-access.test.ts` (4 tests) ; contrôle par mutation : retrait du contrôle `ownedScreen` de `setLayoutLocked` → échec du test, puis restauration.
+- L3 : vite 8.3.5 (#6), Sentry 11.8.0 + posthog-js 1.438.19 (#5), image `node:26.11.1-bookworm-slim` épinglée (#2 ; aucun tag 26.11.0 publié → `.node-version` et CI alignés sur 26.11.1), job CI `docker-image`. CI `40703182512` sur `2af8173` : application, secrets et image Docker **success**.
+- L4 : ADR `docs/decisions/migrations.md` — choix de `@convex-dev/migrations` (officiel, reprise et suivi d'état fournis) plutôt que des migrations faites main, `formatVersion`, cycle en trois déploiements, test sur documents V1 réels.
+- L5 : 7 docs du socle archivées (`git mv` vers `docs/archive/`, liens entrants et sortants réécrits, 0 lien relatif cassé), état consolidé en tête de `docs/product.md`, Resend → relais SMTP dans `architecture.md`. Décisions de l'audit mises à jour (AUD-01, 03, 07, 15, 16, 19, 20, 24, 27).
+- Preuves Claude (Node 26.11.1) : `pnpm check` (150 + 7 tests), `pnpm audit:convex` (54/0), `pnpm audit --prod --audit-level=high` → 0.

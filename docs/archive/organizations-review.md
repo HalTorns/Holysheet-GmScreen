@@ -1,6 +1,6 @@
 # Revue du module organisations — 13 octobre 2026
 
-> **Historique, non prescriptif.** Ce rapport conserve les constats et preuves de la revue du 13 octobre 2026. Les consignes actuelles sont dans [AGENTS.md](../AGENTS.md), [organisations](organizations.md) et [le démarrage produit](project-start.md). Ses résultats ne certifient pas une modification ultérieure.
+> **Historique, non prescriptif.** Ce rapport conserve les constats et preuves de la revue du 13 octobre 2026. Les consignes actuelles sont dans [AGENTS.md](../../AGENTS.md), [organisations](../organizations.md) et [le démarrage produit](project-start.md). Ses résultats ne certifient pas une modification ultérieure.
 
 ## Périmètre et méthode
 

@@ -22,9 +22,9 @@ Les écrans restent écrits en français. `locale` configure les dates et `langu
 
 ## Démarrage d’un nouveau produit
 
-Suivre [la procédure template privé](new-project.md) pour créer le dépôt, initialiser des secrets et données indépendants et ouvrir les services de développement dans OrbStack.
+Suivre [la procédure template privé](archive/new-project.md) pour créer le dépôt, initialiser des secrets et données indépendants et ouvrir les services de développement dans OrbStack.
 
-Avant le premier domaine, suivre [le démarrage produit](project-start.md) : renseigner [le brief](product.md), délimiter le MVP, définir les domaines et choisir la première fonctionnalité complète. Consigner le modèle d’accès dans `docs/decisions/access-model.md`. [La carte des outils](agent-patterns.md#choisir-les-outils-du-socle) et ses exemples guident l’implémentation. Le mode personnel reste le défaut sans besoin collectif établi.
+Avant le premier domaine, suivre [le démarrage produit](archive/project-start.md) : renseigner [le brief](product.md), délimiter le MVP, définir les domaines et choisir la première fonctionnalité complète. Consigner le modèle d’accès dans `docs/decisions/access-model.md`. [La carte des outils](agent-patterns.md#choisir-les-outils-du-socle) et ses exemples guident l’implémentation. Le mode personnel reste le défaut sans besoin collectif établi.
 
 Créer un dépôt et des environnements dédiés à partir des fichiers versionnés du socle. Les `.env.local`, `.env.docker`, volumes Docker et archives de sauvegarde appartiennent au projet d’origine ; ne pas les copier dans le nouveau produit. Exécuter `pnpm install --frozen-lockfile` et `pnpm setup` dans son checkout, puis adapter l’identité publique.
 

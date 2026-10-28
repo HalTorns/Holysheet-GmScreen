@@ -4,7 +4,7 @@ Organisations, modules d’auth, Sentry/Spotlight, PostHog et Arcjet sont intég
 
 ## Organisations et permissions
 
-Commencer par [choisir le modèle d’accès](project-start.md) : la propriété collective et les droits d’équipe motivent ce module. Un abonnement individuel peut rester en mode personnel.
+Commencer par [choisir le modèle d’accès](archive/project-start.md) : la propriété collective et les droits d’équipe motivent ce module. Un abonnement individuel peut rester en mode personnel.
 
 Le socle conserve un espace personnel et propose des organisations optionnelles, avec memberships, invitations à expiration et rôles explicites. Activer le module via le backend, puis définir les permissions du premier domaine partagé. Chaque accès vérifie une membership active ; le client peut proposer un `organizationId` mais ne décide pas du tenant autorisé. Lire [Organisations et rôles](organizations.md).
 

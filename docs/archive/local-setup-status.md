@@ -31,5 +31,5 @@ Le redémarrage a été effectué par l’utilisateur ; voir l’état actuel ci
 - `/etc/wsl.conf` active les métadonnées du montage Windows ; permissions `600` vérifiées pour les deux configurations privées après redémarrage de la distribution.
 - `pnpm setup` et `pnpm doctor` réussis. PostgreSQL 18, Convex, dashboard et Mailpit sains. Identité Docker du checkout et secrets conservés.
 - Le lanceur `scripts/wsl.ps1 doctor` a aussi été vérifié depuis Windows PowerShell.
-- Le premier parcours est implémenté ; validation et limites à jour dans [le brief produit](product.md).
+- Le premier parcours est implémenté ; validation et limites à jour dans [le brief produit](../product.md).
 - `pnpm check` et les deux E2E Holysheet sur serveur construit passent, avec comparaison réelle des cinq collections après restauration sur une instance jetable. Les volumes jetables sont nettoyés ; les services source restent sains. Aucun commit, push ou déploiement distant effectué.
