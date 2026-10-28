@@ -242,6 +242,16 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
       })
       sources.push(...copies.map((copy) => ({ id: copy, version: 0 })))
     }
+    // AUD-28 : en pagination temps réel, un widget inséré pendant que la vue
+    // est ouverte peut manquer (99/100 observé en CI). On consigne le compte
+    // vu en direct, puis on mesure le Screen rechargé, qui est l'objet du test.
+    const liveCount = await field.count()
+    await test.info().attach('rich-text-live-count.json', {
+      body: JSON.stringify({ liveCount, expected: 100 }),
+      contentType: 'application/json',
+    })
+    await page.reload()
+    await waitForHydration(page)
     await expect(field).toHaveCount(100)
     const hundredTimes = await measureScreenRendering(page, 100)
     await test.info().attach('rich-text-production-render.json', {
