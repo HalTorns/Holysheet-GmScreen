@@ -108,3 +108,7 @@
 - Inspection finale F2 n°1 (Codex, session neuve) : **REVISE**, 5 constats acceptés — F2-01 (high) débordement de pile sur une longue chaîne de formules ; F2-02 littéraux et négations non finis ; F2-03 champ numérique vide enregistré comme 0 ; F2-04 brouillon de ligne perdu à chaque mise à jour distante ; F2-05 libellé non modifiable.
 - Correctifs **construits par Codex** (session neuve, builder, rééquilibrage du quota demandé par l'utilisateur) : évaluation topologique à pile explicite, contrôles de finitude, `variable-input.ts` testé, lignes stables par `_id` avec `reconcileDraft` et conflit rechargeable, nom et libellé modifiables ; E2E étendu (champ vide, libellé après rechargement, conflit à deux onglets). **Inspection par Claude**, fournisseur opposé : diff relu, preuves relancées (`pnpm check` vert), sélecteur E2E rendu exact par Claude.
 - CI `40717182433` sur `3fd031e` : application (E2E variables étendu), image Docker et secrets **success**. Fast-forward de `main`. Auteurs : code initial Claude (inspecté par Codex) ; correctifs Codex (inspectés par Claude).
+
+## Chantier 2 — tranche F3 (widgets typés) — 2026-10-28
+
+- Rééquilibrage du quota : **Codex rédige** le plan `docs/PLAN-F3.md` et l'ADR `docs/decisions/widgets.md` (reconnaissance complète de l'éditeur) ; **Claude revoit et arbitre**. Généralisation sur place de `gmNotes` acceptée ; découpage F3a (expansion + migration), F3b (checklist, compteur, dés), F3c (contraction après migration de la prod) ; bornes et preuves acceptées.
