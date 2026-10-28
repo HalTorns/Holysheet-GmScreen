@@ -67,6 +67,7 @@ export async function archiveInventory(path) {
           'gmLayouts',
           'gmEditorHistory',
           'gmVariables',
+          'gmSheets',
         ].includes(tableName)
       )
         widgets[tableName] = documents.map((document) => JSON.parse(document))
@@ -108,7 +109,7 @@ export async function archiveInventory(path) {
         note.formatVersion !== 2 ||
         (note.kind === 'note'
           ? contentByWidget.has(note._id)
-          : ['checklist', 'counter', 'dice'].includes(note.kind) &&
+          : ['checklist', 'counter', 'dice', 'sheet'].includes(note.kind) &&
             !contentByWidget.has(note._id))
     ) &&
     (widgets.gmLayouts ?? []).every((layout) =>
@@ -150,8 +151,22 @@ export async function archiveInventory(path) {
       (source.ownerId === note.ownerId && source.projectId === note.projectId)
     )
   })
+  // Un widget fiche référence une fiche du même compte et du même projet ;
+  // une fiche absente reste admise (affichée « indisponible »).
+  const sheetsById = new Map(
+    (widgets.gmSheets ?? []).map((sheet) => [sheet._id, sheet])
+  )
+  const validSheets = notes
+    .filter((note) => note.kind === 'sheet' && note.config.sheetId)
+    .every((note) => {
+      const sheet = sheetsById.get(note.config.sheetId)
+      return (
+        !sheet ||
+        (sheet.ownerId === note.ownerId && sheet.projectId === note.projectId)
+      )
+    })
   const widgetRelations = {
-    valid: valid && validHistory && validLinks,
+    valid: valid && validHistory && validLinks && validSheets,
     linkedCounters: linkedCounters.length,
     availableCounters: linkedCounters.filter((note) => {
       const source = variablesById.get(note.config.source.variableId)
