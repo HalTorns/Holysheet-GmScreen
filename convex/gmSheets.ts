@@ -261,46 +261,65 @@ export const updateSheet = mutation({
   },
 })
 
-export const setSheetLinks = mutation({
-  args: { id: v.id('gmSheets'), targets: v.array(v.id('gmSheets')) },
+// Opérations atomiques : un lien vers une fiche en corbeille reste stocké
+// (masqué) et n'est jamais retiré par l'édition des autres liens.
+async function liveSource(ctx: QueryCtx, id: Id<'gmSheets'>, ownerId: string) {
+  const sheet = await ownedSheet(ctx, id, ownerId)
+  if (sheet.deletedAt !== undefined)
+    throw new ConvexError({ code: 'NOT_FOUND' })
+  return sheet
+}
+
+function outgoingLinks(ctx: QueryCtx, id: Id<'gmSheets'>) {
+  return ctx.db
+    .query('gmSheetLinks')
+    .withIndex('by_from', (q) => q.eq('fromId', id))
+    .take(GM_MAX_SHEET_LINKS + 1)
+}
+
+export const addSheetLink = mutation({
+  args: { id: v.id('gmSheets'), target: v.id('gmSheets') },
   returns: v.null(),
-  handler: async (ctx, { id, targets }) => {
+  handler: async (ctx, { id, target: targetId }) => {
     const user = await requireUser(ctx)
-    const sheet = await ownedSheet(ctx, id, user._id)
-    if (sheet.deletedAt !== undefined)
+    const sheet = await liveSource(ctx, id, user._id)
+    if (targetId === id) throw new ConvexError({ code: 'INVALID_INPUT' })
+    const target = await ctx.db.get('gmSheets', targetId)
+    if (
+      !target ||
+      target.ownerId !== user._id ||
+      target.projectId !== sheet.projectId ||
+      target.deletedAt !== undefined
+    )
       throw new ConvexError({ code: 'NOT_FOUND' })
-    const unique = [...new Set(targets)]
-    if (unique.length !== targets.length || unique.length > GM_MAX_SHEET_LINKS)
-      throw new ConvexError({ code: 'INVALID_INPUT' })
-    if (unique.includes(id)) throw new ConvexError({ code: 'INVALID_INPUT' })
-    for (const targetId of unique) {
-      const target = await ctx.db.get('gmSheets', targetId)
-      if (
-        !target ||
-        target.ownerId !== user._id ||
-        target.projectId !== sheet.projectId ||
-        target.deletedAt !== undefined
-      )
-        throw new ConvexError({ code: 'NOT_FOUND' })
-    }
+    const existing = await outgoingLinks(ctx, id)
+    if (existing.some((link) => link.toId === targetId)) return null
+    if (existing.length >= GM_MAX_SHEET_LINKS)
+      throw new ConvexError({ code: 'LINK_LIMIT' })
     await limitUserOperation(ctx, 'resourceWrite', user._id)
-    const existing = await ctx.db
-      .query('gmSheetLinks')
-      .withIndex('by_from', (q) => q.eq('fromId', id))
-      .take(GM_MAX_SHEET_LINKS + 1)
-    const wanted = new Set<Id<'gmSheets'>>(unique)
-    for (const link of existing)
-      if (wanted.has(link.toId)) wanted.delete(link.toId)
-      else await ctx.db.delete('gmSheetLinks', link._id)
-    const updatedAt = Date.now()
-    for (const toId of wanted)
-      await ctx.db.insert('gmSheetLinks', {
-        ownerId: user._id,
-        projectId: sheet.projectId,
-        fromId: id,
-        toId,
-        updatedAt,
-      })
+    await ctx.db.insert('gmSheetLinks', {
+      ownerId: user._id,
+      projectId: sheet.projectId,
+      fromId: id,
+      toId: targetId,
+      updatedAt: Date.now(),
+    })
+    return null
+  },
+})
+
+export const removeSheetLink = mutation({
+  args: { id: v.id('gmSheets'), target: v.id('gmSheets') },
+  returns: v.null(),
+  handler: async (ctx, { id, target }) => {
+    const user = await requireUser(ctx)
+    await liveSource(ctx, id, user._id)
+    const links = (await outgoingLinks(ctx, id)).filter(
+      (link) => link.toId === target
+    )
+    if (links.length === 0) return null
+    await limitUserOperation(ctx, 'resourceWrite', user._id)
+    for (const link of links) await ctx.db.delete('gmSheetLinks', link._id)
     return null
   },
 })

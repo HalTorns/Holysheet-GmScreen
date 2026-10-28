@@ -100,9 +100,9 @@ describe('Holysheet personal workspace', () => {
       kind: 'npc',
       title: 'Aubergiste',
     })
-    await alice.client.mutation(api.gmSheets.setSheetLinks, {
+    await alice.client.mutation(api.gmSheets.addSheetLink, {
       id: host,
-      targets: [tavern],
+      target: tavern,
     })
     for (const collection of gmTables) {
       const exported = await alice.client.query(api.gm.exportCollection, {

@@ -1,5 +1,4 @@
 import { api } from '@convex/_generated/api'
-import type { Id } from '@convex/_generated/dataModel'
 import type { GmSheetKind } from '@shared/gm'
 import {
   GM_MAX_SHEET_FIELDS,
@@ -16,6 +15,8 @@ import { useState } from 'react'
 import { DraftGuard } from '@/components/draft-guard'
 import { Button } from '@/components/ui/button'
 import { convexErrorCode, operationErrorMessage } from '@/features/auth/errors'
+
+import { reconcileDraft } from './sheet-draft'
 
 type SheetView = NonNullable<FunctionReturnType<typeof api.gmSheets.getSheet>>
 type LinkSummary = SheetView['links'][number]
@@ -60,10 +61,13 @@ function SheetContent({ view }: { view: SheetView }) {
   const [error, setError] = useState<string | null>(null)
   const [conflict, setConflict] = useState(false)
   const dirty = JSON.stringify(draft) !== JSON.stringify(base.draft)
-  if (!dirty && sheet.version !== base.version) {
-    const next = { version: sheet.version, draft: draftOf(view) }
-    setBase(next)
-    setDraft(next.draft)
+  const synced = reconcileDraft(
+    { base, draft, saving },
+    { version: sheet.version, draft: draftOf(view) }
+  )
+  if (synced) {
+    setBase(synced)
+    setDraft(synced.draft)
   }
   const deleted = sheet.deletedAt !== undefined
 
@@ -71,12 +75,13 @@ function SheetContent({ view }: { view: SheetView }) {
     setSaving(true)
     setError(null)
     try {
+      const submitted = draft
       const version = await update({
         id: sheet._id,
         expectedVersion: base.version,
-        ...draft,
+        ...submitted,
       })
-      setBase({ version, draft })
+      setBase({ version, draft: submitted })
       setConflict(false)
     } catch (error_) {
       if (convexErrorCode(error_) === 'CONFLICT') setConflict(true)
@@ -339,7 +344,8 @@ function SheetLinks({
   view: SheetView
   disabled: boolean
 }) {
-  const setLinks = useMutation(api.gmSheets.setSheetLinks)
+  const addLink = useMutation(api.gmSheets.addSheetLink)
+  const removeLink = useMutation(api.gmSheets.removeSheetLink)
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   const results = useQuery(
@@ -347,10 +353,10 @@ function SheetLinks({
     search.trim() ? { projectId: view.sheet.projectId, text: search } : 'skip'
   )
   const current = view.links.map((link) => link._id)
-  const apply = async (targets: Id<'gmSheets'>[]) => {
+  const run = async (action: () => Promise<unknown>) => {
     setError(null)
     try {
-      await setLinks({ id: view.sheet._id, targets })
+      await action()
       setSearch('')
     } catch (error_) {
       setError(operationErrorMessage(error_))
@@ -373,7 +379,9 @@ function SheetLinks({
             disabled={disabled}
             aria-label={`Retirer le lien vers ${linked.title}`}
             onClick={() =>
-              void apply(current.filter((id) => id !== linked._id))
+              void run(() =>
+                removeLink({ id: view.sheet._id, target: linked._id })
+              )
             }
           >
             ×
@@ -401,7 +409,11 @@ function SheetLinks({
             key={result._id}
             variant="outline"
             className="justify-start"
-            onClick={() => void apply([...current, result._id])}
+            onClick={() =>
+              void run(() =>
+                addLink({ id: view.sheet._id, target: result._id })
+              )
+            }
           >
             Relier « {result.title} »
           </Button>

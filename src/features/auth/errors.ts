@@ -49,6 +49,7 @@ const messages: Record<string, string> = {
     'La corbeille contient déjà 100 éléments. Restaurez ou effacez-en avant de continuer.',
   SHEET_LIMIT:
     'Ce projet a atteint sa limite de 500 fiches. Mettez des fiches à la corbeille pour continuer.',
+  LINK_LIMIT: 'Une fiche peut citer au plus 50 autres fiches.',
   NOT_IN_TRASH: 'Mettez d’abord cette fiche à la corbeille.',
   NOT_FOUND: 'Cet élément est introuvable ou vous n’y avez plus accès.',
   SESSION_EXPIRED: 'Votre session a expiré. Reconnectez-vous pour continuer.',

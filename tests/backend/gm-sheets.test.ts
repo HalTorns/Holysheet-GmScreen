@@ -158,14 +158,15 @@ describe('Bibliothèque de fiches (F1)', () => {
   })
 
   it('relie les fiches, montre les rétroliens et refuse les liens invalides', async () => {
-    const { alice, bob, projectId, create } = await setup()
+    const { alice, bob, create } = await setup()
     const tavern = await create('Taverne', 'place')
     const host = await create('Aubergiste')
     const thief = await create('Voleur')
-    await alice.client.mutation(api.gmSheets.setSheetLinks, {
-      id: host,
-      targets: [tavern, thief],
-    })
+    for (const target of [tavern, thief, tavern])
+      await alice.client.mutation(api.gmSheets.addSheetLink, {
+        id: host,
+        target,
+      })
     const tavernView = await alice.client.query(api.gmSheets.getSheet, {
       id: tavern,
     })
@@ -176,9 +177,9 @@ describe('Bibliothèque de fiches (F1)', () => {
     expect(hostView?.links.map((s) => s._id).sort()).toEqual(
       [tavern, thief].sort()
     )
-    await alice.client.mutation(api.gmSheets.setSheetLinks, {
+    await alice.client.mutation(api.gmSheets.removeSheetLink, {
       id: host,
-      targets: [tavern],
+      target: thief,
     })
     expect(
       (await alice.client.query(api.gmSheets.getSheet, { id: host }))?.links
@@ -201,63 +202,89 @@ describe('Bibliothèque de fiches (F1)', () => {
       title: 'Bob',
     })
     await expect(
-      alice.client.mutation(api.gmSheets.setSheetLinks, {
+      alice.client.mutation(api.gmSheets.addSheetLink, {
         id: host,
-        targets: [host],
-      })
-    ).rejects.toThrow('INVALID_INPUT')
-    await expect(
-      alice.client.mutation(api.gmSheets.setSheetLinks, {
-        id: host,
-        targets: [tavern, tavern],
+        target: host,
       })
     ).rejects.toThrow('INVALID_INPUT')
     for (const target of [elsewhere, bobSheet])
       await expect(
-        alice.client.mutation(api.gmSheets.setSheetLinks, {
-          id: host,
-          targets: [target],
-        })
+        alice.client.mutation(api.gmSheets.addSheetLink, { id: host, target })
       ).rejects.toThrow('NOT_FOUND')
     await alice.client.mutation(api.gmSheets.trashSheet, { id: thief })
     await expect(
-      alice.client.mutation(api.gmSheets.setSheetLinks, {
+      alice.client.mutation(api.gmSheets.addSheetLink, {
         id: host,
-        targets: [thief],
+        target: thief,
       })
     ).rejects.toThrow('NOT_FOUND')
-    expect(projectId).toBeDefined()
   })
 
-  it('refuse plus de 50 liens sortants', async () => {
+  it('refuse plus de 50 liens sortants, liens masqués compris', async () => {
     const { backend, alice, projectId, create } = await setup()
     const source = await create('Source')
-    const targets = await insertSheets(
+    const live = await insertSheets(
       backend,
       alice.userId,
       projectId,
-      GM_MAX_SHEET_LINKS + 1
+      GM_MAX_SHEET_LINKS
     )
-    await expect(
-      alice.client.mutation(api.gmSheets.setSheetLinks, {
-        id: source,
-        targets,
-      })
-    ).rejects.toThrow('INVALID_INPUT')
-    await alice.client.mutation(api.gmSheets.setSheetLinks, {
-      id: source,
-      targets: targets.slice(0, GM_MAX_SHEET_LINKS),
+    const [hidden] = await insertSheets(backend, alice.userId, projectId, 1, {
+      deletedAt: Date.now(),
     })
+    // 49 liens vivants et 1 lien masqué (cible en corbeille) : la borne est
+    // atteinte même si l'interface n'en montre que 49.
+    await backend.run(async (ctx) => {
+      for (const toId of [...live.slice(0, GM_MAX_SHEET_LINKS - 1), hidden])
+        if (toId)
+          await ctx.db.insert('gmSheetLinks', {
+            ownerId: alice.userId,
+            projectId,
+            fromId: source,
+            toId,
+            updatedAt: Date.now(),
+          })
+    })
+    const extra = live.at(-1)
+    if (!extra) throw new Error('Missing extra target')
+    await expect(
+      alice.client.mutation(api.gmSheets.addSheetLink, {
+        id: source,
+        target: extra,
+      })
+    ).rejects.toThrow('LINK_LIMIT')
+    expect(
+      (await alice.client.query(api.gmSheets.getSheet, { id: source }))?.links
+    ).toHaveLength(GM_MAX_SHEET_LINKS - 1)
+  })
+
+  it('conserve un lien vers une fiche en corbeille quand on édite les autres liens', async () => {
+    const { alice, create } = await setup()
+    const a = await create('A')
+    const b = await create('B')
+    const c = await create('C')
+    const d = await create('D')
+    for (const target of [b, c])
+      await alice.client.mutation(api.gmSheets.addSheetLink, { id: a, target })
+    await alice.client.mutation(api.gmSheets.trashSheet, { id: b })
+    await alice.client.mutation(api.gmSheets.removeSheetLink, {
+      id: a,
+      target: c,
+    })
+    await alice.client.mutation(api.gmSheets.addSheetLink, { id: a, target: d })
+    await alice.client.mutation(api.gmSheets.restoreSheet, { id: b })
+    expect(
+      (await alice.client.query(api.gmSheets.getSheet, { id: a }))?.links
+        .map((s) => s._id)
+        .sort()
+    ).toEqual([b, d].sort())
   })
 
   it('met à la corbeille, masque les liens, restaure et supprime définitivement', async () => {
     const { backend, alice, projectId, create } = await setup()
     const a = await create('A')
     const b = await create('B')
-    await alice.client.mutation(api.gmSheets.setSheetLinks, {
-      id: a,
-      targets: [b],
-    })
+    await alice.client.mutation(api.gmSheets.addSheetLink, { id: a, target: b })
     await alice.client.mutation(api.gmSheets.trashSheet, { id: b })
     expect(
       (await alice.client.query(api.gmSheets.getSheet, { id: a }))?.links
@@ -376,12 +403,10 @@ describe('Bibliothèque de fiches (F1)', () => {
         fields: [],
       })
     ).rejects.toThrow('NOT_FOUND')
-    await expect(
-      bob.client.mutation(api.gmSheets.setSheetLinks, {
-        id,
-        targets: [target],
-      })
-    ).rejects.toThrow('NOT_FOUND')
+    for (const fn of [api.gmSheets.addSheetLink, api.gmSheets.removeSheetLink])
+      await expect(bob.client.mutation(fn, { id, target })).rejects.toThrow(
+        'NOT_FOUND'
+      )
     for (const fn of [
       api.gmSheets.trashSheet,
       api.gmSheets.restoreSheet,
@@ -397,10 +422,7 @@ describe('Bibliothèque de fiches (F1)', () => {
     const { backend, alice, bob, projectId, create } = await setup()
     const a = await create('A')
     const b = await create('B')
-    await alice.client.mutation(api.gmSheets.setSheetLinks, {
-      id: a,
-      targets: [b],
-    })
+    await alice.client.mutation(api.gmSheets.addSheetLink, { id: a, target: b })
     await insertSheets(backend, alice.userId, projectId, 12, { heavy: true })
     let cursor: string | null = null
     let isDone = false
