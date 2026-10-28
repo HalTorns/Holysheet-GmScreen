@@ -57,3 +57,11 @@
 - **T0-01 (medium)** — le garde inspectait l'instance de génération du schéma, pas la fabrique de production (`createAuth`, plugins finaux de `convex/auth.ts`). → **Accepté**, corrigé par le builder : `createAuth(ctx).options` en mode password-only et Magic Link + Google/GitHub, cas négatif `storeIdentifier: 'hashed'`.
 - CI `40689261671` (sur `1e04f21`) : échec du seul test pnpm — `pnpm config get audit --json` vide sur le runner, alors que l'étape `pnpm audit` passe. → corrigé : lecture stricte du bloc YAML ; l'étape CI `pnpm audit` reste la preuve que pnpm honore la clé.
 - Observation à reporter dans l'audit (axe D) : timeout isolé et intermittent dans `tests/backend/gm-editor.test.ts` signalé par le builder.
+
+### Inspection T0 n°2 — APPROVED (session Codex neuve) · clôture T0
+
+- Instantané `4d05cd9` (diff `9c83744..4d05cd9`), empreinte du checkout inchangée, 0 finding. Réponse : `scratchpad/claudex/i2/reply.txt`.
+- CI `40691187876` sur `4d05cd9` : **success** (Validation — Holysheet avec `pnpm audit`, `pnpm check` et E2E Holysheet ; secrets).
+- Fast-forward de `main` vers `4d05cd9`. Inspections utilisées : 2/2 ; correctifs : 2 (T0-01, test pnpm en CI).
+- Auteurs : code et docs T0 par Codex ; Claude : verbatim de `docs/BRIEF.md` et ce journal.
+- Reste à faire par l'utilisateur : rien d'obligatoire pour la sécurité (aucune version ni config d'auth changée en prod). Réexamen de l'exception au 2026-11-30.
