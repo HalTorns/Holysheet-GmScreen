@@ -98,3 +98,4 @@
 - Inspection finale F1 n°1 (Codex, session neuve) : **REVISE**, 2 constats acceptés :
   - F1-01 (high) : une saisie faite pendant un enregistrement pouvait être écrasée par la synchronisation. → fonction pure `reconcileDraft` (pas de synchronisation pendant l'envoi ; la base devient la version soumise), test unitaire `tests/unit/sheet-draft.test.ts` sur le scénario A→B→A.
   - F1-02 (medium) : l'édition des liens supprimait les liens masqués vers des fiches en corbeille. → `setSheetLinks` est remplacé par les opérations atomiques `addSheetLink` et `removeSheetLink` ; la borne de 50 compte les liens masqués ; tests de conservation après restauration. Le plan a été mis à jour.
+- Réinspection F1 (session Codex neuve, ciblée) : **APPROVED**. CI `40712402517` sur `1bc8e21` : application, image Docker et secrets **success**. Fast-forward de `main`. Auteur du code F1 : Claude ; Codex : review du plan (2 rounds) et 2 inspections.
