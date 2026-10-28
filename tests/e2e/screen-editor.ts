@@ -4,6 +4,7 @@ import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
 import { readScreen } from '../helpers/gm-screen'
+import { waitForHydration } from './helpers'
 
 async function drag(page: Page, handle: Locator, dx: number, dy: number) {
   await expect(handle).toBeEnabled()
@@ -171,6 +172,7 @@ export async function verifyScreenEditor(
     .poll(async () => (await read()).notes[0]?.body)
     .toBe('Contenu modifiable en mode verrouillé')
   await page.reload()
+  await waitForHydration(page)
   await expect(
     page.getByRole('button', { name: 'Déplacer la note 1', exact: true })
   ).toBeDisabled()

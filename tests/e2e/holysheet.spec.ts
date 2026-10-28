@@ -13,6 +13,7 @@ import {
   readMailbox,
   waitForVerificationCode,
   getAnonymousClient,
+  waitForHydration,
 } from './helpers'
 import { verifyLibrary } from './library'
 import { verifyScreenEditor } from './screen-editor'
@@ -31,6 +32,7 @@ test('password registration, project, folder and Screen survive reload, synchron
   const secondPage = await context.newPage()
   try {
     await page.goto('/')
+    await waitForHydration(page)
     await expect(
       page.getByRole('heading', { name: 'Retrouvez votre table.' })
     ).toBeVisible()
@@ -126,6 +128,7 @@ test('password registration, project, folder and Screen survive reload, synchron
     ).toBeDisabled()
     await expect(page.getByText('Enregistré', { exact: true })).toBeVisible()
     await page.reload()
+    await waitForHydration(page)
     await page
       .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
       .uncheck()
@@ -133,6 +136,7 @@ test('password registration, project, folder and Screen survive reload, synchron
       page.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Le marchand ferme au crépuscule.')
     await secondPage.goto(page.url())
+    await waitForHydration(secondPage)
     await secondPage
       .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
       .uncheck()
@@ -177,6 +181,7 @@ test('password registration, project, folder and Screen survive reload, synchron
     await verifyLibrary(page, client)
     await verifyVariables(page, client)
     await page.goto(kindsScreenUrl)
+    await waitForHydration(page)
     await verifyWidgetKinds(page, secondPage, client)
     const report = await verifyLocalRestore()
     expect(report.widgetRelations).toMatchObject({
@@ -196,12 +201,14 @@ test('password registration, project, folder and Screen survive reload, synchron
     for (const table of gmTables)
       expect(report.tables[table]).toBeGreaterThan(0)
     await page.goto('/app/security')
+    await waitForHydration(page)
     const [download] = await Promise.all([
       page.waitForEvent('download'),
       page.getByRole('button', { name: 'Exporter mes données' }).click(),
     ])
     expect(download.suggestedFilename()).toMatch(/^holysheet-export-/)
     await page.goto('/sign-in')
+    await waitForHydration(page)
     await page
       .getByRole('button', { name: 'Mot de passe oublié', exact: true })
       .click()
@@ -271,6 +278,7 @@ test('private pages enforce authentication, no-store responses and origin checks
   request,
 }) => {
   await page.goto('/app')
+  await waitForHydration(page)
   await expect(page).toHaveURL(/\/sign-in$/)
   await expect(
     getAnonymousClient().query(api.gm.listProjects, {
@@ -322,6 +330,7 @@ test('production CSP permits only its nonce and rejects injected scripts', async
     })
   })
   await page.goto('/sign-in')
+  await waitForHydration(page)
   await expect(page.getByLabel('Adresse email', { exact: true })).toBeEditable()
   expect(
     await page.evaluate(

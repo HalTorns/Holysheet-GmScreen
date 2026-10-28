@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
 import { readScreen } from '../helpers/gm-screen'
+import { waitForHydration } from './helpers'
 
 export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   const id = new URL(page.url()).pathname.split('/').at(-1) ?? ''
@@ -159,6 +160,7 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(4)
   await page.reload()
+  await waitForHydration(page)
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(4)
