@@ -41,6 +41,7 @@ export function normalizeWidget(note: Doc<'gmNotes'>) {
 export function normalizeSnapshot(
   snapshot: Doc<'gmEditorHistory'>['snapshot']
 ) {
+  if (snapshot.kind !== 'layout' && snapshot.kind !== 'note') return snapshot
   if (snapshot.kind === 'note') return { ...snapshot, config: {}, state: {} }
   return {
     ...snapshot,
@@ -72,6 +73,7 @@ export function layoutBudget(layout: Layout) {
 }
 export async function noteBody(ctx: QueryCtx, note: Doc<'gmNotes'>) {
   if (note.formatVersion !== 2) return note.body
+  if (note.kind !== 'note') throw new ConvexError({ code: 'NOT_FOUND' })
   const content = await ctx.db
     .query('gmWidgetContents')
     .withIndex('by_widget', (q) => q.eq('widgetId', note._id))

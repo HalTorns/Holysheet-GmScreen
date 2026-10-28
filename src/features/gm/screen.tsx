@@ -1,6 +1,7 @@
 import { api } from '@convex/_generated/api'
 import type { Doc, Id } from '@convex/_generated/dataModel'
 import type { Layout } from '@convex/lib/gmFormats'
+import { gmWidgetKinds, gmWidgetLabels } from '@shared/gm'
 import { Link } from '@tanstack/react-router'
 import { useMutation, useQuery, usePaginatedQuery } from 'convex/react'
 import { useCallback, useState, useEffect } from 'react'
@@ -37,6 +38,13 @@ function ScreenWorkspace({
     if (status === 'CanLoadMore') loadMore(10)
   }, [status, loadMore])
   const addNote = useMutation(api.gm.addNote)
+  const addWidget = useMutation(api.gmWidgets.addWidget)
+  const variables = useQuery(api.gmVariables.listVariables, {
+    projectId: screen.projectId,
+  })
+  const [widgetKind, setWidgetKind] = useState<
+    'checklist' | 'counter' | 'dice'
+  >('checklist')
   const setLocked = useMutation(api.gmEditor.setLayoutLocked)
   const [selected, setSelected] = useState<Id<'gmLayouts'> | null>(null)
   const [readOnly, setReadOnly] = useState(false)
@@ -112,6 +120,38 @@ function ScreenWorkspace({
             {pending ? 'Patientez…' : 'Ajouter une note'}
           </Button>
         </div>
+        <label>
+          Type de widget
+          <select
+            aria-label="Type de widget"
+            value={widgetKind}
+            disabled={readOnly || locked || dirty || pending}
+            onChange={(event) => {
+              const kind = gmWidgetKinds.find(
+                (entry) => entry === event.target.value
+              )
+              if (kind && kind !== 'note') setWidgetKind(kind)
+            }}
+          >
+            {gmWidgetKinds
+              .filter((kind) => kind !== 'note')
+              .map((kind) => (
+                <option key={kind} value={kind}>
+                  {gmWidgetLabels[kind]}
+                </option>
+              ))}
+          </select>
+        </label>
+        <Button
+          disabled={readOnly || locked || dirty || pending}
+          onClick={() =>
+            void perform(() =>
+              addWidget({ screenId: screen._id, kind: widgetKind })
+            )
+          }
+        >
+          Ajouter un widget
+        </Button>
       </div>
       <div className="mb-4 flex flex-wrap items-end gap-4 rounded-xl border bg-background p-3">
         <label className="grid gap-1 text-sm">
@@ -159,6 +199,7 @@ function ScreenWorkspace({
           key={layout._id}
           layout={layout}
           notes={notes}
+          variables={variables?.map((entry) => entry.variable)}
           readOnly={readOnly}
           locked={locked}
           autoSave={autoSave}

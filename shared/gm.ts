@@ -1,3 +1,4 @@
+import { parseDice } from './dice'
 import { z } from './zod'
 
 export const gmTitle = z.string().trim().min(1).max(120)
@@ -102,16 +103,130 @@ export const gmVariableName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,39}$/)
 export const gmVariableLabel = z.string().trim().max(120)
 export const gmVariableText = z.string().max(2000)
 
-// Union stricte F3a : seule la branche note est active.
-export const gmWidget = z.discriminatedUnion('kind', [
-  z
-    .object({
-      kind: z.literal('note'),
-      config: z.object({}).strict(),
-      state: z.object({}).strict(),
-    })
-    .strict(),
-])
+export const gmWidgetKinds = ['note', 'checklist', 'counter', 'dice'] as const
+export const gmWidgetLabels = {
+  note: 'Note',
+  checklist: 'Checklist',
+  counter: 'Compteur',
+  dice: 'Dés',
+} as const
+const widgetTitle = z.string().max(120)
+const finiteNumber = z.number()
+const localCounterSource = z
+  .object({
+    type: z.literal('local'),
+    step: finiteNumber.positive(),
+    min: finiteNumber.optional(),
+    max: finiteNumber.optional(),
+  })
+  .strict()
+export const gmWidget = z
+  .discriminatedUnion('kind', [
+    z
+      .object({
+        kind: z.literal('note'),
+        config: z.object({}).strict(),
+        state: z.object({}).strict(),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('checklist'),
+        config: z
+          .object({
+            title: widgetTitle,
+            items: z
+              .array(
+                z
+                  .object({
+                    id: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/),
+                    label: z.string().min(1).max(80),
+                  })
+                  .strict()
+              )
+              .max(40),
+          })
+          .strict(),
+        state: z.object({ checkedIds: z.array(z.string()).max(40) }).strict(),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('counter'),
+        config: z
+          .object({
+            title: widgetTitle,
+            source: z.union([
+              localCounterSource,
+              z
+                .object({
+                  type: z.literal('variable'),
+                  variableId: z.string().min(1),
+                  step: finiteNumber.positive(),
+                })
+                .strict(),
+            ]),
+          })
+          .strict(),
+        state: z.union([
+          z.object({ value: finiteNumber }).strict(),
+          z.object({}).strict(),
+        ]),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('dice'),
+        config: z
+          .object({
+            title: widgetTitle,
+            expression: z.string().refine((value) => parseDice(value) !== null),
+          })
+          .strict(),
+        state: z.object({}).strict(),
+      })
+      .strict(),
+  ])
+  .superRefine((widget, context) => {
+    if (widget.kind === 'checklist') {
+      const ids = new Set(widget.config.items.map((item) => item.id))
+      if (
+        ids.size !== widget.config.items.length ||
+        new Set(widget.state.checkedIds).size !==
+          widget.state.checkedIds.length ||
+        widget.state.checkedIds.some((id) => !ids.has(id))
+      )
+        context.addIssue({ code: 'custom', message: 'Cases invalides' })
+    }
+    if (widget.kind === 'counter') {
+      const source = widget.config.source
+      if (source.type === 'variable') {
+        if ('value' in widget.state)
+          context.addIssue({ code: 'custom', message: 'État lié invalide' })
+      } else if (
+        !('value' in widget.state) ||
+        (source.min !== undefined &&
+          source.max !== undefined &&
+          source.min > source.max) ||
+        (source.min !== undefined && widget.state.value < source.min) ||
+        (source.max !== undefined && widget.state.value > source.max)
+      )
+        context.addIssue({ code: 'custom', message: 'Bornes invalides' })
+    }
+  })
+export function initialWidget(kind: (typeof gmWidgetKinds)[number]) {
+  if (kind === 'checklist')
+    return { kind, config: { title: '', items: [] }, state: { checkedIds: [] } }
+  if (kind === 'counter')
+    return {
+      kind,
+      config: { title: '', source: { type: 'local' as const, step: 1 } },
+      state: { value: 0 },
+    }
+  if (kind === 'dice')
+    return { kind, config: { title: '', expression: '1d20' }, state: {} }
+  return { kind, config: {}, state: {} }
+}
 export const GM_WIDGET_BYTES = 16 * 1024
 export const GM_LAYOUT_BYTES = 48 * 1024
 export const GM_CONTENT_BYTES = 200 * 1024

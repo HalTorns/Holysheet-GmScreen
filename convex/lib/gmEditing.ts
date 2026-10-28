@@ -2,6 +2,7 @@ import { ConvexError } from 'convex/values'
 
 import {
   GM_HISTORY_LIMIT,
+  GM_WIDGET_BYTES,
   GM_CONTENT_BYTES,
   GM_LAYOUT_BYTES,
   GM_MAX_NOTES,
@@ -66,7 +67,11 @@ export async function recordHistory(
       formatVersion: 2,
       snapshot: normalizedSnapshot,
     },
-    snapshot.kind === 'note' ? GM_CONTENT_BYTES : GM_LAYOUT_BYTES
+    snapshot.kind === 'note'
+      ? GM_CONTENT_BYTES
+      : snapshot.kind === 'layout'
+        ? GM_LAYOUT_BYTES
+        : GM_WIDGET_BYTES
   )
   await ctx.db.insert('gmEditorHistory', {
     formatVersion: 2,

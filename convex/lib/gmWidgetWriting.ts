@@ -1,6 +1,7 @@
 import { ConvexError } from 'convex/values'
 
-import { GM_MAX_NOTES, GM_MAX_LAYOUTS } from '../../shared/gm'
+import { GM_MAX_NOTES, GM_MAX_LAYOUTS, initialWidget } from '../../shared/gm'
+import type { gmWidgetKinds } from '../../shared/gm'
 import type { Id } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { ownedScreen } from './gmAccess'
@@ -17,7 +18,8 @@ import { limitUserOperation } from './rateLimits'
 export async function createNote(
   ctx: MutationCtx,
   screenId: Id<'gmScreens'>,
-  ownerId: string
+  ownerId: string,
+  kind: (typeof gmWidgetKinds)[number] = 'note'
 ) {
   const screen = await ownedScreen(ctx, screenId, ownerId)
   await requireMigratedScreen(ctx, screenId)
@@ -36,9 +38,7 @@ export async function createNote(
     projectId: screen.projectId,
     screenId,
     formatVersion: 2,
-    kind: 'note',
-    config: {},
-    state: {},
+    ...initialWidget(kind),
     version: 0,
     updatedAt: Date.now(),
   })
@@ -48,7 +48,8 @@ export async function createNote(
     .take(GM_MAX_LAYOUTS)
   const note = await ctx.db.get('gmNotes', id)
   if (!note) throw new ConvexError({ code: 'NOT_FOUND' })
-  await writeContent(ctx, widgetBudget(normalizeWidget(note)), '')
+  widgetBudget(normalizeWidget(note))
+  if (kind === 'note') await writeContent(ctx, normalizeWidget(note), '')
   for (const rawLayout of layouts) {
     const layout = normalizeLayout(rawLayout)
     const factor = layout.unit === 'mm' ? 0.2 : 1

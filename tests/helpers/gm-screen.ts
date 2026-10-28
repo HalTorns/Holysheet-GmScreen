@@ -34,9 +34,9 @@ export async function readScreen(client: Reader, args: { id: string }) {
     for (const widget of result.page)
       notes.push({
         ...widget,
-        ...(await client.query(api.gmWidgets.getNoteContent, {
-          id: widget._id,
-        })),
+        ...(widget.kind === 'note'
+          ? await client.query(api.gmWidgets.getNoteContent, { id: widget._id })
+          : { body: '' }),
       })
     if (result.isDone) break
     cursor = result.continueCursor

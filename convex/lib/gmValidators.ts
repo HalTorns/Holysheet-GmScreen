@@ -61,13 +61,91 @@ const noteV2 = {
   config: v.object({}),
   state: v.object({}),
 }
-export const noteFields = v.union(v.object(noteV1), v.object(noteV2))
+export const widgetKindValidator = v.union(
+  v.literal('note'),
+  v.literal('checklist'),
+  v.literal('counter'),
+  v.literal('dice')
+)
+const checklistShape = {
+  kind: v.literal('checklist'),
+  config: v.object({
+    title: v.string(),
+    items: v.array(v.object({ id: v.string(), label: v.string() })),
+  }),
+  state: v.object({ checkedIds: v.array(v.string()) }),
+}
+const counterShape = {
+  kind: v.literal('counter'),
+  config: v.object({
+    title: v.string(),
+    source: v.union(
+      v.object({
+        type: v.literal('local'),
+        step: v.number(),
+        min: v.optional(v.number()),
+        max: v.optional(v.number()),
+      }),
+      v.object({
+        type: v.literal('variable'),
+        variableId: v.id('gmVariables'),
+        step: v.number(),
+      })
+    ),
+  }),
+  state: v.union(v.object({ value: v.number() }), v.object({})),
+}
+const diceShape = {
+  kind: v.literal('dice'),
+  config: v.object({ title: v.string(), expression: v.string() }),
+  state: v.object({}),
+}
+export const widgetUpdateValidator = v.union(
+  v.object({
+    kind: noteV2.kind,
+    config: noteV2.config,
+    state: noteV2.state,
+    body: v.string(),
+  }),
+  v.object({ ...checklistShape }),
+  v.object({ ...counterShape }),
+  v.object({ ...diceShape })
+)
+const v2Common = { ...noteCommon, formatVersion: v.literal(2) }
+export const noteFields = v.union(
+  v.object(noteV1),
+  v.object(noteV2),
+  v.object({ ...v2Common, ...checklistShape }),
+  v.object({ ...v2Common, ...counterShape }),
+  v.object({ ...v2Common, ...diceShape })
+)
 const noteSystem = { _id: v.id('gmNotes'), _creationTime: v.number() }
+export const widgetValidator = v.union(
+  v.object({ ...noteSystem, ...noteV2 }),
+  v.object({ ...noteSystem, ...v2Common, ...checklistShape }),
+  v.object({ ...noteSystem, ...v2Common, ...counterShape }),
+  v.object({ ...noteSystem, ...v2Common, ...diceShape })
+)
 const noteValidator = v.union(
   v.object({ ...noteSystem, ...noteV1 }),
-  v.object({ ...noteSystem, ...noteV2 })
+  widgetValidator
 )
-export const widgetValidator = v.object({ ...noteSystem, ...noteV2 })
+export const trashWidgetValidator = v.union(
+  v.object({ ...noteSystem, ...noteV2, preview: v.string() }),
+  v.object({
+    ...noteSystem,
+    ...v2Common,
+    ...checklistShape,
+    preview: v.string(),
+  }),
+  v.object({
+    ...noteSystem,
+    ...v2Common,
+    ...counterShape,
+    preview: v.string(),
+  }),
+  v.object({ ...noteSystem, ...v2Common, ...diceShape, preview: v.string() })
+)
 export const widgetContentFields = {
   ...owned,
   projectId: v.id('gmProjects'),
@@ -128,6 +206,9 @@ const historyV2 = {
   formatVersion: v.literal(2),
   snapshot: v.union(
     v.object({ ...noteSnapshot, config: v.object({}), state: v.object({}) }),
+    v.object(checklistShape),
+    v.object(counterShape),
+    v.object(diceShape),
     v.object({ kind: v.literal('layout'), ...digitalV2 })
   ),
 }

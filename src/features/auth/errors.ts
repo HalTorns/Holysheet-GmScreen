@@ -9,7 +9,7 @@ const messages: Record<string, string> = {
   LAYOUT_LIMIT: 'Ce Screen a atteint sa limite de profils de disposition.',
   LAYOUT_NAME_TAKEN: 'Un profil porte déjà ce nom. Choisissez un autre nom.',
   SCREEN_LIMIT:
-    'Ce Screen a atteint sa limite de notes. Utilisez un autre Screen pour continuer.',
+    'Ce Screen a atteint sa limite de widgets. Utilisez un autre Screen pour continuer.',
   FOLDER_DEPTH_LIMIT:
     'Les dossiers sont limités à huit niveaux. Choisissez un dossier parent moins profond.',
   IDENTITY_CONFIRMATION_REQUIRED:
@@ -48,6 +48,8 @@ const messages: Record<string, string> = {
     'Ce code est incorrect ou a expiré. Vérifiez-le ou demandez un nouveau code.',
   OTP_NOT_FOUND: 'Ce code est incorrect ou a expiré. Demandez un nouveau code.',
   INVALID_INPUT: 'Vérifiez les informations saisies et réessayez.',
+  INVALID_NUMBER: 'Saisissez un nombre fini.',
+  OUT_OF_RANGE: 'La valeur sort des bornes autorisées.',
   TRASH_LIMIT:
     'La corbeille contient déjà 100 éléments. Restaurez ou effacez-en avant de continuer.',
   SHEET_LIMIT:

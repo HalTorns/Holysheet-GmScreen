@@ -575,17 +575,19 @@ it('shares typed note writes with legacy facades without duplicating payloads or
   const args = {
     id,
     expectedVersion: 0,
-    kind: 'note' as const,
-    config: {},
-    state: {},
-    body: 'Texte typé 😀',
+    widget: {
+      kind: 'note' as const,
+      config: {},
+      state: {},
+      body: 'Texte typé 😀',
+    },
   }
   expect(await alice.client.mutation(api.gmWidgets.updateWidget, args)).toBe(1)
   expect(
     await alice.client.mutation(api.gm.updateNote, {
       id,
       expectedVersion: 1,
-      body: args.body,
+      body: args.widget.body,
     })
   ).toBe(1)
   const payloads = await backend.run((ctx) =>
@@ -595,7 +597,7 @@ it('shares typed note writes with legacy facades without duplicating payloads or
       .collect()
   )
   expect(payloads).toHaveLength(1)
-  expect(payloads[0]?.body).toBe(args.body)
+  expect(payloads[0]?.body).toBe(args.widget.body)
   const history = await alice.client.query(api.gmEditor.listHistory, {
     target: { kind: 'note', id },
     paginationOpts: { cursor: null, numItems: 10 },
@@ -604,5 +606,672 @@ it('shares typed note writes with legacy facades without duplicating payloads or
   expect(history.page[0]).toMatchObject({
     formatVersion: 2,
     snapshot: { kind: 'note', config: {}, state: {}, body: '' },
+  })
+})
+
+// F3b: exercise public mutations; F3a tests above own note migration/budgets.
+describe('Typed widgets', () => {
+  it('creates only V2, shares placements and enforces checklist state, conflicts and locking', async () => {
+    const { alice, bob, backend, screenId, read } = await setup()
+    const id = await alice.client.mutation(api.gmWidgets.addWidget, {
+      screenId,
+      kind: 'checklist',
+    })
+    const config = {
+      title: 'Préparation',
+      items: [
+        { id: 'a', label: 'Torches' },
+        { id: 'b', label: 'Cordes' },
+      ],
+    }
+    expect(
+      await alice.client.mutation(api.gmWidgets.updateWidget, {
+        id,
+        expectedVersion: 0,
+        widget: { kind: 'checklist', config, state: { checkedIds: [] } },
+      })
+    ).toBe(1)
+    expect(
+      await alice.client.mutation(api.gmWidgets.setChecklistItem, {
+        id,
+        expectedVersion: 1,
+        itemId: 'a',
+        checked: true,
+      })
+    ).toBe(2)
+    await expect(
+      alice.client.mutation(api.gmWidgets.setChecklistItem, {
+        id,
+        expectedVersion: 1,
+        itemId: 'a',
+        checked: false,
+      })
+    ).rejects.toThrow('CONFLICT')
+    await alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 2,
+      widget: {
+        kind: 'checklist',
+        config: {
+          ...config,
+          items: [...config.items].sort((a, b) => b.id.localeCompare(a.id)),
+        },
+        state: { checkedIds: ['a'] },
+      },
+    })
+    let widget = (await read()).notes.find((entry) => entry._id === id)
+    expect(widget).toMatchObject({
+      formatVersion: 2,
+      kind: 'checklist',
+      state: { checkedIds: ['a'] },
+      version: 3,
+    })
+    await alice.client.mutation(api.gmEditor.setLayoutLocked, {
+      screenId,
+      locked: true,
+    })
+    await alice.client.mutation(api.gmWidgets.setChecklistItem, {
+      id,
+      expectedVersion: 3,
+      itemId: 'b',
+      checked: true,
+    })
+    await expect(
+      alice.client.mutation(api.gmWidgets.updateWidget, {
+        id,
+        expectedVersion: 4,
+        widget: { kind: 'checklist', config, state: { checkedIds: [] } },
+      })
+    ).rejects.toThrow('LAYOUT_LOCKED')
+    await alice.client.mutation(api.gmEditor.setLayoutLocked, {
+      screenId,
+      locked: false,
+    })
+    await alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 4,
+      widget: {
+        kind: 'checklist',
+        config: {
+          ...config,
+          items: [config.items[1] ?? { id: 'b', label: 'Cordes' }],
+        },
+        state: { checkedIds: ['a', 'b'] },
+      },
+    })
+    widget = (await read()).notes.find((entry) => entry._id === id)
+    expect(widget?.state).toEqual({ checkedIds: ['b'] })
+    for (const client of [bob.client, backend]) {
+      await expect(
+        client.mutation(api.gmWidgets.addWidget, { screenId, kind: 'dice' })
+      ).rejects.toThrow()
+      await expect(
+        client.mutation(api.gmWidgets.updateWidget, {
+          id,
+          expectedVersion: 5,
+          widget: { kind: 'checklist', config, state: { checkedIds: [] } },
+        })
+      ).rejects.toThrow()
+      await expect(
+        client.mutation(api.gmWidgets.setChecklistItem, {
+          id,
+          expectedVersion: 5,
+          itemId: 'b',
+          checked: false,
+        })
+      ).rejects.toThrow()
+      await expect(
+        client.mutation(api.gmWidgets.setCounterValue, {
+          id,
+          expectedVersion: 5,
+          value: 1,
+        })
+      ).rejects.toThrow()
+    }
+    await expect(
+      alice.client.query(api.gmWidgets.getNoteContent, { id })
+    ).rejects.toThrow('NOT_FOUND')
+    for (const items of [
+      [{ id: 'a', label: '' }],
+      [{ id: 'é', label: 'x' }],
+      [
+        { id: 'a', label: 'x' },
+        { id: 'a', label: 'y' },
+      ],
+    ])
+      await expect(
+        alice.client.mutation(api.gmWidgets.updateWidget, {
+          id,
+          expectedVersion: 5,
+          widget: {
+            kind: 'checklist',
+            config: { title: '', items },
+            state: { checkedIds: [] },
+          },
+        })
+      ).rejects.toThrow('INVALID_INPUT')
+    await expect(
+      alice.client.mutation(api.gmWidgets.updateWidget, {
+        id,
+        expectedVersion: 5,
+        widget: {
+          kind: 'checklist',
+          config,
+          state: { checkedIds: ['missing'] },
+        },
+      })
+    ).rejects.toThrow('INVALID_INPUT')
+  })
+
+  it('keeps linked counters on the F2 source, validates references and restores only configurations', async () => {
+    const { alice, bob, screenId, projectId, read } = await setup()
+    const id = await alice.client.mutation(api.gmWidgets.addWidget, {
+      screenId,
+      kind: 'counter',
+    })
+    const local = {
+      title: 'PV',
+      source: { type: 'local' as const, step: 1, min: 0, max: 10 },
+    }
+    await alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 0,
+      widget: { kind: 'counter', config: local, state: { value: 2 } },
+    })
+    for (const value of [-1, 11, Infinity, Number.NaN])
+      await expect(
+        alice.client.mutation(api.gmWidgets.setCounterValue, {
+          id,
+          expectedVersion: 1,
+          value,
+        })
+      ).rejects.toThrow('INVALID_INPUT')
+    await expect(
+      alice.client.mutation(api.gmWidgets.setCounterValue, {
+        id,
+        expectedVersion: 0,
+        value: 3,
+      })
+    ).rejects.toThrow('CONFLICT')
+    const variableId = await alice.client.mutation(
+      api.gmVariables.createVariable,
+      {
+        projectId,
+        name: 'pv',
+        label: 'Vie',
+        definition: { type: 'number', value: 4, min: 0, max: 10 },
+      }
+    )
+    const linked = {
+      title: 'PV',
+      source: { type: 'variable' as const, variableId, step: 1 },
+    }
+    await alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 1,
+      widget: { kind: 'counter', config: linked, state: {} },
+    })
+    await alice.client.mutation(api.gmEditor.setLayoutLocked, {
+      screenId,
+      locked: true,
+    })
+    await alice.client.mutation(api.gmVariables.setVariableValue, {
+      id: variableId,
+      value: 5,
+    })
+    await expect(
+      alice.client.mutation(api.gmVariables.updateVariable, {
+        id: variableId,
+        expectedVersion: 0,
+        name: 'pv',
+        label: 'Vie',
+        definition: { type: 'number', value: 7 },
+      })
+    ).rejects.toThrow('CONFLICT')
+    expect(
+      (await read()).notes.find((entry) => entry._id === id)
+    ).toMatchObject({ version: 2, state: {} })
+    await expect(
+      alice.client.mutation(api.gmWidgets.setCounterValue, {
+        id,
+        expectedVersion: 2,
+        value: 6,
+      })
+    ).rejects.toThrow('INVALID_INPUT')
+    await alice.client.mutation(api.gmEditor.setLayoutLocked, {
+      screenId,
+      locked: false,
+    })
+    await alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 2,
+      widget: { kind: 'counter', config: local, state: { value: 0 } },
+    })
+    expect(
+      (await read()).notes.find((entry) => entry._id === id)?.state
+    ).toEqual({ value: 5 })
+    const history = await alice.client.query(api.gmEditor.listHistory, {
+      target: { kind: 'note', id },
+      paginationOpts: { numItems: 10, cursor: null },
+    })
+    const revision = history.page.find(
+      (entry) =>
+        entry.snapshot.kind === 'counter' &&
+        entry.snapshot.config.source.type === 'variable'
+    )
+    if (!revision) throw new Error('Missing linked revision')
+    await alice.client.mutation(api.gmEditor.restoreRevision, {
+      id: revision._id,
+      expectedVersion: 3,
+    })
+    expect(
+      (
+        await alice.client.query(api.gmVariables.listVariables, { projectId })
+      )[0]?.variable
+    ).toMatchObject({ value: 5, version: 1 })
+    const layout = (await read()).layouts.find(
+      (entry) => entry.kind === 'digital'
+    )
+    if (!layout) throw new Error('Missing digital layout')
+    const [copyId] = await alice.client.mutation(api.gmWidgets.changeNotes, {
+      layoutId: layout._id,
+      expectedVersion: layout.version,
+      notes: [{ id, version: 4 }],
+      operation: 'duplicate',
+    })
+    if (!copyId) throw new Error('Missing linked copy')
+    expect(
+      (await read()).notes.find((entry) => entry._id === copyId)
+    ).toMatchObject({ config: linked, state: {} })
+    const changedLayout = (await read()).layouts.find(
+      (entry) => entry._id === layout._id
+    )
+    if (!changedLayout) throw new Error('Missing changed layout')
+    await alice.client.mutation(api.gmWidgets.changeNotes, {
+      layoutId: layout._id,
+      expectedVersion: changedLayout.version,
+      notes: [{ id: copyId, version: 0 }],
+      operation: 'trash',
+    })
+    await alice.client.mutation(api.gmWidgets.purgeNote, {
+      id: copyId,
+      expectedVersion: 1,
+      confirmation: 'DELETE_NOTE',
+    })
+    expect(
+      (
+        await alice.client.query(api.gmVariables.listVariables, { projectId })
+      )[0]?.variable
+    ).toMatchObject({ value: 5, version: 1 })
+    await alice.client.mutation(api.gmVariables.deleteVariable, {
+      id: variableId,
+    })
+    await expect(
+      alice.client.mutation(api.gmEditor.restoreRevision, {
+        id: revision._id,
+        expectedVersion: 4,
+      })
+    ).rejects.toThrow('INVALID_INPUT')
+    await alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 4,
+      widget: { kind: 'counter', config: local, state: { value: 3 } },
+    })
+    const anotherProject = await alice.client.mutation(api.gm.createProject, {
+      title: 'Autre projet',
+    })
+    const bobProject = await bob.client.mutation(api.gm.createProject, {
+      title: 'Bob',
+    })
+    for (const [client, project] of [
+      [alice.client, anotherProject],
+      [bob.client, bobProject],
+    ] as const) {
+      const foreign = await client.mutation(api.gmVariables.createVariable, {
+        projectId: project,
+        name: 'foreign',
+        label: '',
+        definition: { type: 'number', value: 1 },
+      })
+      await expect(
+        alice.client.mutation(api.gmWidgets.updateWidget, {
+          id,
+          expectedVersion: 5,
+          widget: {
+            kind: 'counter',
+            config: {
+              ...linked,
+              source: { ...linked.source, variableId: foreign },
+            },
+            state: {},
+          },
+        })
+      ).rejects.toThrow('INVALID_INPUT')
+    }
+    const formula = await alice.client.mutation(
+      api.gmVariables.createVariable,
+      {
+        projectId,
+        name: 'formula',
+        label: '',
+        definition: { type: 'formula', expression: '1+1' },
+      }
+    )
+    await expect(
+      alice.client.mutation(api.gmWidgets.updateWidget, {
+        id,
+        expectedVersion: 5,
+        widget: {
+          kind: 'counter',
+          config: {
+            ...linked,
+            source: { ...linked.source, variableId: formula },
+          },
+          state: {},
+        },
+      })
+    ).rejects.toThrow('INVALID_INPUT')
+  })
+
+  it('copies, trashes, restores and purges all new kinds without payloads or variable deletion', async () => {
+    const { alice, backend, screenId, read, profile } = await setup()
+    for (const kind of ['checklist', 'counter', 'dice'] as const) {
+      const id = await alice.client.mutation(api.gmWidgets.addWidget, {
+        screenId,
+        kind,
+      })
+      let layout = await profile()
+      const copies = await alice.client.mutation(api.gmWidgets.changeNotes, {
+        layoutId: layout._id,
+        expectedVersion: layout.version,
+        notes: [{ id, version: 0 }],
+        operation: 'duplicate',
+      })
+      expect(copies).toHaveLength(1)
+      const copyId = copies[0]
+      if (!copyId) throw new Error('Missing copy')
+      expect(
+        (await read()).notes.find((entry) => entry._id === copyId)
+      ).toMatchObject({ formatVersion: 2, kind, version: 0 })
+      layout = await profile()
+      await alice.client.mutation(api.gmWidgets.changeNotes, {
+        layoutId: layout._id,
+        expectedVersion: layout.version,
+        notes: [{ id: copyId, version: 0 }],
+        operation: 'trash',
+      })
+      const trash = await alice.client.query(api.gmWidgets.listTrash, {
+        screenId,
+        paginationOpts: { numItems: 10, cursor: null },
+      })
+      expect(trash.page.find((entry) => entry._id === copyId)?.kind).toBe(kind)
+      await alice.client.mutation(api.gmWidgets.restoreNote, {
+        id: copyId,
+        expectedVersion: 1,
+      })
+      layout = await profile()
+      await alice.client.mutation(api.gmWidgets.changeNotes, {
+        layoutId: layout._id,
+        expectedVersion: layout.version,
+        notes: [{ id: copyId, version: 2 }],
+        operation: 'trash',
+      })
+      await alice.client.mutation(api.gmWidgets.purgeNote, {
+        id: copyId,
+        expectedVersion: 3,
+        confirmation: 'DELETE_NOTE',
+      })
+      expect(
+        await backend.run((ctx) => ctx.db.get('gmNotes', copyId))
+      ).toBeNull()
+      expect(
+        await backend.run((ctx) =>
+          ctx.db
+            .query('gmWidgetContents')
+            .withIndex('by_widget', (q) => q.eq('widgetId', id))
+            .unique()
+        )
+      ).toBeNull()
+    }
+    const dice = await alice.client.mutation(api.gmWidgets.addWidget, {
+      screenId,
+      kind: 'dice',
+    })
+    await expect(
+      alice.client.mutation(api.gmWidgets.updateWidget, {
+        id: dice,
+        expectedVersion: 0,
+        widget: {
+          kind: 'dice',
+          config: { title: '', expression: '101d6' },
+          state: {},
+        },
+      })
+    ).rejects.toThrow('INVALID_INPUT')
+    expect(
+      await alice.client.mutation(api.gmWidgets.updateWidget, {
+        id: dice,
+        expectedVersion: 0,
+        widget: {
+          kind: 'dice',
+          config: { title: '', expression: '2d6+1' },
+          state: {},
+        },
+      })
+    ).toBe(1)
+    expect(
+      await alice.client.mutation(api.gmWidgets.updateWidget, {
+        id: dice,
+        expectedVersion: 1,
+        widget: {
+          kind: 'dice',
+          config: { title: '', expression: '2d6+1' },
+          state: {},
+        },
+      })
+    ).toBe(1)
+  })
+})
+
+it('enforces shared mixed capacity and counter invariants, including unavailable source type changes', async () => {
+  const { backend, alice, screenId, projectId, read } = await setup()
+  const id = await alice.client.mutation(api.gmWidgets.addWidget, {
+    screenId,
+    kind: 'counter',
+  })
+  for (const source of [
+    { type: 'local' as const, step: 0 },
+    { type: 'local' as const, step: Infinity },
+    { type: 'local' as const, step: 1, min: 5, max: 4 },
+  ])
+    await expect(
+      alice.client.mutation(api.gmWidgets.updateWidget, {
+        id,
+        expectedVersion: 0,
+        widget: {
+          kind: 'counter',
+          config: { title: '', source },
+          state: { value: 0 },
+        },
+      })
+    ).rejects.toThrow('INVALID_INPUT')
+  await expect(
+    alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 0,
+      widget: {
+        kind: 'dice',
+        config: { title: '', expression: '1d20' },
+        state: {},
+      },
+    })
+  ).rejects.toThrow('INVALID_INPUT')
+  for (const expectedVersion of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1])
+    await expect(
+      alice.client.mutation(api.gmWidgets.setCounterValue, {
+        id,
+        expectedVersion,
+        value: 1,
+      })
+    ).rejects.toThrow('INVALID_INPUT')
+  const variableId = await alice.client.mutation(
+    api.gmVariables.createVariable,
+    {
+      projectId,
+      name: 'source',
+      label: '',
+      definition: { type: 'number', value: 1 },
+    }
+  )
+  await alice.client.mutation(api.gmWidgets.updateWidget, {
+    id,
+    expectedVersion: 0,
+    widget: {
+      kind: 'counter',
+      config: { title: '', source: { type: 'variable', variableId, step: 1 } },
+      state: {},
+    },
+  })
+  await alice.client.mutation(api.gmVariables.updateVariable, {
+    id: variableId,
+    expectedVersion: 0,
+    name: 'renamed',
+    label: '',
+    definition: { type: 'number', value: 3 },
+  })
+  expect((await read()).notes.find((entry) => entry._id === id)).toMatchObject({
+    version: 1,
+    config: { source: { variableId } },
+  })
+  await alice.client.mutation(api.gmVariables.updateVariable, {
+    id: variableId,
+    expectedVersion: 1,
+    name: 'renamed',
+    label: '',
+    definition: { type: 'text', value: 'texte' },
+  })
+  await expect(
+    alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 1,
+      widget: {
+        kind: 'counter',
+        config: {
+          title: 'Titre',
+          source: { type: 'variable', variableId, step: 1 },
+        },
+        state: {},
+      },
+    })
+  ).rejects.toThrow('INVALID_INPUT')
+  await alice.client.mutation(api.gmWidgets.updateWidget, {
+    id,
+    expectedVersion: 1,
+    widget: {
+      kind: 'counter',
+      config: { title: '', source: { type: 'local', step: 1 } },
+      state: { value: 6 },
+    },
+  })
+  expect((await read()).notes.find((entry) => entry._id === id)?.state).toEqual(
+    { value: 6 }
+  )
+  await backend.run(async (ctx) => {
+    for (let index = 0; index < 98; index++)
+      await ctx.db.insert('gmNotes', {
+        ownerId: alice.userId,
+        projectId,
+        screenId,
+        updatedAt: 0,
+        version: 0,
+        formatVersion: 2,
+        kind: 'dice',
+        config: { title: '', expression: '1d20' },
+        state: {},
+      })
+  })
+  for (const kind of ['note', 'checklist', 'counter', 'dice'] as const)
+    await expect(
+      alice.client.mutation(api.gmWidgets.addWidget, { screenId, kind })
+    ).rejects.toThrow('SCREEN_LIMIT')
+})
+
+it('restores local counter state under lock while protecting configuration and safe versions', async () => {
+  const { alice, screenId, read } = await setup()
+  const id = await alice.client.mutation(api.gmWidgets.addWidget, {
+    screenId,
+    kind: 'counter',
+  })
+  const config = {
+    title: 'PV',
+    source: { type: 'local' as const, step: 2, min: 0, max: 10 },
+  }
+  await alice.client.mutation(api.gmWidgets.updateWidget, {
+    id,
+    expectedVersion: 0,
+    widget: { kind: 'counter', config, state: { value: 4 } },
+  })
+  await alice.client.mutation(api.gmEditor.setLayoutLocked, {
+    screenId,
+    locked: true,
+  })
+  expect(
+    await alice.client.mutation(api.gmWidgets.setCounterValue, {
+      id,
+      expectedVersion: 1,
+      value: 6,
+    })
+  ).toBe(2)
+  expect(
+    await alice.client.mutation(api.gmWidgets.setCounterValue, {
+      id,
+      expectedVersion: 2,
+      value: 6,
+    })
+  ).toBe(2)
+  await expect(
+    alice.client.mutation(api.gmWidgets.updateWidget, {
+      id,
+      expectedVersion: 2,
+      widget: {
+        kind: 'counter',
+        config: { ...config, title: 'Changé' },
+        state: { value: 8 },
+      },
+    })
+  ).rejects.toThrow('LAYOUT_LOCKED')
+  const history = await alice.client.query(api.gmEditor.listHistory, {
+    target: { kind: 'note', id },
+    paginationOpts: { numItems: 10, cursor: null },
+  })
+  expect(history.page).toHaveLength(2)
+  const previous = history.page.find((entry) => entry.version === 1)
+  const initial = history.page.find((entry) => entry.version === 0)
+  if (!previous || !initial) throw new Error('Missing counter history')
+  await alice.client.mutation(api.gmEditor.restoreRevision, {
+    id: previous._id,
+    expectedVersion: 2,
+  })
+  expect((await read()).notes.find((entry) => entry._id === id)).toMatchObject({
+    version: 3,
+    state: { value: 4 },
+  })
+  await expect(
+    alice.client.mutation(api.gmEditor.restoreRevision, {
+      id: initial._id,
+      expectedVersion: 3,
+    })
+  ).rejects.toThrow('LAYOUT_LOCKED')
+  await alice.client.mutation(api.gmEditor.setLayoutLocked, {
+    screenId,
+    locked: false,
+  })
+  await alice.client.mutation(api.gmEditor.restoreRevision, {
+    id: initial._id,
+    expectedVersion: 3,
+  })
+  expect((await read()).notes.find((entry) => entry._id === id)).toMatchObject({
+    version: 4,
+    state: { value: 0 },
   })
 })

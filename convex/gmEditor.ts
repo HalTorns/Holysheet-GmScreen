@@ -16,6 +16,7 @@ import {
   historyTarget,
   historyValidator,
 } from './lib/gmValidators'
+import { saveWidget } from './lib/gmWidgetState'
 import { limitUserOperation } from './lib/rateLimits'
 
 export const updateLayout = mutation({
@@ -136,13 +137,15 @@ export const restoreRevision = mutation({
     if (!revision || revision.ownerId !== user._id)
       throw new ConvexError({ code: 'NOT_FOUND' })
     const snapshot = normalizeSnapshot(revision.snapshot)
-    if (snapshot.kind === 'note') {
+    if (snapshot.kind !== 'layout') {
       const noteId = ctx.db.normalizeId('gmNotes', revision.subjectId)
       if (!noteId) throw new ConvexError({ code: 'NOT_FOUND' })
       const note = await ownedNote(ctx, noteId, user._id)
       if (note.screenId !== revision.screenId)
         throw new ConvexError({ code: 'NOT_FOUND' })
-      return saveNote(ctx, note, expectedVersion, snapshot.body)
+      if (snapshot.kind === 'note')
+        return saveNote(ctx, note, expectedVersion, snapshot.body)
+      return saveWidget(ctx, note, expectedVersion, snapshot, 'restore')
     }
     const layoutId = ctx.db.normalizeId('gmLayouts', revision.subjectId)
     if (!layoutId) throw new ConvexError({ code: 'NOT_FOUND' })

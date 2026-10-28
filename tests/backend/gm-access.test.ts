@@ -122,10 +122,7 @@ it('refuses anonymous and foreign paginated metadata and single payload access',
       client.mutation(api.gmWidgets.updateWidget, {
         id,
         expectedVersion: 0,
-        kind: 'note',
-        config: {},
-        state: {},
-        body: 'Intrus',
+        widget: { kind: 'note', config: {}, state: {}, body: 'Intrus' },
       })
     ).rejects.toThrow()
   }

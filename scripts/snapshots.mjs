@@ -66,6 +66,7 @@ export async function archiveInventory(path) {
           'gmWidgetContents',
           'gmLayouts',
           'gmEditorHistory',
+          'gmVariables',
         ].includes(tableName)
       )
         widgets[tableName] = documents.map((document) => JSON.parse(document))
@@ -96,6 +97,7 @@ export async function archiveInventory(path) {
       const parent = noteById.get(content.widgetId)
       return (
         parent?.formatVersion === 2 &&
+        parent.kind === 'note' &&
         parent.ownerId === content.ownerId &&
         parent.projectId === content.projectId &&
         parent.screenId === content.screenId
@@ -104,7 +106,10 @@ export async function archiveInventory(path) {
     notes.every(
       (note) =>
         note.formatVersion !== 2 ||
-        (note.kind === 'note' && contentByWidget.has(note._id))
+        (note.kind === 'note'
+          ? contentByWidget.has(note._id)
+          : ['checklist', 'counter', 'dice'].includes(note.kind) &&
+            !contentByWidget.has(note._id))
     ) &&
     (widgets.gmLayouts ?? []).every((layout) =>
       layout.placements.every((placement) => {
@@ -120,18 +125,45 @@ export async function archiveInventory(path) {
     )
   const validHistory = (widgets.gmEditorHistory ?? []).every((revision) => {
     const subject =
-      revision.snapshot.kind === 'note'
-        ? noteById.get(revision.subjectId)
-        : layoutById.get(revision.subjectId)
+      revision.snapshot.kind === 'layout'
+        ? layoutById.get(revision.subjectId)
+        : noteById.get(revision.subjectId)
     return (
       subject &&
+      (revision.snapshot.kind === 'layout' ||
+        revision.snapshot.kind === (subject.kind ?? 'note')) &&
       subject.ownerId === revision.ownerId &&
       subject.projectId === revision.projectId &&
       subject.screenId === revision.screenId
     )
   })
+  const variablesById = new Map(
+    (widgets.gmVariables ?? []).map((variable) => [variable._id, variable])
+  )
+  const linkedCounters = notes.filter(
+    (note) => note.kind === 'counter' && note.config.source.type === 'variable'
+  )
+  const validLinks = linkedCounters.every((note) => {
+    const source = variablesById.get(note.config.source.variableId)
+    return (
+      !source ||
+      (source.ownerId === note.ownerId && source.projectId === note.projectId)
+    )
+  })
   const widgetRelations = {
-    valid: valid && validHistory,
+    valid: valid && validHistory && validLinks,
+    linkedCounters: linkedCounters.length,
+    availableCounters: linkedCounters.filter((note) => {
+      const source = variablesById.get(note.config.source.variableId)
+      return (
+        source?.type === 'number' &&
+        source.ownerId === note.ownerId &&
+        source.projectId === note.projectId
+      )
+    }).length,
+    checkedItems: notes
+      .filter((note) => note.kind === 'checklist')
+      .reduce((sum, note) => sum + note.state.checkedIds.length, 0),
     kinds: [...new Set(notes.map((note) => note.kind ?? 'note'))].sort((a, b) =>
       a.localeCompare(b)
     ),

@@ -17,6 +17,7 @@ import {
 import { verifyLibrary } from './library'
 import { verifyScreenEditor } from './screen-editor'
 import { verifyVariables } from './variables'
+import { verifyWidgetKinds } from './widget-kinds'
 import { verifyWidgetTools } from './widget-tools'
 
 test('password registration, project, folder and Screen survive reload, synchronize and restore', async ({
@@ -170,16 +171,22 @@ test('password registration, project, folder and Screen survive reload, synchron
     await expect(
       page.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Nouvelle version distante')
+    const kindsScreenUrl = page.url()
     await verifyScreenEditor(page, secondPage, client)
     await verifyWidgetTools(page, client)
     await verifyLibrary(page, client)
     await verifyVariables(page, client)
+    await page.goto(kindsScreenUrl)
+    await verifyWidgetKinds(page, secondPage, client)
     const report = await verifyLocalRestore()
     expect(report.widgetRelations).toMatchObject({
       valid: true,
-      kinds: ['note'],
+      kinds: ['checklist', 'counter', 'dice', 'note'],
     })
     for (const count of [
+      report.widgetRelations.linkedCounters,
+      report.widgetRelations.availableCounters,
+      report.widgetRelations.checkedItems,
       report.widgetRelations.payloads,
       report.widgetRelations.nonEmptyNotes,
       report.widgetRelations.trashed,

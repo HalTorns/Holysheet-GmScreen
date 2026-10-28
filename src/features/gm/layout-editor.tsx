@@ -1,11 +1,12 @@
 import { api } from '@convex/_generated/api'
-import type { Id } from '@convex/_generated/dataModel'
+import type { Doc, Id } from '@convex/_generated/dataModel'
 import type { Layout, Widget } from '@convex/lib/gmFormats'
 import {
   GM_MAX_DIMENSION,
   GM_MIN_WIDGET_HEIGHT,
   GM_MIN_WIDGET_WIDTH,
   defaultWidgetStyle,
+  gmWidgetLabels,
 } from '@shared/gm'
 import { moveWidgets } from '@shared/gm-geometry'
 import { useMutation } from 'convex/react'
@@ -16,8 +17,8 @@ import { DraftGuard } from '@/components/draft-guard'
 import { Button } from '@/components/ui/button'
 
 import { LayoutSettings } from './layout-settings'
-import { NoteEditor } from './note-editor'
 import { RevisionHistory } from './revision-history'
+import { WidgetContent } from './typed-widget'
 import { useEditorDraft } from './use-editor-draft'
 import { WidgetTools } from './widget-tools'
 
@@ -72,6 +73,7 @@ function dragged(
 export function LayoutEditor({
   layout,
   notes,
+  variables,
   readOnly,
   locked,
   autoSave,
@@ -80,6 +82,7 @@ export function LayoutEditor({
 }: {
   layout: Layout
   notes: Widget[]
+  variables: Doc<'gmVariables'>[] | undefined
   readOnly: boolean
   locked: boolean
   autoSave: boolean
@@ -541,7 +544,7 @@ export function LayoutEditor({
               return (
                 <section
                   key={note._id}
-                  aria-label={`Widget note ${index + 1}`}
+                  aria-label={`Widget ${note.kind} ${index + 1}`}
                   className={`absolute flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm ${active?.widgetId === note._id ? 'ring-2 ring-primary/40' : ''}`}
                   style={{
                     left: placement.x,
@@ -569,7 +572,7 @@ export function LayoutEditor({
                     onLostPointerCapture={() => setGesture(null)}
                     onKeyDown={(event) => keyboard(event, placement, 'move')}
                   >
-                    ⠿ Note {index + 1}
+                    ⠿ {gmWidgetLabels[note.kind]} {index + 1}
                     {placement.groupId ? ' · groupe' : ''}
                   </button>
                   <div
@@ -584,8 +587,10 @@ export function LayoutEditor({
                             : 'sans-serif',
                     }}
                   >
-                    <NoteEditor
+                    <WidgetContent
                       note={note}
+                      variables={variables}
+                      locked={locked}
                       index={index}
                       readOnly={readOnly || toolsPending}
                       autoSave={autoSave}

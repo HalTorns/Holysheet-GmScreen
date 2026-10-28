@@ -11,6 +11,9 @@ const reportSchema = z.object({
   result: z.literal('passed'),
   widgetRelations: z.object({
     valid: z.boolean(),
+    linkedCounters: z.number().int().nonnegative(),
+    availableCounters: z.number().int().nonnegative(),
+    checkedItems: z.number().int().nonnegative(),
     kinds: z.array(z.string()),
     payloads: z.number().int().nonnegative(),
     nonEmptyNotes: z.number().int().nonnegative(),

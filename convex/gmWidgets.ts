@@ -14,6 +14,7 @@ import {
   recordHistory,
   saveNote,
 } from './lib/gmEditing'
+import type { Widget } from './lib/gmFormats'
 import {
   normalizeWidget,
   normalizeLayout,
@@ -25,7 +26,13 @@ import {
   layoutBudget,
   convertNote,
 } from './lib/gmFormats'
-import { widgetValidator } from './lib/gmValidators'
+import {
+  widgetValidator,
+  widgetKindValidator,
+  widgetUpdateValidator,
+  trashWidgetValidator,
+} from './lib/gmValidators'
+import { saveWidget } from './lib/gmWidgetState'
 import { createNote } from './lib/gmWidgetWriting'
 import { limitUserOperation } from './lib/rateLimits'
 
@@ -120,19 +127,18 @@ export const changeNotes = mutation({
           projectId: note.projectId,
           screenId: note.screenId,
           formatVersion: 2,
-          kind: 'note',
-          config: {},
-          state: {},
+          ...widgetDefinition(normalizeWidget(note)),
           version: 0,
           updatedAt: Date.now(),
         })
         const copy = await ctx.db.get('gmNotes', id)
         if (!copy) throw new ConvexError({ code: 'NOT_FOUND' })
-        await writeContent(
-          ctx,
-          widgetBudget(normalizeWidget(copy)),
-          await noteBody(ctx, note)
-        )
+        if (normalizeWidget(note).kind === 'note')
+          await writeContent(
+            ctx,
+            widgetBudget(normalizeWidget(copy)),
+            await noteBody(ctx, note)
+          )
         created.set(note._id, id)
       } else {
         const trashPlacements = profiles.flatMap((profile) =>
@@ -196,7 +202,7 @@ export const listTrash = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(v.object({ ...widgetValidator.fields, preview: v.string() })),
+    page: v.array(trashWidgetValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     splitCursor: v.optional(v.union(v.string(), v.null())),
@@ -226,7 +232,10 @@ export const listTrash = query({
       page: await Promise.all(
         result.page.map(async (note) => ({
           ...normalizeWidget(note),
-          preview: (await noteBody(ctx, note)).slice(0, 240),
+          preview:
+            normalizeWidget(note).kind === 'note'
+              ? (await noteBody(ctx, note)).slice(0, 240)
+              : widgetPreview(normalizeWidget(note)),
         }))
       ),
     }
@@ -367,26 +376,83 @@ export const getNoteContent = query({
 })
 
 export const addWidget = mutation({
-  args: { screenId: v.id('gmScreens'), kind: v.literal('note') },
+  args: { screenId: v.id('gmScreens'), kind: widgetKindValidator },
   returns: v.id('gmNotes'),
-  handler: async (ctx, { screenId }) => {
+  handler: async (ctx, { screenId, kind }) => {
     const user = await requireUser(ctx)
-    return createNote(ctx, screenId, user._id)
+    return createNote(ctx, screenId, user._id, kind)
   },
 })
 export const updateWidget = mutation({
   args: {
     id: v.id('gmNotes'),
     expectedVersion: v.number(),
-    kind: v.literal('note'),
-    config: v.object({}),
-    state: v.object({}),
-    body: v.string(),
+    widget: widgetUpdateValidator,
   },
   returns: v.number(),
-  handler: async (ctx, { id, expectedVersion, body }) => {
+  handler: async (ctx, { id, expectedVersion, widget: input }) => {
     const user = await requireUser(ctx)
-    const note = await ownedNote(ctx, id, user._id)
-    return saveNote(ctx, note, expectedVersion, body)
+    const widget = await ownedNote(ctx, id, user._id)
+    if (input.kind === 'note') {
+      if (normalizeWidget(widget).kind !== 'note')
+        throw new ConvexError({ code: 'INVALID_INPUT' })
+      return saveNote(ctx, widget, expectedVersion, input.body)
+    }
+    return saveWidget(ctx, widget, expectedVersion, input)
   },
 })
+export const setChecklistItem = mutation({
+  args: {
+    id: v.id('gmNotes'),
+    expectedVersion: v.number(),
+    itemId: v.string(),
+    checked: v.boolean(),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    const widget = normalizeWidget(await ownedNote(ctx, args.id, user._id))
+    if (
+      widget.kind !== 'checklist' ||
+      !widget.config.items.some((item) => item.id === args.itemId)
+    )
+      throw new ConvexError({ code: 'INVALID_INPUT' })
+    const ids = new Set(widget.state.checkedIds)
+    if (args.checked) ids.add(args.itemId)
+    else ids.delete(args.itemId)
+    return saveWidget(ctx, widget, args.expectedVersion, {
+      kind: widget.kind,
+      config: widget.config,
+      state: { checkedIds: [...ids] },
+    })
+  },
+})
+export const setCounterValue = mutation({
+  args: { id: v.id('gmNotes'), expectedVersion: v.number(), value: v.number() },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    const widget = normalizeWidget(await ownedNote(ctx, args.id, user._id))
+    if (widget.kind !== 'counter' || widget.config.source.type !== 'local')
+      throw new ConvexError({ code: 'INVALID_INPUT' })
+    return saveWidget(ctx, widget, args.expectedVersion, {
+      kind: widget.kind,
+      config: widget.config,
+      state: { value: args.value },
+    })
+  },
+})
+
+function widgetDefinition(widget: Widget) {
+  if (widget.kind === 'note')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
+  if (widget.kind === 'checklist')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
+  if (widget.kind === 'counter')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
+  return { kind: widget.kind, config: widget.config, state: widget.state }
+}
+function widgetPreview(widget: Widget) {
+  if (widget.kind === 'note') return ''
+  return widget.config.title || widget.kind
+}

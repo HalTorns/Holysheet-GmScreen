@@ -105,7 +105,9 @@ function RevisionList({
           <p className="max-h-16 overflow-auto break-words whitespace-pre-wrap">
             {revision.snapshot.kind === 'note'
               ? revision.snapshot.body.slice(0, 240) || 'Note vide'
-              : `${revision.snapshot.name} · ${revision.snapshot.width} × ${revision.snapshot.height} px`}
+              : revision.snapshot.kind === 'layout'
+                ? `${revision.snapshot.name} · ${revision.snapshot.width} × ${revision.snapshot.height} px`
+                : revision.snapshot.config.title || revision.snapshot.kind}
           </p>
           <Button
             size="sm"
