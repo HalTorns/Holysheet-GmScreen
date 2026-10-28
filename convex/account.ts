@@ -47,6 +47,35 @@ export const exportSecurityAudit = query({
   },
 })
 
+// Application events written by this account (securityEvents.actorId). Only
+// the event name and its time leave the backend, like exportSecurityAudit.
+export const exportApplicationEvents = query({
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(v.object({ event: v.string(), createdAt: v.number() })),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, { paginationOpts }) => {
+    const user = await requireAccountUser(ctx)
+    const { page, isDone, continueCursor } = await ctx.db
+      .query('securityEvents')
+      .withIndex('by_actor', (index) => index.eq('actorId', user._id))
+      .paginate({
+        ...paginationOpts,
+        numItems: Math.min(100, Math.max(1, paginationOpts.numItems)),
+      })
+    return {
+      isDone,
+      continueCursor,
+      page: page.map(({ event, _creationTime }) => ({
+        event,
+        createdAt: _creationTime,
+      })),
+    }
+  },
+})
+
 export const exportData = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({

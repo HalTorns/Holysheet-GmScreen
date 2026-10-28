@@ -115,6 +115,21 @@ function ExportDataButton() {
           cursor = page.continueCursor
         }
       }
+      const applicationEvents: { event: string; createdAt: number }[] = []
+      cursor = null
+      isDone = false
+      while (!isDone) {
+        const page: FunctionReturnType<
+          typeof api.account.exportApplicationEvents
+        > = await convex.query(api.account.exportApplicationEvents, {
+          paginationOpts: { numItems: MAX_PAGE_SIZE, cursor },
+        })
+        applicationEvents.push(...page.page)
+        isDone = page.isDone
+        if (!isDone && cursor === page.continueCursor)
+          throw new Error('Export pagination did not progress')
+        cursor = page.continueCursor
+      }
       const holysheet: Record<string, unknown[]> = {}
       for (const collection of gmTables) {
         cursor = null
@@ -142,6 +157,7 @@ function ExportDataButton() {
         organizations,
         invitations,
         securityAudit,
+        applicationEvents,
         exportedAt: new Date().toISOString(),
       })
     } catch (error) {
@@ -178,6 +194,7 @@ function downloadExport(value: {
   organizations: ExportPage['organizations']
   invitations: ExportPage['invitations']
   securityAudit: { event: string; createdAt: number }[]
+  applicationEvents: { event: string; createdAt: number }[]
   exportedAt: string
 }) {
   const url = URL.createObjectURL(

@@ -65,3 +65,10 @@
 - Fast-forward de `main` vers `4d05cd9`. Inspections utilisées : 2/2 ; correctifs : 2 (T0-01, test pnpm en CI).
 - Auteurs : code et docs T0 par Codex ; Claude : verbatim de `docs/BRIEF.md` et ce journal.
 - Reste à faire par l'utilisateur : rien d'obligatoire pour la sécurité (aucune version ni config d'auth changée en prod). Réexamen de l'exception au 2026-11-30.
+
+## T1, T2, T3 — 2026-10-28
+
+- **T1** (Claude) : Node 26.11.0 via nvm (alias `default` inchangé), `pnpm check` vert sous Node 26 ; section « Poste Linux sans Docker » dans `docs/development.md` (`35e1289`).
+- **T2** (Codex, exec direct sans sandbox) : `docs/AUDIT.md` (27 constats : 1 bloquant, 8 majeurs, 18 mineurs) et `scripts/audit/convex-inventory.mjs` (`pnpm audit:convex`, contrôle A6 durable) (`0bd7b8a`). Vérifié par Claude : AUD-02 reproduit dans le code, inventaire exit 0, et l'inventaire détecte bien une fonction publique ajoutée sans ligne d'audit.
+- Décision : l'utilisateur délègue les choix à Claude et demande d'économiser le quota Codex → Claude code T3, Codex garde la review de plan et l'inspection finale.
+- **T3** (Claude, auteur) : correctif AUD-02 — `account.exportApplicationEvents` (paginé `by_actor`, 100 max, événement + date), ajout `applicationEvents` au téléchargement, test `tests/backend/account-events.test.ts` ; inventaire et AUD-02 mis à jour dans l'audit. `pnpm check` : 146 + 7 tests verts. Constats majeurs et décisions de dette : planifiés (voir `docs/AUDIT.md`), non traités dans ce chantier.
