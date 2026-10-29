@@ -43,7 +43,13 @@ function ScreenWorkspace({
     projectId: screen.projectId,
   })
   const [widgetKind, setWidgetKind] = useState<
-    'checklist' | 'counter' | 'dice' | 'sheet'
+    | 'checklist'
+    | 'counter'
+    | 'dice'
+    | 'sheet'
+    | 'table'
+    | 'clock'
+    | 'initiative'
   >('checklist')
   const setLocked = useMutation(api.gmEditor.setLayoutLocked)
   const [selected, setSelected] = useState<Id<'gmLayouts'> | null>(null)

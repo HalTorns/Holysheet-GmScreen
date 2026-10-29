@@ -305,4 +305,146 @@ export async function verifyWidgetKinds(
   await expect(
     sheetWidget.getByRole('link', { name: 'Ouvrir la fiche', exact: true })
   ).toBeVisible()
+  await page
+    .getByRole('button', { name: 'Reprendre l’édition', exact: true })
+    .click()
+  await add('table')
+  const table = page.getByRole('region', {
+    name: 'Widget tableau 7',
+    exact: true,
+  })
+  await table
+    .getByLabel('Coller un tableau', { exact: true })
+    .evaluate((element) => {
+      const clipboard = new DataTransfer()
+      clipboard.setData('text/plain', 'A\tB\tC\nD\tE\tF')
+      element.dispatchEvent(
+        new ClipboardEvent('paste', {
+          clipboardData: clipboard,
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    })
+  await expect(table).toContainText('2 lignes × 3 colonnes')
+  await table
+    .getByRole('button', { name: 'Confirmer le collage', exact: true })
+    .click()
+  await expect(table.getByLabel('Cellule 1, 3', { exact: true })).toHaveValue(
+    'C'
+  )
+  await expect(
+    table.getByRole('button', { name: 'Ajouter une ligne', exact: true })
+  ).toBeEnabled()
+  await table.getByLabel('Cellule 2, 3', { exact: true }).fill('Modifié')
+  await table
+    .getByRole('button', { name: 'Enregistrer le widget', exact: true })
+    .click()
+  await expect(
+    table.getByRole('button', { name: 'Enregistrer le widget', exact: true })
+  ).toBeDisabled()
+  await page.reload()
+  await waitForHydration(page)
+  await expect(table.getByLabel('Cellule 2, 3', { exact: true })).toHaveValue(
+    'Modifié'
+  )
+  await page
+    .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
+    .uncheck()
+  await add('clock')
+  const clock = page.getByRole('region', {
+    name: 'Widget horloge 8',
+    exact: true,
+  })
+  await clock
+    .getByLabel('Mode de l’horloge', { exact: true })
+    .selectOption('timer')
+  await clock.getByLabel('Durée en secondes', { exact: true }).fill('30')
+  await clock
+    .getByRole('button', { name: 'Enregistrer le widget', exact: true })
+    .click()
+  await expect(
+    clock.getByRole('button', { name: 'Démarrer', exact: true })
+  ).toBeEnabled()
+  await expect(
+    clock.getByLabel('Temps de l’horloge', { exact: true })
+  ).toHaveText('00:30')
+  await clock.getByRole('button', { name: 'Démarrer', exact: true }).click()
+  await expect(
+    clock.getByLabel('Temps de l’horloge', { exact: true })
+  ).not.toHaveText('00:30')
+  await expect(
+    clock.getByRole('button', { name: 'Pause', exact: true })
+  ).toBeEnabled()
+  await clock.getByRole('button', { name: 'Pause', exact: true }).click()
+  await expect(
+    clock.getByRole('button', { name: 'Démarrer', exact: true })
+  ).toBeEnabled()
+  const paused = await clock
+    .getByLabel('Temps de l’horloge', { exact: true })
+    .textContent()
+  const seconds = (value: string | null) =>
+    Number(value?.split(':')[0] ?? 0) * 60 + Number(value?.split(':')[1] ?? 0)
+  await page.reload()
+  await waitForHydration(page)
+  await expect(
+    clock.getByRole('button', { name: 'Démarrer', exact: true })
+  ).toBeEnabled()
+  const restored = await clock
+    .getByLabel('Temps de l’horloge', { exact: true })
+    .textContent()
+  expect(Math.abs(seconds(paused) - seconds(restored))).toBeLessThanOrEqual(1)
+  // Wait beyond a display tick and verify the paused value stays frozen.
+  const frozenAt = Date.now()
+  await expect
+    .poll(async () => {
+      const displayed = await clock
+        .getByLabel('Temps de l’horloge', { exact: true })
+        .textContent()
+      return displayed === restored && Date.now() - frozenAt >= 1200
+    })
+    .toBe(true)
+  await page
+    .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
+    .uncheck()
+  await add('initiative')
+  const initiative = page.getByRole('region', {
+    name: 'Widget initiative 9',
+    exact: true,
+  })
+  for (let index = 0; index < 3; index++)
+    await initiative
+      .getByRole('button', { name: 'Ajouter un participant', exact: true })
+      .click()
+  await initiative
+    .getByRole('button', { name: 'Enregistrer le widget', exact: true })
+    .click()
+  await expect(
+    initiative.getByRole('button', {
+      name: 'Enregistrer le widget',
+      exact: true,
+    })
+  ).toBeDisabled()
+  await other.goto(page.url())
+  await waitForHydration(other)
+  const remote = other.getByRole('region', {
+    name: 'Widget initiative 9',
+    exact: true,
+  })
+  for (const participant of ['Participant 1', 'Participant 2']) {
+    await expect(
+      initiative.getByRole('button', { name: 'Tour suivant', exact: true })
+    ).toBeEnabled()
+    await initiative
+      .getByRole('button', { name: 'Tour suivant', exact: true })
+      .click()
+    await expect(
+      initiative.locator('[aria-current="true"] input').first()
+    ).toHaveValue(participant)
+    await expect(
+      remote.locator('[aria-current="true"] input').first()
+    ).toHaveValue(participant)
+  }
+  await expect(initiative.getByRole('status').first()).toHaveText('Round 1')
+  await expect(remote.getByRole('status').first()).toHaveText('Round 1')
 }

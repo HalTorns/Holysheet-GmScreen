@@ -151,6 +151,27 @@ export const restoreRevision = mutation({
           snapshot.body,
           snapshot.bodyFormat
         )
+      if (
+        snapshot.kind === 'clock' &&
+        'running' in snapshot.state &&
+        snapshot.state.running &&
+        snapshot.state.startedAt !== undefined
+      )
+        return saveWidget(
+          ctx,
+          note,
+          expectedVersion,
+          {
+            ...snapshot,
+            state: {
+              running: false,
+              elapsedMs:
+                snapshot.state.elapsedMs +
+                Math.max(0, revision.updatedAt - snapshot.state.startedAt),
+            },
+          },
+          'restore'
+        )
       return saveWidget(ctx, note, expectedVersion, snapshot, 'restore')
     }
     const layoutId = ctx.db.normalizeId('gmLayouts', revision.subjectId)

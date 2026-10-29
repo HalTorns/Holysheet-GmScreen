@@ -33,6 +33,8 @@ export function checksum(value) {
 }
 
 export async function archiveInventory(path) {
+  // Load application validation only after the caller has admitted its target.
+  const { gmWidget } = await import('../shared/gm.ts')
   const names = (await command('unzip', ['-Z1', path]))
     .split('\n')
     .filter((name) => name && !name.endsWith('/'))
@@ -109,7 +111,20 @@ export async function archiveInventory(path) {
         note.formatVersion !== 2 ||
         (note.kind === 'note'
           ? contentByWidget.has(note._id)
-          : ['checklist', 'counter', 'dice', 'sheet'].includes(note.kind) &&
+          : [
+              'checklist',
+              'counter',
+              'dice',
+              'sheet',
+              'table',
+              'clock',
+              'initiative',
+            ].includes(note.kind) &&
+            gmWidget.safeParse({
+              kind: note.kind,
+              config: note.config,
+              state: note.state,
+            }).success &&
             !contentByWidget.has(note._id))
     ) &&
     (widgets.gmLayouts ?? []).every((layout) =>
@@ -131,6 +146,8 @@ export async function archiveInventory(path) {
         : noteById.get(revision.subjectId)
     return (
       subject &&
+      (!['table', 'clock', 'initiative'].includes(revision.snapshot.kind) ||
+        gmWidget.safeParse(revision.snapshot).success) &&
       (revision.snapshot.kind === 'layout' ||
         revision.snapshot.kind === (subject.kind ?? 'note')) &&
       subject.ownerId === revision.ownerId &&

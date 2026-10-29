@@ -142,3 +142,117 @@ test('read-only rendering contains state and no writable controls', async () => 
     0
   )
 })
+
+// The prior checklist test resolves immediately. A delayed clock response must
+// still show the segment click before the server subscription updates.
+test('clock segments respond optimistically under lock and synchronize the returned state', async () => {
+  let finish:
+    | ((value: { version: number; serverNow: number }) => void)
+    | undefined
+  mutation.mockImplementationOnce(
+    () =>
+      new Promise<{ version: number; serverNow: number }>((resolve) => {
+        finish = resolve
+      })
+  )
+  const clock: Extract<Widget, { kind: 'clock' }> = {
+    ...widget,
+    kind: 'clock',
+    config: { title: 'Danger', mode: 'segments', segments: 4 },
+    state: { filled: 0 },
+  }
+  const screen = await render(<WidgetContent {...base} note={clock} locked />)
+  await screen.getByRole('checkbox', { name: 'Segment 2', exact: true }).click()
+  await expect
+    .element(screen.getByRole('checkbox', { name: 'Segment 1', exact: true }))
+    .toBeChecked()
+  await expect
+    .element(screen.getByRole('checkbox', { name: 'Segment 2', exact: true }))
+    .toBeChecked()
+  expect(mutation).toHaveBeenLastCalledWith({
+    id: widget._id,
+    expectedVersion: 0,
+    action: { filled: 2 },
+  })
+  if (!finish) throw new Error('Missing pending clock request')
+  finish({ version: 1, serverNow: Date.now() })
+  await screen.rerender(
+    <WidgetContent
+      {...base}
+      note={{ ...clock, version: 1, state: { filled: 2 } }}
+      locked
+    />
+  )
+  await expect
+    .element(screen.getByRole('checkbox', { name: 'Segment 2', exact: true }))
+    .toBeChecked()
+  await expect
+    .element(screen.getByRole('checkbox', { name: 'Segment 3', exact: true }))
+    .not.toBeChecked()
+})
+
+test('initiative marks the next participant immediately and keeps a concurrent draft until explicitly discarded', async () => {
+  mutation.mockClear()
+  const initiative: Extract<Widget, { kind: 'initiative' }> = {
+    ...widget,
+    kind: 'initiative',
+    config: { title: 'Combat' },
+    state: {
+      entries: [
+        { id: 'a', name: 'A', score: 10, note: '' },
+        { id: 'b', name: 'B', score: 5, note: '' },
+      ],
+      round: 1,
+    },
+  }
+  const screen = await render(<WidgetContent {...base} note={initiative} />)
+  await screen
+    .getByRole('button', { name: 'Tour suivant', exact: true })
+    .click()
+  expect(
+    screen.container.querySelector('[aria-current="true"]')?.textContent
+  ).toContain('Tour actuel')
+  expect(mutation).toHaveBeenLastCalledWith({
+    id: widget._id,
+    expectedVersion: 0,
+    widget: {
+      kind: 'initiative',
+      config: initiative.config,
+      state: { ...initiative.state, currentId: 'a' },
+    },
+  })
+  await screen.rerender(
+    <WidgetContent
+      {...base}
+      note={{
+        ...initiative,
+        version: 1,
+        state: { ...initiative.state, currentId: 'a' },
+      }}
+    />
+  )
+  await screen
+    .getByLabelText('Titre du widget', { exact: true })
+    .fill('Brouillon')
+  await screen.rerender(
+    <WidgetContent
+      {...base}
+      note={{ ...initiative, version: 2, config: { title: 'Distant' } }}
+    />
+  )
+  await expect
+    .element(screen.getByRole('alert'))
+    .toHaveTextContent(/brouillon est conservé/)
+  await expect
+    .element(screen.getByRole('button', { name: 'Tour suivant', exact: true }))
+    .toBeDisabled()
+  await screen
+    .getByRole('button', {
+      name: 'Charger la version enregistrée',
+      exact: true,
+    })
+    .click()
+  await expect
+    .element(screen.getByLabelText('Titre du widget', { exact: true }))
+    .toHaveValue('Distant')
+})

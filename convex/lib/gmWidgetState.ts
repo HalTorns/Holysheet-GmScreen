@@ -13,13 +13,16 @@ type Definition =
   | Pick<Extract<Widget, { kind: 'counter' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'dice' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'sheet' }>, 'kind' | 'config' | 'state'>
+  | Pick<Extract<Widget, { kind: 'table' }>, 'kind' | 'config' | 'state'>
+  | Pick<Extract<Widget, { kind: 'clock' }>, 'kind' | 'config' | 'state'>
+  | Pick<Extract<Widget, { kind: 'initiative' }>, 'kind' | 'config' | 'state'>
 
 export async function saveWidget(
   ctx: MutationCtx,
   raw: Doc<'gmNotes'>,
   expectedVersion: number,
   input: Definition,
-  intent: 'edit' | 'restore' = 'edit'
+  intent: 'edit' | 'restore' | 'control' = 'edit'
 ) {
   const widget = normalizeWidget(raw)
   assertVersion(widget.version, expectedVersion)
@@ -31,12 +34,38 @@ export async function saveWidget(
     JSON.stringify(widget.config) !== JSON.stringify(input.config)
   )
     throw new ConvexError({ code: 'LAYOUT_LOCKED' })
+  if (intent === 'edit' && widget.kind === 'clock' && input.kind === 'clock') {
+    const { title: _oldTitle, ...oldConfig } = widget.config
+    const { title: _newTitle, ...newConfig } = input.config
+    const structureChanged =
+      JSON.stringify(oldConfig) !== JSON.stringify(newConfig)
+    const requiredState = structureChanged
+      ? input.config.mode === 'segments'
+        ? { filled: 0 }
+        : { running: false, elapsedMs: 0 }
+      : widget.state
+    const sameState =
+      'filled' in requiredState
+        ? 'filled' in input.state && input.state.filled === requiredState.filled
+        : 'running' in input.state &&
+          input.state.running === requiredState.running &&
+          input.state.elapsedMs === requiredState.elapsedMs &&
+          input.state.startedAt ===
+            ('startedAt' in requiredState ? requiredState.startedAt : undefined)
+    if (!sameState) throw new ConvexError({ code: 'INVALID_INPUT' })
+  }
   let definition: Definition
   if (input.kind === 'checklist')
     definition = { kind: input.kind, config: input.config, state: input.state }
   else if (input.kind === 'counter')
     definition = { kind: input.kind, config: input.config, state: input.state }
   else if (input.kind === 'sheet')
+    definition = { kind: input.kind, config: input.config, state: input.state }
+  else if (input.kind === 'table')
+    definition = { kind: input.kind, config: input.config, state: input.state }
+  else if (input.kind === 'clock')
+    definition = { kind: input.kind, config: input.config, state: input.state }
+  else if (input.kind === 'initiative')
     definition = { kind: input.kind, config: input.config, state: input.state }
   else
     definition = { kind: input.kind, config: input.config, state: input.state }
@@ -135,6 +164,24 @@ export async function saveWidget(
       state: widget.state,
     })
   else if (widget.kind === 'sheet')
+    await recordHistory(ctx, widget, {
+      kind: widget.kind,
+      config: widget.config,
+      state: widget.state,
+    })
+  else if (widget.kind === 'table')
+    await recordHistory(ctx, widget, {
+      kind: widget.kind,
+      config: widget.config,
+      state: widget.state,
+    })
+  else if (widget.kind === 'clock')
+    await recordHistory(ctx, widget, {
+      kind: widget.kind,
+      config: widget.config,
+      state: widget.state,
+    })
+  else if (widget.kind === 'initiative')
     await recordHistory(ctx, widget, {
       kind: widget.kind,
       config: widget.config,

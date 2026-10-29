@@ -1,5 +1,5 @@
-import { parseDice } from './dice'
-import { z } from './zod'
+import { parseDice } from './dice.ts'
+import { z } from './zod.ts'
 
 export const gmTitle = z.string().trim().min(1).max(120)
 export const gmBodyFormat = z.enum(['plain', 'markdown-v1'])
@@ -114,6 +114,9 @@ export const gmWidgetKinds = [
   'counter',
   'dice',
   'sheet',
+  'table',
+  'clock',
+  'initiative',
 ] as const
 export const gmWidgetLabels = {
   note: 'Note',
@@ -121,6 +124,9 @@ export const gmWidgetLabels = {
   counter: 'Compteur',
   dice: 'Dés',
   sheet: 'Fiche',
+  table: 'Tableau',
+  clock: 'Horloge',
+  initiative: 'Initiative',
 } as const
 const widgetTitle = z.string().max(120)
 const finiteNumber = z.number()
@@ -132,8 +138,98 @@ const localCounterSource = z
     max: finiteNumber.optional(),
   })
   .strict()
+const widgetId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/)
 export const gmWidget = z
   .discriminatedUnion('kind', [
+    z
+      .object({
+        kind: z.literal('table'),
+        config: z
+          .object({
+            title: widgetTitle,
+            columns: z
+              .array(
+                z.object({ id: widgetId, label: z.string().max(60) }).strict()
+              )
+              .min(1)
+              .max(12),
+          })
+          .strict(),
+        state: z
+          .object({
+            rows: z
+              .array(
+                z
+                  .object({
+                    id: widgetId,
+                    cells: z.array(z.string().max(500)).max(12),
+                  })
+                  .strict()
+              )
+              .max(100),
+          })
+          .strict(),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('clock'),
+        config: z.discriminatedUnion('mode', [
+          z
+            .object({ title: widgetTitle, mode: z.literal('stopwatch') })
+            .strict(),
+          z
+            .object({
+              title: widgetTitle,
+              mode: z.literal('timer'),
+              durationMs: z.number().int().min(1000).max(86_400_000),
+            })
+            .strict(),
+          z
+            .object({
+              title: widgetTitle,
+              mode: z.literal('segments'),
+              segments: z.number().int().min(2).max(12),
+            })
+            .strict(),
+        ]),
+        state: z.union([
+          z
+            .object({
+              running: z.boolean(),
+              startedAt: z.number().nonnegative().optional(),
+              elapsedMs: z.number().nonnegative(),
+            })
+            .strict(),
+          z.object({ filled: z.number().int().nonnegative() }).strict(),
+        ]),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('initiative'),
+        config: z.object({ title: widgetTitle }).strict(),
+        state: z
+          .object({
+            entries: z
+              .array(
+                z
+                  .object({
+                    id: widgetId,
+                    name: z.string().min(1).max(60),
+                    score: z.number().min(-999).max(999),
+                    note: z.string().max(120),
+                  })
+                  .strict()
+              )
+              .max(30),
+            currentId: widgetId.optional(),
+            round: z.number().int().min(1),
+          })
+          .strict(),
+      })
+      .strict(),
+
     z
       .object({
         kind: z.literal('note'),
@@ -217,6 +313,37 @@ export const gmWidget = z
       .strict(),
   ])
   .superRefine((widget, context) => {
+    if (
+      widget.kind === 'table' &&
+      (new Set(widget.config.columns.map((column) => column.id)).size !==
+        widget.config.columns.length ||
+        new Set(widget.state.rows.map((row) => row.id)).size !==
+          widget.state.rows.length ||
+        widget.state.rows.some(
+          (row) => row.cells.length !== widget.config.columns.length
+        ))
+    )
+      context.addIssue({ code: 'custom', message: 'Tableau invalide' })
+    if (widget.kind === 'clock') {
+      const { config, state } = widget
+      if (
+        config.mode === 'segments'
+          ? !('filled' in state) || state.filled > config.segments
+          : !('running' in state) ||
+            state.running !== (state.startedAt !== undefined)
+      )
+        context.addIssue({ code: 'custom', message: 'Horloge invalide' })
+    }
+    if (
+      widget.kind === 'initiative' &&
+      (new Set(widget.state.entries.map((entry) => entry.id)).size !==
+        widget.state.entries.length ||
+        (widget.state.currentId !== undefined &&
+          !widget.state.entries.some(
+            (entry) => entry.id === widget.state.currentId
+          )))
+    )
+      context.addIssue({ code: 'custom', message: 'Initiative invalide' })
     if (widget.kind === 'checklist') {
       const ids = new Set(widget.config.items.map((item) => item.id))
       if (
@@ -243,7 +370,33 @@ export const gmWidget = z
         context.addIssue({ code: 'custom', message: 'Bornes invalides' })
     }
   })
+export function initialWidget<Kind extends (typeof gmWidgetKinds)[number]>(
+  kind: Kind
+): Extract<ReturnType<typeof createInitialWidget>, { kind: Kind }>
 export function initialWidget(kind: (typeof gmWidgetKinds)[number]) {
+  return createInitialWidget(kind)
+}
+function createInitialWidget(kind: (typeof gmWidgetKinds)[number]) {
+  if (kind === 'table')
+    return {
+      kind,
+      config: {
+        title: '',
+        columns: [
+          { id: 'column-1', label: 'Colonne 1' },
+          { id: 'column-2', label: 'Colonne 2' },
+        ],
+      },
+      state: { rows: [{ id: 'row-1', cells: ['', ''] }] },
+    }
+  if (kind === 'clock')
+    return {
+      kind,
+      config: { title: '', mode: 'stopwatch' as const },
+      state: { running: false, elapsedMs: 0 },
+    }
+  if (kind === 'initiative')
+    return { kind, config: { title: '' }, state: { entries: [], round: 1 } }
   if (kind === 'checklist')
     return { kind, config: { title: '', items: [] }, state: { checkedIds: [] } }
   if (kind === 'counter')

@@ -210,7 +210,16 @@ test('password registration, project, folder and Screen survive reload, synchron
     const report = await verifyLocalRestore()
     expect(report.widgetRelations).toMatchObject({
       valid: true,
-      kinds: ['checklist', 'counter', 'dice', 'note', 'sheet'],
+      kinds: [
+        'checklist',
+        'clock',
+        'counter',
+        'dice',
+        'initiative',
+        'note',
+        'sheet',
+        'table',
+      ],
     })
     for (const count of [
       report.widgetRelations.linkedCounters,

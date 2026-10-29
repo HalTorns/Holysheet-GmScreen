@@ -544,7 +544,7 @@ export function LayoutEditor({
               return (
                 <section
                   key={note._id}
-                  aria-label={`Widget ${note.kind === 'sheet' ? 'fiche' : note.kind} ${index + 1}`}
+                  aria-label={`Widget ${note.kind === 'sheet' ? 'fiche' : note.kind === 'table' ? 'tableau' : note.kind === 'clock' ? 'horloge' : note.kind} ${index + 1}`}
                   className={`absolute flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm ${active?.widgetId === note._id ? 'ring-2 ring-primary/40' : ''}`}
                   style={{
                     left: placement.x,

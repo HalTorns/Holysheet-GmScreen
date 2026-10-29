@@ -466,7 +466,67 @@ export const setCounterValue = mutation({
   },
 })
 
+export const controlClock = mutation({
+  args: {
+    id: v.id('gmNotes'),
+    expectedVersion: v.number(),
+    action: v.union(
+      v.literal('start'),
+      v.literal('pause'),
+      v.literal('reset'),
+      v.object({ filled: v.number() })
+    ),
+  },
+  returns: v.object({ version: v.number(), serverNow: v.number() }),
+  handler: async (ctx, { id, expectedVersion, action }) => {
+    const user = await requireUser(ctx)
+    const widget = normalizeWidget(await ownedNote(ctx, id, user._id))
+    if (widget.kind !== 'clock')
+      throw new ConvexError({ code: 'INVALID_INPUT' })
+    const serverNow = Date.now()
+    let state = widget.state
+    if (widget.config.mode === 'segments') {
+      if (typeof action === 'string')
+        throw new ConvexError({ code: 'INVALID_INPUT' })
+      state = { filled: action.filled }
+    } else {
+      if (typeof action !== 'string' || !('running' in state))
+        throw new ConvexError({ code: 'INVALID_INPUT' })
+      if (action === 'reset') state = { running: false, elapsedMs: 0 }
+      else if (action === 'start' && !state.running)
+        state = {
+          running: true,
+          startedAt: serverNow,
+          elapsedMs: state.elapsedMs,
+        }
+      else if (
+        action === 'pause' &&
+        state.running &&
+        state.startedAt !== undefined
+      )
+        state = {
+          running: false,
+          elapsedMs: state.elapsedMs + Math.max(0, serverNow - state.startedAt),
+        }
+    }
+    const version = await saveWidget(
+      ctx,
+      widget,
+      expectedVersion,
+      { kind: 'clock', config: widget.config, state },
+      'control'
+    )
+    return { version, serverNow }
+  },
+})
+
 function widgetDefinition(widget: Widget) {
+  if (widget.kind === 'table')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
+  if (widget.kind === 'clock')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
+  if (widget.kind === 'initiative')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
   if (widget.kind === 'note')
     return { kind: widget.kind, config: widget.config, state: widget.state }
   if (widget.kind === 'checklist')

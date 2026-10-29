@@ -16,10 +16,14 @@ import {
 
 import { NoteEditor } from './note-editor'
 import { RevisionHistory } from './revision-history'
+import { SessionWidget } from './session-widget'
 import { useEditorDraft } from './use-editor-draft'
 
 type Variables = Doc<'gmVariables'>[]
-type TypedWidget = Exclude<Widget, { kind: 'note' }>
+type TypedWidget = Exclude<
+  Widget,
+  { kind: 'note' | 'table' | 'clock' | 'initiative' }
+>
 type Props = {
   note: Widget
   variables: Variables | undefined
@@ -81,6 +85,12 @@ function WidgetStatic({
 export function WidgetContent(props: Props) {
   const { note, variables } = props
   if (note.kind === 'note') return <NoteEditor {...props} />
+  if (
+    note.kind === 'table' ||
+    note.kind === 'clock' ||
+    note.kind === 'initiative'
+  )
+    return <SessionWidget {...props} widget={note} />
   if (props.readOnly)
     return (
       <div>

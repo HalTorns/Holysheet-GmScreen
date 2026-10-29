@@ -71,7 +71,10 @@ export const widgetKindValidator = v.union(
   v.literal('checklist'),
   v.literal('counter'),
   v.literal('dice'),
-  v.literal('sheet')
+  v.literal('sheet'),
+  v.literal('table'),
+  v.literal('clock'),
+  v.literal('initiative')
 )
 const checklistShape = {
   kind: v.literal('checklist'),
@@ -120,6 +123,56 @@ const diceShape = {
   config: v.object({ title: v.string(), expression: v.string() }),
   state: v.object({}),
 }
+const tableShape = {
+  kind: v.literal('table'),
+  config: v.object({
+    title: v.string(),
+    columns: v.array(v.object({ id: v.string(), label: v.string() })),
+  }),
+  state: v.object({
+    rows: v.array(v.object({ id: v.string(), cells: v.array(v.string()) })),
+  }),
+}
+const clockShape = {
+  kind: v.literal('clock'),
+  config: v.union(
+    v.object({ title: v.string(), mode: v.literal('stopwatch') }),
+    v.object({
+      title: v.string(),
+      mode: v.literal('timer'),
+      durationMs: v.number(),
+    }),
+    v.object({
+      title: v.string(),
+      mode: v.literal('segments'),
+      segments: v.number(),
+    })
+  ),
+  state: v.union(
+    v.object({
+      running: v.boolean(),
+      startedAt: v.optional(v.number()),
+      elapsedMs: v.number(),
+    }),
+    v.object({ filled: v.number() })
+  ),
+}
+const initiativeShape = {
+  kind: v.literal('initiative'),
+  config: v.object({ title: v.string() }),
+  state: v.object({
+    entries: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        score: v.number(),
+        note: v.string(),
+      })
+    ),
+    currentId: v.optional(v.string()),
+    round: v.number(),
+  }),
+}
 export const widgetUpdateValidator = v.union(
   v.object({
     kind: noteV2.kind,
@@ -131,7 +184,10 @@ export const widgetUpdateValidator = v.union(
   v.object({ ...checklistShape }),
   v.object({ ...counterShape }),
   v.object({ ...diceShape }),
-  v.object(sheetShape)
+  v.object(sheetShape),
+  v.object(tableShape),
+  v.object(clockShape),
+  v.object(initiativeShape)
 )
 const v2Common = { ...noteCommon, formatVersion: v.literal(2) }
 export const noteFields = v.union(
@@ -140,7 +196,10 @@ export const noteFields = v.union(
   v.object({ ...v2Common, ...checklistShape }),
   v.object({ ...v2Common, ...counterShape }),
   v.object({ ...v2Common, ...diceShape }),
-  v.object({ ...v2Common, ...sheetShape })
+  v.object({ ...v2Common, ...sheetShape }),
+  v.object({ ...v2Common, ...tableShape }),
+  v.object({ ...v2Common, ...clockShape }),
+  v.object({ ...v2Common, ...initiativeShape })
 )
 const noteSystem = { _id: v.id('gmNotes'), _creationTime: v.number() }
 export const widgetValidator = v.union(
@@ -148,7 +207,10 @@ export const widgetValidator = v.union(
   v.object({ ...noteSystem, ...v2Common, ...checklistShape }),
   v.object({ ...noteSystem, ...v2Common, ...counterShape }),
   v.object({ ...noteSystem, ...v2Common, ...diceShape }),
-  v.object({ ...noteSystem, ...v2Common, ...sheetShape })
+  v.object({ ...noteSystem, ...v2Common, ...sheetShape }),
+  v.object({ ...noteSystem, ...v2Common, ...tableShape }),
+  v.object({ ...noteSystem, ...v2Common, ...clockShape }),
+  v.object({ ...noteSystem, ...v2Common, ...initiativeShape })
 )
 const noteValidator = v.union(
   v.object({ ...noteSystem, ...noteV1 }),
@@ -169,7 +231,15 @@ export const trashWidgetValidator = v.union(
     preview: v.string(),
   }),
   v.object({ ...noteSystem, ...v2Common, ...diceShape, preview: v.string() }),
-  v.object({ ...noteSystem, ...v2Common, ...sheetShape, preview: v.string() })
+  v.object({ ...noteSystem, ...v2Common, ...sheetShape, preview: v.string() }),
+  v.object({ ...noteSystem, ...v2Common, ...tableShape, preview: v.string() }),
+  v.object({ ...noteSystem, ...v2Common, ...clockShape, preview: v.string() }),
+  v.object({
+    ...noteSystem,
+    ...v2Common,
+    ...initiativeShape,
+    preview: v.string(),
+  })
 )
 export const widgetContentFields = {
   ...owned,
@@ -240,6 +310,9 @@ const historyV2 = {
     v.object(counterShape),
     v.object(diceShape),
     v.object(sheetShape),
+    v.object(tableShape),
+    v.object(clockShape),
+    v.object(initiativeShape),
     v.object({ kind: v.literal('layout'), ...digitalV2 })
   ),
 }
