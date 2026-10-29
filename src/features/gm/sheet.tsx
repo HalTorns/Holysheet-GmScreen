@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { DraftGuard } from '@/components/draft-guard'
 import { Button } from '@/components/ui/button'
 import { convexErrorCode, operationErrorMessage } from '@/features/auth/errors'
+import { useRetained } from '@/hooks/use-retained'
 
 import { reconcileDraft } from './sheet-draft'
 
@@ -39,7 +40,7 @@ function draftOf(view: SheetView): Draft {
 }
 
 export function Sheet({ sheetId }: { sheetId: string }) {
-  const view = useQuery(api.gmSheets.getSheet, { id: sheetId })
+  const view = useRetained(useQuery(api.gmSheets.getSheet, { id: sheetId }))
   if (view === undefined) return <p role="status">Chargement de la fiche…</p>
   if (!view) return <p role="alert">Fiche introuvable ou inaccessible.</p>
   return <SheetContent key={view.sheet._id} view={view} />

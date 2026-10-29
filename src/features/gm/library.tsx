@@ -8,11 +8,12 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
+import { useRetained } from '@/hooks/use-retained'
 
 import { TitleForm } from './title-form'
 
 export function Library({ projectId }: { projectId: string }) {
-  const project = useQuery(api.gm.getProject, { id: projectId })
+  const project = useRetained(useQuery(api.gm.getProject, { id: projectId }))
   if (project === undefined)
     return <p role="status">Chargement de la bibliothèque…</p>
   if (!project) return <p role="alert">Projet introuvable ou inaccessible.</p>

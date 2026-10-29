@@ -5,11 +5,12 @@ import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { useRetained } from '@/hooks/use-retained'
 
 import { TitleForm } from './title-form'
 
 export function Project({ projectId }: { projectId: string }) {
-  const project = useQuery(api.gm.getProject, { id: projectId })
+  const project = useRetained(useQuery(api.gm.getProject, { id: projectId }))
   if (project === undefined) return <p role="status">Chargement du projet…</p>
   if (!project) return <p role="alert">Projet introuvable ou inaccessible.</p>
   return <ProjectContent project={project} />

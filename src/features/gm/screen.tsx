@@ -8,11 +8,12 @@ import { useCallback, useState, useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
+import { useRetained } from '@/hooks/use-retained'
 
 import { LayoutEditor } from './layout-editor'
 
 export function Screen({ screenId }: { screenId: string }) {
-  const data = useQuery(api.gm.getScreen, { id: screenId })
+  const data = useRetained(useQuery(api.gm.getScreen, { id: screenId }))
   if (data === undefined) return <p role="status">Chargement du Screen…</p>
   if (!data) return <p role="alert">Screen introuvable ou inaccessible.</p>
   return <ScreenWorkspace key={data.screen._id} {...data} />

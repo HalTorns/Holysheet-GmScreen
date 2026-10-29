@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 
 import { DraftGuard } from '@/components/draft-guard'
 import { Button } from '@/components/ui/button'
+import { useRetained } from '@/hooks/use-retained'
 
 import { RevisionHistory } from './revision-history'
 import { NoteInput } from './rich-text/input'
@@ -138,7 +139,9 @@ function NoteContent(props: {
   index: number
   onDirtyChange: (id: string, dirty: boolean) => void
 }) {
-  const content = useQuery(api.gmWidgets.getNoteContent, { id: props.note._id })
+  const content = useRetained(
+    useQuery(api.gmWidgets.getNoteContent, { id: props.note._id })
+  )
   if (!content) return <p role="status">Chargement de la note…</p>
   return <LoadedNoteEditor {...props} note={{ ...props.note, ...content }} />
 }

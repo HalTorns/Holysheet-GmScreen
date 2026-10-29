@@ -7,6 +7,7 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { convexErrorCode, operationErrorMessage } from '@/features/auth/errors'
+import { useRetained } from '@/hooks/use-retained'
 
 import { reconcileDraft } from './sheet-draft'
 import { definitionFrom } from './variable-input'
@@ -46,15 +47,6 @@ function formatComputed(computed: Row['computed']) {
     return computedErrors[computed.error] ?? 'Erreur de calcul'
   if (typeof computed.value === 'boolean') return computed.value ? 'Oui' : 'Non'
   return String(computed.value)
-}
-
-// Convex peut repasser une requête à undefined le temps de confirmer un jeton
-// rafraîchi : garder la dernière réponse évite de remonter les lignes et de
-// perdre un brouillon en cours de saisie. Le composant est clé par projet.
-function useRetained<T>(value: T | undefined) {
-  const [kept, setKept] = useState(value)
-  if (value !== undefined && value !== kept) setKept(value)
-  return value ?? kept
 }
 
 export function Variables({ projectId }: { projectId: string }) {
