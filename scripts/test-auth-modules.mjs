@@ -34,6 +34,7 @@ try {
       env,
     })
   const names = [
+    'AUTH_PASSWORD_ONLY',
     'AUTH_MAGIC_LINK_ENABLED',
     'AUTH_MFA_ENABLED',
     'AUTH_CREDENTIALS_ENABLED',
@@ -47,9 +48,11 @@ try {
   try {
     for (const name of names)
       command(
-        name === 'ADMIN_USER_IDS'
-          ? ['remove', name]
-          : ['set', name, name === 'AUTH_PROXY_SECRET' ? proxySecret : 'true']
+        name === 'AUTH_PASSWORD_ONLY'
+          ? ['set', name, 'false']
+          : name === 'ADMIN_USER_IDS'
+            ? ['remove', name]
+            : ['set', name, name === 'AUTH_PROXY_SECRET' ? proxySecret : 'true']
       )
     run(
       'pnpm',

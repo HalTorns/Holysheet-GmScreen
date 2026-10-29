@@ -6,7 +6,12 @@ import { z } from 'zod'
 
 import { api } from '../../convex/_generated/api'
 import { backendSiteUrl, mailpitUrl } from '../../scripts/local-config.mjs'
-import { allowSupportUser, addPasswordCredential } from './backend-operator'
+import {
+  allowSupportUser,
+  addPasswordCredential,
+  markHistoricalImpersonation,
+  recordHistoricalImpersonation,
+} from './backend-operator'
 import { verifyLocalRestore } from './backup'
 import {
   deleteAccountWithClient,
@@ -18,12 +23,15 @@ import {
   requestSignInCode,
   signInWithEmail,
   SITE_URL,
+  waitForHydration,
 } from './helpers'
 
-test.skip(
-  !process.env.PLAYWRIGHT_AUTH_MODULES,
-  'Optional auth modules require the guarded local launcher.'
-)
+test.beforeAll(() => {
+  expect(
+    process.env.PLAYWRIGHT_AUTH_MODULES,
+    'Use scripts/test-auth-modules.mjs'
+  ).toBe('1')
+})
 const listArgs = { paginationOpts: { numItems: 10, cursor: null } }
 function totp(secret: string) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
@@ -49,6 +57,7 @@ function totp(secret: string) {
 
 async function enrollMfa(page: Page, password?: string) {
   await page.goto('/app/security')
+  await waitForHydration(page)
   const mfaMailbox = await identityMailbox(page)
   if (password)
     await page.getByLabel('Mot de passe actuel', { exact: true }).fill(password)
@@ -109,15 +118,15 @@ for (const method of ['otp', 'credentials'] as const) {
           restored.tables[`_components/betterAuth/${table}`]
         ).toBeGreaterThan(0)
       await expect(
-        pendingClient.query(api.resources.list, listArgs)
+        pendingClient.query(api.gm.listProjects, listArgs)
       ).rejects.toThrow()
       await expect(
-        pendingClient.mutation(api.resources.create, {
+        pendingClient.mutation(api.gm.createProject, {
           title: 'Denied pending MFA',
-          description: '',
         })
       ).rejects.toThrow()
       await otherPage.goto('/app')
+      await waitForHydration(otherPage)
       await expect(otherPage).toHaveURL(`${SITE_URL}/verify-mfa`)
       await otherPage
         .getByLabel('Code d’authentification', { exact: true })
@@ -142,15 +151,15 @@ for (const method of ['otp', 'credentials'] as const) {
       ).toBe(200)
       const thirdPage = await third.newPage()
       await thirdPage.goto('/app')
+      await waitForHydration(thirdPage)
       await expect(thirdPage).toHaveURL(`${SITE_URL}/verify-mfa`)
       const primary = await getAuthenticatedClient(third)
       await expect(
-        primary.query(api.resources.list, listArgs)
+        primary.query(api.gm.listProjects, listArgs)
       ).rejects.toThrow()
       await expect(
-        primary.mutation(api.resources.create, {
+        primary.mutation(api.gm.createProject, {
           title: 'Denied primary',
-          description: '',
         })
       ).rejects.toThrow()
       await thirdPage
@@ -162,14 +171,14 @@ for (const method of ['otp', 'credentials'] as const) {
         .click()
       await expect(thirdPage).toHaveURL(`${SITE_URL}/app`)
       await thirdPage.reload()
+      await waitForHydration(thirdPage)
       await expect(thirdPage).toHaveURL(`${SITE_URL}/app`)
       const verified = await getAuthenticatedClient(third)
-      expect((await verified.query(api.resources.list, listArgs)).page).toEqual(
-        []
-      )
-      await verified.mutation(api.resources.create, {
+      expect(
+        (await verified.query(api.gm.listProjects, listArgs)).page
+      ).toEqual([])
+      await verified.mutation(api.gm.createProject, {
         title: 'After MFA',
-        description: '',
       })
       const repeated = await third.request.post(
         '/api/auth/two-factor/verify-backup-code',
@@ -221,6 +230,7 @@ for (const method of ['otp', 'credentials'] as const) {
         ).status()
       ).toBe(200)
       await page.goto('/app')
+      await waitForHydration(page)
       await expect(page).toHaveURL(`${SITE_URL}/verify-mfa`)
       const validTotp = totp(secret)
       const wrongTotp = validTotp === '000000' ? '000001' : '000000'
@@ -246,6 +256,7 @@ for (const method of ['otp', 'credentials'] as const) {
       expect(await previous.query(api.auth.getCurrentUser, {})).not.toBeNull()
       if (password) {
         await page.goto('/sign-in')
+        await waitForHydration(page)
         await page
           .getByLabel('Email du compte avec mot de passe', { exact: true })
           .fill(email)
@@ -269,6 +280,7 @@ for (const method of ['otp', 'credentials'] as const) {
         ).toBe(200)
       }
       await page.goto('/verify-mfa')
+      await waitForHydration(page)
       await page
         .getByLabel('Code d’authentification', { exact: true })
         .fill(totp(secret))
@@ -285,7 +297,7 @@ for (const method of ['otp', 'credentials'] as const) {
   })
 }
 
-test('support uses an explicit operator grant, stays read-only and can return to the actor', async ({
+test('support refuses impersonation for an authorized MFA operator and rejects historical cookie and JWT sessions', async ({
   page,
   browser,
 }) => {
@@ -293,68 +305,64 @@ test('support uses an explicit operator grant, stays read-only and can return to
   await enrollMfa(page)
   const admin = await getAuthenticatedClient(page.context())
   const actor = await admin.query(api.auth.getCurrentUser, {})
-  if (!actor) throw new Error('Missing authenticated actor.')
+  if (!actor) throw new Error('Missing actor')
   const other = await browser.newContext({ baseURL: SITE_URL })
   const targetPage = await other.newPage()
   await signInWithEmail(targetPage, createEmail())
   const target = await getAuthenticatedClient(other)
   const user = await target.query(api.auth.getCurrentUser, {})
-  if (!user) throw new Error('Missing authenticated target.')
-  const resource = await target.mutation(api.resources.create, {
-    title: 'Visible during support',
-    description: '',
-  })
+  if (!user) throw new Error('Missing target')
+  const session = z
+    .object({ session: z.object({ id: z.string() }) })
+    .parse(await (await other.request.get('/api/auth/get-session')).json())
+  // Keep the synthetic cookie stable while testing its explicit refusal.
+  await targetPage.close()
   try {
-    expect(
-      (
-        await page.context().request.post('/api/auth/admin/impersonate-user', {
-          headers: { Origin: SITE_URL },
-          data: { userId: user.id },
-        })
-      ).status()
-    ).toBe(403)
     allowSupportUser(actor.id)
-    await page.goto('/app/admin')
-    await page.getByLabel('Identifiant stable du compte').fill(user.id)
-    await page.getByRole('button', { name: 'Rechercher le compte' }).click()
-    page.once('dialog', (dialog) => {
-      void dialog.accept()
-    })
-    await page
-      .getByRole('button', { name: 'Ouvrir le compte pour le support' })
-      .click()
-    await expect(page.getByLabel('Session de support')).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: 'Nouvelle ressource', exact: true })
-    ).toBeDisabled()
-    const support = await getAuthenticatedClient(page.context())
+    expect((await admin.query(api.auth.getAccessState, {}))?.isSupport).toBe(
+      true
+    )
+    const refused = await page.request.post(
+      '/api/auth/admin/impersonate-user',
+      {
+        headers: { Origin: SITE_URL },
+        data: { userId: user.id },
+      }
+    )
+    expect(refused.status()).toBe(403)
     expect(
-      (await support.query(api.resources.get, { id: resource }))?.title
-    ).toBe('Visible during support')
+      z.object({ code: z.string() }).parse(await refused.json()).code
+    ).toBe('SURFACE_REMOVED')
+    await page.goto('/app/admin')
+    await waitForHydration(page)
     await expect(
-      support.mutation(api.resources.remove, { id: resource })
-    ).rejects.toThrow()
+      page.getByRole('button', { name: 'Ouvrir le compte pour le support' })
+    ).toHaveCount(0)
+    markHistoricalImpersonation(session.session.id, actor.id)
+    const actorSession = z
+      .object({ session: z.object({ id: z.string() }) })
+      .parse(await (await page.request.get('/api/auth/get-session')).json())
+    recordHistoricalImpersonation({
+      sessionId: session.session.id,
+      actorSessionId: actorSession.session.id,
+      actorId: actor.id,
+      targetId: user.id,
+    })
     const restored = await verifyLocalRestore()
     expect(
       restored.tables['_components/betterAuth/impersonations']
     ).toBeGreaterThan(0)
-    const audit = await target.query(api.account.exportSecurityAudit, {
-      scope: 'target',
-      ...listArgs,
-    })
-    expect(
-      audit.page.some((event) => event.event === 'admin.impersonated')
-    ).toBe(true)
-    await page.getByRole('button', { name: 'Revenir à mon compte' }).click()
-    await expect(page.getByLabel('Session de support')).toHaveCount(0)
-    expect(
-      (
-        await (
-          await getAuthenticatedClient(page.context())
-        ).query(api.auth.getCurrentUser, {})
-      )?.id
-    ).toBe(actor.id)
+    expect((await other.request.get('/api/auth/get-session')).status()).toBe(
+      403
+    )
+    expect((await other.request.get('/api/auth/convex/token')).status()).toBe(
+      403
+    )
+    expect(await target.query(api.auth.getCurrentUser, {})).toBeNull()
+    await expect(target.query(api.gm.listProjects, listArgs)).rejects.toThrow()
   } finally {
+    // Restore only this synthetic session so the normal account cleanup can run.
+    markHistoricalImpersonation(session.session.id, '')
     allowSupportUser('')
     await deleteAccountWithClient(target)
     await deleteAccountWithClient(admin)
@@ -367,6 +375,7 @@ test('an emailed magic link creates a session once and never authenticates on re
 }) => {
   const email = createEmail()
   await page.goto('/sign-in')
+  await waitForHydration(page)
   await page.getByLabel('Email pour recevoir un lien').fill(email)
   await page
     .getByRole('button', { name: 'Recevoir un lien de connexion' })
@@ -399,6 +408,7 @@ test('an emailed magic link creates a session once and never authenticates on re
     throw new Error('Magic link validation failed; private URL omitted.')
   }
   await page.goto('/app')
+  await waitForHydration(page)
   await expect(page).toHaveURL(`${SITE_URL}/app`)
   await completeProfile(page)
   try {
@@ -461,6 +471,7 @@ test('credential MFA management requires both current password and operation-bou
     }
     await withoutProof('enable')
     await page.goto('/app/security')
+    await waitForHydration(page)
     await page
       .getByLabel('Mot de passe actuel', { exact: true })
       .fill('incorrect-password')
@@ -529,7 +540,7 @@ test('credential SSR form cannot submit a password in a URL before hydration', a
   })
   try {
     const page = await context.newPage()
-    await page.goto('/sign-in')
+    await page.setContent(await (await context.request.get('/sign-in')).text())
     const form = page.getByRole('form', { name: 'Connexion avec mot de passe' })
     await expect(form).toHaveAttribute('method', 'post')
     await expect(

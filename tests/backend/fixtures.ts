@@ -109,3 +109,45 @@ export async function confirmOperation(
     args
   )
 }
+
+export function insertLegacyResource(
+  backend: Backend,
+  ownerId: string,
+  input: { title: string; description: string; organizationId?: string }
+) {
+  return backend.run((ctx) =>
+    ctx.db.insert('resources', {
+      ...input,
+      ownerId,
+      updatedAt: Date.now(),
+    })
+  )
+}
+export async function insertLegacyOrganization(
+  backend: Backend,
+  actorId: string,
+  name: string
+) {
+  const row: unknown = await backend.mutation(
+    components.betterAuth.adapter.create,
+    {
+      input: {
+        model: 'organization',
+        data: { name, slug: crypto.randomUUID(), createdAt: Date.now() },
+      },
+    }
+  )
+  const organizationId = documentIdSchema.parse(row)._id
+  await backend.mutation(components.betterAuth.adapter.create, {
+    input: {
+      model: 'member',
+      data: {
+        organizationId,
+        userId: actorId,
+        role: 'owner',
+        createdAt: Date.now(),
+      },
+    },
+  })
+  return organizationId
+}

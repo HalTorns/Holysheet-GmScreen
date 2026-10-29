@@ -19,7 +19,7 @@ jobs:
   application:
     name: Validation — Holysheet
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,7 +49,11 @@ jobs:
       - name: Mesurer le rendu riche de production sur Chromium
         run: node scripts/measure-rich-text.mjs --render-only
       - name: Parcours Holysheet et sécurité HTTP sur le serveur construit
-        run: pnpm test:e2e:ci tests/e2e/holysheet.spec.ts tests/e2e/widget-budgets.spec.ts tests/e2e/rich-text.spec.ts
+        run: pnpm test:e2e:ci tests/e2e/holysheet.spec.ts tests/e2e/widget-budgets.spec.ts tests/e2e/rich-text.spec.ts tests/e2e/restore.spec.ts tests/e2e/application.spec.ts
+      - name: Contrats des modules auth et refus du support impersoné
+        run: node scripts/test-auth-modules.mjs
+      - name: Contrats conservés des organisations
+        run: node scripts/test-organizations.mjs
       # Contextes d'erreur Playwright (arbre ARIA, sans valeurs saisies ni
       # trace ni capture) pour diagnostiquer un échec E2E sans le rejouer.
       - name: Publier les contextes d'échec E2E
@@ -98,7 +102,7 @@ jobs:
           test "$actual" = "$expected"
       - name: Démarrer l'image et vérifier /robots.txt
         run: |
-          docker run -d --name holysheet-ci -p 3000:3000 holysheet-ci
+          docker run -d --name holysheet-ci -p 3000:3000 -e VITE_POSTHOG_KEY=obsolete-public-key -e VITE_POSTHOG_HOST=obsolete-invalid-host holysheet-ci
           expected='Sitemap: https://ci.example.test/sitemap.xml'
           deadline=$((SECONDS + 60))
           while (( SECONDS < deadline )); do

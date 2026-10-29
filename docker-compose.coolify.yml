@@ -38,8 +38,6 @@ services:
         VITE_SITE_URL: ${VITE_SITE_URL:?Set the HTTPS frontend origin}
         VITE_CONVEX_URL: ${VITE_CONVEX_URL:?Set the HTTPS Convex API origin}
         VITE_CONVEX_SITE_URL: ${VITE_CONVEX_SITE_URL:?Set the HTTPS Convex HTTP actions origin}
-        VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}
-        VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-https://eu.i.posthog.com}
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
     restart: unless-stopped
     init: true

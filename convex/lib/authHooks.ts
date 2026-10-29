@@ -270,12 +270,8 @@ export function authHooks(ctx: GenericCtx<DataModel>) {
           forbidden('IDENTITY_CONFIRMATION_REQUIRED')
         }
       }
-      if (path === '/admin/impersonate-user') {
-        if (!access?.mfaRequired) forbidden('MFA_REQUIRED')
-        if (!modules.ADMIN_USER_IDS.includes(session.user.id)) forbidden()
-        const target = z.object({ userId: z.string() }).parse(request.body)
-        if (modules.ADMIN_USER_IDS.includes(target.userId)) forbidden()
-      }
+      if (path === '/admin/impersonate-user') forbidden('SURFACE_REMOVED')
+
       if (verificationPaths.has(path)) {
         const factorId = await requireActionCtx(ctx).runQuery(
           components.betterAuth.access.currentFactor,

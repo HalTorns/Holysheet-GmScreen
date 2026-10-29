@@ -1,7 +1,6 @@
 import { ConvexError, v } from 'convex/values'
 
 import {
-  INVITATION_DURATION_MS,
   MAX_ORGANIZATIONS_PER_USER,
   MAX_ORGANIZATION_MEMBERS,
   MAX_PENDING_INVITATIONS,
@@ -9,7 +8,6 @@ import {
   organizationSchema,
   canManageOrganizationMembers,
 } from '../../shared/organizations'
-import { emailSchema } from '../../shared/validation'
 import {
   invitationRoleValidator,
   invitationValidator,
@@ -157,23 +155,8 @@ function invitationRoleValidatorValue(value: string | null | undefined) {
 export const create = mutation({
   args: { actorId: v.string(), name: v.string() },
   returns: v.string(),
-  handler: async (ctx, { actorId, name }) => {
-    const parsed = organizationSchema.safeParse({ name })
-    if (!parsed.success) throw new ConvexError({ code: 'INVALID_INPUT' })
-    await assertMembershipCapacity(ctx, actorId)
-    const id = await ctx.db.insert('organization', {
-      name: parsed.data.name,
-      slug: 'pending',
-      createdAt: Date.now(),
-    })
-    await ctx.db.patch('organization', id, { slug: id })
-    await ctx.db.insert('member', {
-      organizationId: id,
-      userId: actorId,
-      role: 'owner',
-      createdAt: Date.now(),
-    })
-    return id
+  handler: () => {
+    throw new ConvexError({ code: 'SURFACE_REMOVED' })
   },
 })
 
@@ -203,75 +186,8 @@ export const invite = mutation({
     role: invitationRoleValidator,
   },
   returns: v.string(),
-  handler: async (
-    ctx,
-    { organizationId, actorId, email, role: invitedRole }
-  ) => {
-    const { role } = await requireMembership(ctx, organizationId, actorId)
-    requirePermission(role, 'manage')
-    if (role === 'admin' && invitedRole === 'admin')
-      throw new ConvexError({ code: 'FORBIDDEN' })
-    const parsed = emailSchema.safeParse(email)
-    if (!parsed.success) throw new ConvexError({ code: 'INVALID_INPUT' })
-    const recipient = parsed.data.toLowerCase()
-    const user = await ctx.db
-      .query('user')
-      .withIndex('email_name', (q) => q.eq('email', recipient))
-      .unique()
-    if (user && (await findMembership(ctx, organizationId, user._id)))
-      throw new ConvexError({ code: 'ALREADY_MEMBER' })
-    let pending = await ctx.db
-      .query('invitation')
-      .withIndex('organizationId', (q) =>
-        q.eq('organizationId', organizationId)
-      )
-      .take(MAX_PENDING_INVITATIONS)
-    let recipientInvites = await ctx.db
-      .query('invitation')
-      .withIndex('email_status', (q) =>
-        q.eq('email', recipient).eq('status', 'pending')
-      )
-      .take(MAX_RECIPIENT_INVITATIONS)
-    const expiredIds = new Set(
-      [...pending, ...recipientInvites]
-        .filter((invitation) => invitation.expiresAt <= Date.now())
-        .map((invitation) => invitation._id)
-    )
-    for (const id of expiredIds) await ctx.db.delete('invitation', id)
-    if (expiredIds.size > 0) {
-      pending = await ctx.db
-        .query('invitation')
-        .withIndex('organizationId', (q) =>
-          q.eq('organizationId', organizationId)
-        )
-        .take(MAX_PENDING_INVITATIONS)
-      recipientInvites = await ctx.db
-        .query('invitation')
-        .withIndex('email_status', (q) =>
-          q.eq('email', recipient).eq('status', 'pending')
-        )
-        .take(MAX_RECIPIENT_INVITATIONS)
-    }
-    if (
-      pending.length >= MAX_PENDING_INVITATIONS ||
-      recipientInvites.length >= MAX_RECIPIENT_INVITATIONS
-    )
-      throw new ConvexError({ code: 'INVITATION_LIMIT' })
-    if (
-      pending.some(
-        (invite) => invite.email === recipient && invite.expiresAt > Date.now()
-      )
-    )
-      throw new ConvexError({ code: 'ALREADY_INVITED' })
-    return await ctx.db.insert('invitation', {
-      organizationId,
-      email: recipient,
-      role: invitedRole,
-      status: 'pending',
-      inviterId: actorId,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + INVITATION_DURATION_MS,
-    })
+  handler: () => {
+    throw new ConvexError({ code: 'SURFACE_REMOVED' })
   },
 })
 

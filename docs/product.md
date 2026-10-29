@@ -39,7 +39,7 @@ Les sections suivantes sont l’historique daté des jalons.
 - Auth : le setup active `AUTH_PASSWORD_ONLY=true`. Les codes servent à vérifier/récupérer le compte ; la connexion OTP/passkey/social est refusée côté serveur dans ce mode. Les garanties MFA existantes sont conservées.
 - Context7 MCP indisponible dans cette session : consulter types/sources installés et documentation officielle compatible avant nouvel usage d’API, sans mise à niveau implicite.
 - Prochaine tranche : éditeur libre avec positions/tailles persistées, profils configurables, autosauvegarde et historique ; garder l’impression indépendante.
-- CI adaptée au produit : tous les tests backend restent exécutés ; le workflow cible les E2E Holysheet, incluant les contrôles HTTP/CSP. Les anciens fichiers E2E UI de ressources/passwordless/organisations sont conservés comme références. Une validation locale ne prouve pas une CI distante.
+- CI adaptée au produit : tous les tests backend restent exécutés ; le workflow cible les E2E Holysheet, incluant les contrôles HTTP/CSP. Les suites conservées utilisent GM ou des fixtures historiques directes ; C2 retire les parcours de démonstration obsolètes. Une validation locale ne prouve pas une CI distante.
 - Préparation Coolify : Compose et guide opérateur, service privé `operations`, relais SMTP Infomaniak configurable au runtime et expéditeur `admin@holysheet.fr`. Correctifs ciblés Zod/Happy DOM ; audit de production sans alerte high/critical, deux alertes modérées restantes.
 - Le premier jalon est initialisé sur Coolify le 27 octobre 2026 : configuration privée et fonctions publiées après autorisation explicite de l’utilisateur. La page de connexion et les endpoints publics répondent en HTTP 200 ; l’utilisateur confirme ensuite que les parcours fonctionnent. Aucun effacement ni réinitialisation n’a été réalisé.
 
@@ -58,3 +58,13 @@ Branche `codex/editor-tools` : duplication indépendante, copier-coller éphém�
 Validation locale : `pnpm backend:push` et `pnpm check` passés (138 tests backend/unitaires et 7 tests de composants, types/lint/format/Knip/build), puis les trois tests de géométrie après ajout d’un cas de restauration, soit 139 comportements backend/unitaires distincts couverts. Les trois E2E de sécurité passent ; le parcours métier étendu passe dans un lancement ciblé, avec copie indépendante, mouvement groupé, rendu des styles, corbeille et restauration réelle. Deux essais précédents avaient échoué sur le chargement après connexion/rechargement, avant les nouveaux outils ; aucun correctif d’authentification ni relâchement de protection n’a été appliqué. La recherche de secrets sur les changements ne signale aucune fuite.
 
 La tranche suivante du domaine sera la bibliothèque de fiches et variables du projet, puis leurs widgets liés. CSS libre, guides visuels, menus contextuels et raccourcis étendus de l’éditeur restent à compléter ; les pop-ups, imports/exports et la communauté restent dans le PRD.
+
+## C2 — surfaces du socle retirées
+
+Organisations et invitations ne sont plus proposées dans le produit ; création et nouvelles invitations sont refusées côté serveur, y compris les endpoints natifs Better Auth. Les API de gestion, transfert, export et suppression des organisations existantes sont conservées. La démonstration ressources perd son UI et son API CRUD ; sa table reste exportable et nettoyable. Aucune table ni schéma auth n’est modifié et aucune donnée n’est détruite par cette tranche.
+
+L’impersonation est retirée de l’interface et sa création refusée ; les sessions historiques impersonées sont refusées par cookie et JWT. Rôles, bootstrap et protection du dernier administrateur restent en place. PostHog est retiré, y compris dépendances, CSP et variables déclarées ; les anciennes variables sont ignorées au démarrage. Sentry, Arcjet, dashboard privé et Spotlight en développement restent conservés.
+
+La CI prévoit restauration, contrats des organisations historiques et modules auth via leurs lanceurs protégés. Les preuves E2E et CI restent à exécuter : aucun Docker disponible dans l’environnement de construction C2. Voir le rapport de livraison pour les vérifications locales réellement exécutées.
+
+Preuves locales C2 : `pnpm check` réussi (246 tests backend/unitaires et 19 tests navigateur, build inclus), audits Convex et production high à 0, `git diff --check` sans erreur. Les trois exceptions Better Auth approuvées en T0 restent inchangées.

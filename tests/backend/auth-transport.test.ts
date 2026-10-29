@@ -255,3 +255,106 @@ test('credential sign-in keeps a live primary session pending MFA', async () => 
     ).toBe(true)
   })
 })
+
+// Cookie and JWT share the live validation: a legacy impersonated session must
+// never regain access, even while its ordinary expiry remains valid.
+test('historical impersonation is refused over cookie and JWT', async () => {
+  const { backend, user, cookie } = await createHttpSession()
+  await backend.mutation(components.betterAuth.adapter.updateOne, {
+    input: {
+      model: 'session',
+      where: [{ field: '_id', value: user.sessionId }],
+      update: { impersonatedBy: 'historical-operator' },
+    },
+  })
+  await backend.action(async (ctx) => {
+    const auth = createAuth(ctx)
+    for (const path of ['/get-session', '/convex/token']) {
+      const response = await auth.handler(
+        new Request(`http://localhost:3000/api/auth${path}`, {
+          headers: { cookie },
+        })
+      )
+      expect(response.status).toBe(403)
+      expect(
+        z.object({ code: z.string() }).parse(await response.json()).code
+      ).toBe('UNAUTHENTICATED')
+    }
+  })
+  const { api } = await import('../../convex/_generated/api')
+  expect(await user.client.query(api.auth.getCurrentUser, {})).toBeNull()
+})
+
+test('an authorized MFA support operator cannot create impersonation and native organization writes stay closed', async () => {
+  const { backend, user, cookie } = await createHttpSession()
+  vi.stubEnv('AUTH_ADMIN_ENABLED', 'true')
+  vi.stubEnv('AUTH_MFA_ENABLED', 'true')
+  vi.stubEnv('ADMIN_USER_IDS', user.userId)
+  vi.stubEnv('ORGANIZATIONS_ENABLED', 'true')
+  await backend.mutation(components.betterAuth.adapter.updateOne, {
+    input: {
+      model: 'user',
+      where: [{ field: '_id', value: user.userId }],
+      update: { twoFactorEnabled: true },
+    },
+  })
+  const factor: unknown = await backend.mutation(
+    components.betterAuth.adapter.create,
+    {
+      input: {
+        model: 'twoFactor',
+        data: {
+          userId: user.userId,
+          secret: 'synthetic-encrypted-factor',
+          backupCodes: 'synthetic-encrypted-codes',
+          verified: true,
+        },
+      },
+    }
+  )
+  await backend.mutation(components.betterAuth.access.verifySessionFactor, {
+    sessionId: user.sessionId,
+    userId: user.userId,
+    factorId: z.object({ _id: z.string() }).parse(factor)._id,
+  })
+  const target = await createAuthenticatedUser(
+    backend,
+    'target-transport@example.test'
+  )
+  const { api } = await import('../../convex/_generated/api')
+  expect(
+    (await user.client.query(api.auth.getAccessState, {}))?.isSupport
+  ).toBe(true)
+  await backend.action(async (ctx) => {
+    const auth = createAuth(ctx)
+    for (const path of [
+      '/admin/impersonate-user',
+      '/organization/create',
+      '/organization/invite-member',
+    ]) {
+      const response = await auth.handler(
+        new Request(`http://localhost:3000/api/auth${path}`, {
+          method: 'POST',
+          headers: {
+            cookie,
+            Origin: 'http://localhost:3000',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: target.userId,
+            name: 'Closed',
+            slug: 'closed',
+            email: 'new@example.test',
+            role: 'member',
+          }),
+        })
+      )
+      expect(response.status).toBe(403)
+      if (path === '/admin/impersonate-user')
+        expect(
+          z.object({ code: z.string() }).parse(await response.json()).code
+        ).toBe('SURFACE_REMOVED')
+    }
+  })
+  expect(await target.client.query(api.auth.getCurrentUser, {})).not.toBeNull()
+})

@@ -5,11 +5,11 @@ import { parseEnv } from 'node:util'
 import { expect, test } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
+import { api } from '../../convex/_generated/api'
 import { dashboardUrl } from '../../scripts/local-config.mjs'
 import {
   deleteAccountWithClient,
   createEmail,
-  createResource,
   getAuthenticatedClient,
   signInWithEmail,
 } from './helpers'
@@ -29,7 +29,7 @@ test('le dashboard lit les données locales et ferme sa session admin sans persi
   try {
     await signInWithEmail(page, createEmail())
     client = await getAuthenticatedClient(page.context())
-    await createResource(page, title)
+    await client.mutation(api.gm.createProject, { title })
 
     const dashboard = await adminContext.newPage()
     const response = await dashboard.goto(dashboardUrl)
@@ -49,7 +49,7 @@ test('le dashboard lit les données locales et ferme sa session admin sans persi
     ).toBeVisible()
     await dashboard.getByRole('link', { name: 'Data', exact: true }).click()
     await dashboard
-      .getByRole('link', { name: 'resources', exact: true })
+      .getByRole('link', { name: 'gmProjects', exact: true })
       .click()
     await expect(dashboard.getByText(title, { exact: true })).toBeVisible()
     expect(dashboard.url().includes(adminKey)).toBe(false)

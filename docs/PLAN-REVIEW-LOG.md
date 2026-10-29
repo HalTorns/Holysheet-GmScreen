@@ -191,3 +191,11 @@
   - Les organisations sont réduites au retrait de l'interface, avec refus serveur de toute création ; l'API de gestion, d'export et de suppression est gardée.
   - R2 : REVISE (C2-04-R2), la spec des modules auth serait ignorée sans son lanceur protégé ; étape CI dédiée et interdiction des `skip`.
   - R3 : **APPROVED**.
+
+### C2 — construction du 29 octobre 2026
+
+Implémentation du work order C2 sur codex/c2-surfaces : surfaces organisations/ressources/impersonation et PostHog retirées, données/schémas conservés. CI étendue à restore et aux lanceurs modules/organisations, sans skip dans ces specs. Les données historiques sont créées par fixtures directes. Docker absent : E2E et logs CI non vérifiés localement ; aucun push/commit autorisé ni effectué. Les preuves locales sont rapportées dans la livraison du builder.
+
+Preuves C2 observées : 36 tests ciblés réussis ; audits Convex et production high à 0. Collecte seule : 12 E2E concernés, dont 9 modules ; aucune exécution Docker/CI revendiquée.
+
+Validation finale C2 : `pnpm check` réussi (39 fichiers / 246 tests backend et unitaires, 7 fichiers / 19 tests navigateur, types, lint, format, Knip et build). `git diff --check` réussi. Avertissements de bundling upstream conservés. Les 33 tests du lanceur local passent après maintien du filtrage de son ancien sélecteur de capacité.

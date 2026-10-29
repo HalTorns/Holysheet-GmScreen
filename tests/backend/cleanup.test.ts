@@ -5,6 +5,7 @@ import {
   confirmOperation,
   createAuthenticatedUser,
   createBackendTest,
+  insertLegacyOrganization,
 } from './fixtures'
 
 afterEach(() => {
@@ -21,9 +22,7 @@ test.each(['account', 'organization'] as const)(
     const user = await createAuthenticatedUser(source, 'deleting@example.test')
     const organizationId =
       kind === 'organization'
-        ? await user.client.mutation(api.organizations.create, {
-            name: 'Deleting team',
-          })
+        ? await insertLegacyOrganization(source, user.userId, 'Deleting team')
         : undefined
     await source.run(async (ctx) => {
       for (let index = 0; index < 205; index++)

@@ -9,14 +9,17 @@ describe('Export des événements applicatifs (AUD-02)', () => {
     const backend = createBackendTest()
     const alice = await createAuthenticatedUser(backend, 'alice@example.com')
     const bob = await createAuthenticatedUser(backend, 'bob@example.com')
-    for (let index = 0; index < 3; index++)
-      await alice.client.mutation(api.resources.create, {
-        title: `Alice ${index}`,
-        description: '',
-      })
-    await bob.client.mutation(api.resources.create, {
-      title: 'Bob',
-      description: '',
+    await backend.run(async (ctx) => {
+      for (const actorId of [
+        alice.userId,
+        alice.userId,
+        alice.userId,
+        bob.userId,
+      ])
+        await ctx.db.insert('securityEvents', {
+          actorId,
+          event: 'resource.created',
+        })
     })
 
     const events: { event: string; createdAt: number }[] = []

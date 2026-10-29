@@ -16,9 +16,8 @@ afterEach(() => {
 test('a pending factor blocks data even with MFA disabled, and a replaced factor rejects an old proof', async () => {
   const backend = createBackendTest()
   const user = await createAuthenticatedUser(backend, 'factor@example.test')
-  await user.client.mutation(api.resources.create, {
+  await user.client.mutation(api.gm.createProject, {
     title: 'Private',
-    description: '',
   })
   await backend.mutation(components.betterAuth.adapter.updateOne, {
     input: {
@@ -45,13 +44,12 @@ test('a pending factor blocks data even with MFA disabled, and a replaced factor
   const original = await factor()
   vi.stubEnv('AUTH_MFA_ENABLED', 'false')
   expect(await user.client.query(api.auth.getCurrentUser, {})).toBeNull()
-  await expect(user.client.query(api.resources.list, listArgs)).rejects.toThrow(
-    'MFA_REQUIRED'
-  )
   await expect(
-    user.client.mutation(api.resources.create, {
+    user.client.query(api.gm.listProjects, listArgs)
+  ).rejects.toThrow('MFA_REQUIRED')
+  await expect(
+    user.client.mutation(api.gm.createProject, {
       title: 'Denied',
-      description: '',
     })
   ).rejects.toThrow('MFA_REQUIRED')
   await backend.mutation(components.betterAuth.access.verifySessionFactor, {
@@ -60,7 +58,7 @@ test('a pending factor blocks data even with MFA disabled, and a replaced factor
     factorId: original,
   })
   expect(
-    (await user.client.query(api.resources.list, listArgs)).page
+    (await user.client.query(api.gm.listProjects, listArgs)).page
   ).toHaveLength(1)
   await backend.mutation(components.betterAuth.adapter.deleteOne, {
     input: { model: 'twoFactor', where: [{ field: '_id', value: original }] },
@@ -73,9 +71,9 @@ test('a pending factor blocks data even with MFA disabled, and a replaced factor
       factorId: original,
     })
   ).rejects.toThrow('UNAUTHENTICATED')
-  await expect(user.client.query(api.resources.list, listArgs)).rejects.toThrow(
-    'MFA_REQUIRED'
-  )
+  await expect(
+    user.client.query(api.gm.listProjects, listArgs)
+  ).rejects.toThrow('MFA_REQUIRED')
   await backend.mutation(components.betterAuth.access.verifySessionFactor, {
     sessionId: user.sessionId,
     userId: user.userId,
@@ -87,11 +85,11 @@ test('a pending factor blocks data even with MFA disabled, and a replaced factor
   })
   expect(audit.page).toHaveLength(2)
   expect(
-    (await user.client.query(api.resources.list, listArgs)).page
+    (await user.client.query(api.gm.listProjects, listArgs)).page
   ).toHaveLength(1)
 })
 
-test('support access is read-only, revocable and expires even if Better Auth extends the session', async () => {
+test('historical impersonated sessions are refused even with an authorized MFA operator', async () => {
   vi.useFakeTimers()
   const backend = createBackendTest()
   const actor = await createAuthenticatedUser(backend, 'admin@example.test')
@@ -122,51 +120,31 @@ test('support access is read-only, revocable and expires even if Better Auth ext
     factorId: factor,
   })
 
-  const resource = await target.client.mutation(api.resources.create, {
-    title: 'Target',
-    description: '',
-  })
   vi.stubEnv('AUTH_ADMIN_ENABLED', 'true')
   vi.stubEnv('ADMIN_USER_IDS', actor.userId)
   await backend.mutation(components.betterAuth.adapter.updateOne, {
     input: {
       model: 'session',
       where: [{ field: '_id', value: target.sessionId }],
-      update: { impersonatedBy: actor.userId, expiresAt: Date.now() + 300_000 },
+      update: { impersonatedBy: actor.userId },
     },
   })
+  // A historical link and a valid operator assurance must not restore access.
   await backend.mutation(components.betterAuth.access.recordImpersonation, {
     actorId: actor.userId,
     actorSessionId: actor.sessionId,
     targetId: target.userId,
     sessionId: target.sessionId,
   })
+  expect(await target.client.query(api.auth.getCurrentUser, {})).toBeNull()
   expect(
-    (await target.client.query(api.resources.get, { id: resource }))?.title
-  ).toBe('Target')
+    await backend.query(components.betterAuth.access.getSession, {
+      userId: target.userId,
+      sessionId: target.sessionId,
+    })
+  ).toBeNull()
   await expect(
-    target.client.mutation(api.resources.remove, { id: resource })
-  ).rejects.toThrow('IMPERSONATION_READ_ONLY')
-  const audit = await target.client
-    .query(api.account.exportSecurityAudit, { scope: 'target', ...listArgs })
-    .catch(() => null)
-  // Sensitive export is also forbidden in a support session.
-  expect(audit).toBeNull()
-  vi.stubEnv('ADMIN_USER_IDS', '')
-  await expect(
-    target.client.query(api.resources.list, listArgs)
-  ).rejects.toThrow('UNAUTHENTICATED')
-  vi.stubEnv('ADMIN_USER_IDS', actor.userId)
-  await backend.mutation(components.betterAuth.adapter.updateOne, {
-    input: {
-      model: 'session',
-      where: [{ field: '_id', value: target.sessionId }],
-      update: { expiresAt: Date.now() + 7 * 86_400_000 },
-    },
-  })
-  vi.advanceTimersByTime(300_001)
-  await expect(
-    target.client.query(api.resources.list, listArgs)
+    target.client.query(api.gm.listProjects, listArgs)
   ).rejects.toThrow('UNAUTHENTICATED')
 })
 

@@ -1,6 +1,9 @@
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { hashPassword } from 'better-auth/crypto'
+import { z } from 'zod'
 
 import {
   assertLocalDeploymentSelection,
@@ -20,7 +23,7 @@ function runLocalOperator(arguments_: string[]) {
   const configuration = readEnvironment('.env.local')
   if (!configuration.CONVEX_SELF_HOSTED_ADMIN_KEY)
     throw new Error('Missing local test configuration.')
-  run(
+  return run(
     'pnpm',
     [
       'exec',
@@ -118,5 +121,83 @@ export function resetResourceWriteBudget(userId: string) {
     'rateLimiter',
     'lib:resetRateLimit',
     JSON.stringify({ name: 'resourceWrite', key: userId }),
+  ])
+}
+
+// Synthetic historical rows, inserted through the guarded operator CLI.
+export function insertAuthFixture(
+  model: 'organization' | 'member' | 'invitation' | 'passkey',
+  data: Record<string, string | number | boolean>
+) {
+  const output = runLocalOperator([
+    'run',
+    '--component',
+    'betterAuth',
+    'adapter:create',
+    JSON.stringify({ input: { model, data } }),
+  ])
+  return z.object({ _id: z.string() }).parse(JSON.parse(output))._id
+}
+export function insertResourceFixture(
+  ownerId: string,
+  title: string,
+  organizationId?: string
+) {
+  const directory = mkdtempSync(join(tmpdir(), 'c2-fixture-'))
+  try {
+    const file = join(directory, 'resources.jsonl')
+    writeFileSync(
+      file,
+      `${JSON.stringify({
+        ownerId,
+        title,
+        description: '',
+        updatedAt: Date.now(),
+        ...(organizationId ? { organizationId } : {}),
+      })}\n`
+    )
+    runLocalOperator([
+      'import',
+      '--append',
+      '--table',
+      'resources',
+      file,
+      '--yes',
+    ])
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+}
+export function markHistoricalImpersonation(
+  sessionId: string,
+  actorId: string
+) {
+  runLocalOperator([
+    'run',
+    '--component',
+    'betterAuth',
+    'adapter:updateOne',
+    JSON.stringify({
+      input: {
+        model: 'session',
+        where: [{ field: '_id', value: sessionId }],
+        update: { impersonatedBy: actorId },
+      },
+    }),
+  ])
+}
+
+export function recordHistoricalImpersonation(input: {
+  sessionId: string
+  actorSessionId: string
+  actorId: string
+  targetId: string
+}) {
+  runLocalOperator([
+    'run',
+    '--component',
+    'betterAuth',
+    'access:recordImpersonation',
+    JSON.stringify(input),
   ])
 }

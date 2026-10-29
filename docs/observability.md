@@ -23,11 +23,9 @@ Le wrapper active le profil Docker `observability`, les flags privés/publics lo
 
 Les source maps de production et leur upload ne sont pas configurés automatiquement : définir la politique de publication et un jeton d’upload secret dans la CI du produit avant de les ajouter. Le SDK TanStack Start Sentry est actuellement beta ; une mise à jour doit vérifier cookies, CSP et middleware.
 
-## PostHog
+## Analytics retirées (C2)
 
-Configurer `VITE_POSTHOG_KEY` avec la clé publique du projet et `VITE_POSTHOG_HOST` (défaut région EU). L’absence de clé évite le chargement du SDK/provider React. Le provider est chargé uniquement dans le navigateur, autour de son collecteur de navigation ; il ne remplace ni ne suspend les composants applicatifs pendant le chargement. Ajouter les futurs événements dans cet adaptateur et sa validation explicite. Autocapture, replays, exceptions, web vitals, feature flags et chargement de scripts externes sont fermés ; la persistance reste en mémoire. Les seuls événements de base sont `page_viewed` avec la clé publique du projet requise par le protocole, une catégorie statique (`home`, `sign-in`, `application`, `mfa`, `other`) et un identifiant aléatoire ; l’allowlist retire les URL, referrers, IDs privés et propriétés SDK automatiques. Aucun email ni ID de compte n’est associé.
-
-Pour enrichir l’analytics du produit, définir les événements et le consentement applicables avant d’ajouter une identification, une persistance ou des propriétés. Retirer la clé coupe le module ; le fournisseur reçoit nécessairement la connexion réseau du navigateur. La CSP ajoute uniquement les origines configurées pour les modules actifs.
+PostHog n’est plus installé ni chargé. Ses hôtes sont absents de la CSP et ses variables ne font plus partie du schéma d’environnement ; des variables historiques encore définies sont ignorées. Sentry et Arcjet sont conservés.
 
 ## Arcjet : périmètre attesté
 
@@ -43,4 +41,4 @@ Le défaut local est désactivé : aucune IP fictive et aucun appel Arcjet dista
 
 `src/env.ts`, `src/env.server.ts`, `convex/lib/environment.ts`, `convex/lib/authModules.ts` et le provider email valident les variables avec env-core + Zod jitless. Une configuration activée incomplète échoue sans afficher les entrées rejetées. Les variables administratives des scripts locaux restent validées par leurs gardes de déploiement/Docker ; elles ne sont jamais des variables applicatives publiques.
 
-`pnpm test:e2e:local observability` construit les modules actifs avec des clés publiques fictives et des transports SaaS interceptés, puis vérifie leur livraison sous la CSP de production. Le lanceur neutralise les clés/flags de télémétrie hérités pour ses processus de test ; `spotlight` force seulement le sidecar local, sans DSN. Les autres parcours locaux ferment ces transports. Les fichiers de configuration du projet restent conservés, et le build original est restauré. Ces tests ne contactent aucun projet Sentry/PostHog/Arcjet distant.
+`pnpm test:e2e:local observability` construit les modules actifs avec des clés publiques fictives et des transports SaaS interceptés, puis vérifie leur livraison sous la CSP de production. Le lanceur neutralise les clés/flags de télémétrie hérités pour ses processus de test ; `spotlight` force seulement le sidecar local, sans DSN. Les autres parcours locaux ferment ces transports. Les fichiers de configuration du projet restent conservés, et le build original est restauré. Ces tests ne contactent aucun projet Sentry/Arcjet distant.

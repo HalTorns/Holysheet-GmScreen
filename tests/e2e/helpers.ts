@@ -101,8 +101,15 @@ export async function signInWithEmail(
   page: Page,
   email: string
 ): Promise<void> {
+  if (
+    (await getAnonymousClient().query(api.capabilities.get, {})).passwordOnly
+  ) {
+    await signInProductAccount(page, email)
+    return
+  }
   const previousMessages = new Set(await readMailbox(email))
   await page.goto('/sign-in')
+  await waitForHydration(page)
   await page.getByLabel('Adresse e-mail', { exact: true }).fill(email)
   const [sent] = await Promise.all([
     page.waitForResponse(
@@ -127,8 +134,8 @@ export async function signInWithEmail(
   await expect(page).toHaveURL(`${SITE_URL}/app`)
   await completeProfile(page)
   await expect(
-    page.getByRole('button', { name: 'Nouvelle ressource', exact: true })
-  ).toBeEnabled()
+    page.getByRole('heading', { name: 'Mes projets.', exact: true })
+  ).toBeVisible()
 }
 
 export async function getAuthenticatedClient(context: BrowserContext) {
@@ -147,54 +154,6 @@ export async function getAuthenticatedClient(context: BrowserContext) {
 
 export function getAnonymousClient(): ConvexHttpClient {
   return new ConvexHttpClient(CONVEX_URL)
-}
-
-export async function createResource(page: Page, title: string): Promise<void> {
-  await page
-    .getByRole('button', { name: 'Nouvelle ressource', exact: true })
-    .click()
-  await expect(page.getByRole('dialog')).toBeVisible()
-  await page.getByLabel('Titre', { exact: true }).fill(title)
-  await page
-    .getByLabel('Description (facultatif)', { exact: true })
-    .fill('Créée depuis le navigateur E2E.')
-  await page
-    .getByRole('button', { name: 'Créer la ressource', exact: true })
-    .click()
-  await expect(page.getByText(title, { exact: true })).toBeVisible()
-}
-
-export async function installAuthenticator(page: Page) {
-  const cdp = await page.context().newCDPSession(page)
-  await cdp.send('WebAuthn.enable')
-  const { authenticatorId } = await cdp.send(
-    'WebAuthn.addVirtualAuthenticator',
-    {
-      options: {
-        protocol: 'ctap2',
-        transport: 'internal',
-        hasResidentKey: true,
-        hasUserVerification: true,
-        isUserVerified: true,
-        automaticPresenceSimulation: true,
-      },
-    }
-  )
-  return { cdp, authenticatorId }
-}
-
-export async function addPasskey(page: Page, name: string): Promise<void> {
-  const mailbox = await identityMailbox(page)
-  await page
-    .getByRole('button', { name: 'Ajouter une passkey', exact: true })
-    .click()
-  await expect(page.getByRole('dialog')).toBeVisible()
-  await page.getByLabel('Nom de la passkey', { exact: true }).fill(name)
-  await page
-    .getByRole('button', { name: 'Enregistrer la passkey', exact: true })
-    .click()
-  await finishIdentityConfirmation(page, mailbox)
-  await expect(page.getByText(name, { exact: true })).toBeVisible()
 }
 
 export async function exportAccountData(page: Page) {
@@ -219,26 +178,6 @@ export async function exportAccountData(page: Page) {
   } finally {
     await download.delete()
   }
-}
-
-export async function deleteAccount(page: Page): Promise<void> {
-  const mailbox = await identityMailbox(page)
-  await page.goto('/app/security')
-  await page
-    .getByRole('button', { name: 'Supprimer mon compte', exact: true })
-    .click()
-  await expect(page.getByRole('dialog')).toBeVisible()
-  await page
-    .getByLabel('Saisissez SUPPRIMER pour confirmer', { exact: true })
-    .fill('SUPPRIMER')
-  await page
-    .getByRole('button', {
-      name: 'Supprimer définitivement mon compte',
-      exact: true,
-    })
-    .click()
-  await finishIdentityConfirmation(page, mailbox)
-  await expect(page).toHaveURL(`${SITE_URL}/`)
 }
 
 export async function completeProfile(page: Page) {
@@ -348,4 +287,39 @@ export function logPageLifecycle(context: BrowserContext) {
   }
   for (const target of context.pages()) watch(target)
   context.on('page', watch)
+}
+
+const productAccounts = new Map<string, string>()
+async function signInProductAccount(page: Page, email: string) {
+  await page.goto('/sign-in')
+  await waitForHydration(page)
+  let password = productAccounts.get(email)
+  if (!password) {
+    password = `Synthetic-${randomUUID()}`
+    await page
+      .getByRole('button', { name: 'Créer un compte', exact: true })
+      .click()
+    await page
+      .getByLabel('Pseudo', { exact: true })
+      .fill(`MJ ${randomUUID().slice(0, 8)}`)
+    await page.getByLabel('Adresse email', { exact: true }).fill(email)
+    await page.getByLabel('Mot de passe', { exact: true }).fill(password)
+    const previous = new Set(await readMailbox(email))
+    await page
+      .getByRole('button', { name: 'Créer mon compte', exact: true })
+      .click()
+    await page
+      .getByLabel('Code de vérification', { exact: true })
+      .fill(await waitForVerificationCode(email, previous))
+    await page
+      .getByRole('button', { name: 'Vérifier mon adresse', exact: true })
+      .click()
+    productAccounts.set(email, password)
+  }
+  await page.getByLabel('Adresse email', { exact: true }).fill(email)
+  await page.getByLabel('Mot de passe', { exact: true }).fill(password)
+  await page.getByRole('button', { name: 'Se connecter', exact: true }).click()
+  await expect(page).toHaveURL(`${SITE_URL}/app`)
+  await waitForHydration(page)
+  await completeProfile(page)
 }

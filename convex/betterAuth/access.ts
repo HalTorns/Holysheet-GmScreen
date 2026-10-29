@@ -115,35 +115,7 @@ export async function sessionAccess(
     (cutoff && session.createdAt <= cutoff.revokedAt)
   )
     return null
-  if (session.impersonatedBy) {
-    const link = await ctx.db
-      .query('impersonations')
-      .withIndex('by_session', (q) => q.eq('sessionId', session._id))
-      .unique()
-    if (
-      !link ||
-      link.expiresAt <= Date.now() ||
-      link.actorId !== session.impersonatedBy ||
-      link.targetId !== user._id
-    )
-      return null
-    const actorSession = await ctx.db.get('session', link.actorSessionId)
-    const actorId = ctx.db.normalizeId('user', link.actorId)
-    const actor = actorId ? await ctx.db.get('user', actorId) : null
-    if (
-      !actorSession ||
-      !actor ||
-      actorSession.userId !== actor._id ||
-      actorSession.impersonatedBy ||
-      actorSession.expiresAt <= Date.now() ||
-      isBanned(actor)
-    )
-      return null
-    // An impersonated session cannot bypass the actor's own factor requirement.
-    const actorAccess = await sessionAccess(ctx, actorSession, actor)
-    if (!actorAccess || !actorAccess.mfaVerified || !actorAccess.mfaRequired)
-      return null
-  }
+  if (session.impersonatedBy) return null
   const factor = user.twoFactorEnabled
     ? await ctx.db
         .query('twoFactor')
@@ -160,9 +132,7 @@ export async function sessionAccess(
     createdAt: session.createdAt,
     expiresAt: session.expiresAt,
     mfaRequired: user.twoFactorEnabled === true,
-    // Impersonation is limited support access authorized by a verified actor.
     mfaVerified:
-      Boolean(session.impersonatedBy) ||
       !user.twoFactorEnabled ||
       Boolean(
         factor &&

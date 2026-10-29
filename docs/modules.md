@@ -1,6 +1,6 @@
 # Modules optionnels
 
-Organisations, modules d’auth, Sentry/Spotlight, PostHog et Arcjet sont intégrés et désactivés par défaut. Paiements, fichiers externes et IA ne sont pas installés. Les ajouter lorsque le produit possède un parcours réel et des exigences définies ; garder les interfaces métier dans le projet et le code fournisseur à sa frontière.
+Organisations, modules d’auth, Sentry/Spotlight et Arcjet sont intégrés et désactivés par défaut. Paiements, fichiers externes et IA ne sont pas installés. Les ajouter lorsque le produit possède un parcours réel et des exigences définies ; garder les interfaces métier dans le projet et le code fournisseur à sa frontière.
 
 ## Organisations et permissions
 
@@ -28,10 +28,12 @@ Placer les appels modèles et outils côté serveur avec clé dédiée, budgets 
 
 ## Observabilité et emails avancés
 
-Les adaptateurs Sentry/Spotlight et PostHog sont préconfigurés avec collecte minimale et chargement conditionnel. Choisir leurs projets et politiques avant activation. Définir logs structurés, identifiant de corrélation et alertes de panne email/auth. Resend est l’adaptateur transactionnel du socle en production ; files de travail, templates marketing et analytics sont des besoins séparés. Vérifier le domaine expéditeur et les politiques DNS du fournisseur avant l’ouverture publique.
+Les adaptateurs Sentry/Spotlight sont préconfigurés avec collecte minimale et chargement conditionnel. Choisir leurs projets et politiques avant activation. Définir logs structurés, identifiant de corrélation et alertes de panne email/auth. Resend est l’adaptateur transactionnel du socle en production ; files de travail, templates marketing et analytics sont des besoins séparés. Vérifier le domaine expéditeur et les politiques DNS du fournisseur avant l’ouverture publique.
 
 ## Règle d’ajout
 
 Pour chaque module : noter le besoin, les données, droits, quotas, secrets, récupération et coût ; implémenter un premier parcours de bout en bout ; ajouter la preuve du refus/échec significatif ; mettre à jour les procédures de déploiement et sauvegarde.
 
 Pour des données personnelles, intégrer explicitement le module à l’export et au nettoyage après suppression du compte. Le [guide d’adoption](adopting.md#export-suppression-et-sauvegarde) liste les fichiers et contrats concernés ; ajouter une table seule ne met pas ces opérations à jour.
+
+C2 retire l’interface organisations, la création et les invitations ; seules les API de gestion des données existantes restent. PostHog est retiré du produit.

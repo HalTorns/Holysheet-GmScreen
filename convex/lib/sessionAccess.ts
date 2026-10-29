@@ -2,7 +2,6 @@ import type { GenericCtx } from '@convex-dev/better-auth'
 
 import { components } from '../_generated/api'
 import type { DataModel } from '../_generated/dataModel'
-import { getAuthModules } from './authModules'
 
 export async function getSessionAccess(
   ctx: GenericCtx<DataModel>,
@@ -13,13 +12,6 @@ export async function getSessionAccess(
     sessionId,
     userId,
   })
-  if (session?.impersonatedBy) {
-    const modules = getAuthModules()
-    if (
-      !modules.AUTH_ADMIN_ENABLED ||
-      !modules.ADMIN_USER_IDS.includes(session.impersonatedBy)
-    )
-      return null
-  }
+  if (session?.impersonatedBy) return null
   return session
 }

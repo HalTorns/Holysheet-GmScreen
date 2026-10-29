@@ -48,7 +48,6 @@ import type * as lib_userAdminValidators from "../lib/userAdminValidators.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as organizations from "../organizations.js";
 import type * as profileNames from "../profileNames.js";
-import type * as resources from "../resources.js";
 import type * as smtp from "../smtp.js";
 import type * as userAdmin from "../userAdmin.js";
 
@@ -99,7 +98,6 @@ declare const fullApi: ApiFromModules<{
   "lib/validators": typeof lib_validators;
   organizations: typeof organizations;
   profileNames: typeof profileNames;
-  resources: typeof resources;
   smtp: typeof smtp;
   userAdmin: typeof userAdmin;
 }>;

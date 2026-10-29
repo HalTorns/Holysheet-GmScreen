@@ -59,12 +59,10 @@ try {
     PLAYWRIGHT_ORGANIZATIONS: '',
     PLAYWRIGHT_OBSERVABILITY: '',
     PLAYWRIGHT_SPOTLIGHT: '',
-    PLAYWRIGHT_EXPECT_ORGANIZATIONS: mode === 'organizations' ? 'true' : '',
     // Keep inherited product telemetry/protection credentials out of test
     // transports. Targeted modes below activate only their isolated target.
     SENTRY_DSN: '',
     VITE_SENTRY_DSN: '',
-    VITE_POSTHOG_KEY: '',
     SPOTLIGHT_ENABLED: 'false',
     VITE_SPOTLIGHT_ENABLED: 'false',
     ARCJET_ENABLED: 'false',
@@ -79,14 +77,13 @@ try {
     ...(mode === 'observability'
       ? {
           PLAYWRIGHT_OBSERVABILITY: '1',
-          VITE_POSTHOG_KEY: 'public-test-project',
-          VITE_POSTHOG_HOST: 'https://analytics.example.test',
           VITE_SENTRY_DSN: 'https://public@errors.example.test/1',
         }
       : {}),
   }
+  // Discard the obsolete capability selector inherited from an older launcher.
+  delete env.PLAYWRIGHT_EXPECT_ORGANIZATIONS
   const file = join(projectRoot, '.env.local')
-  if (mode !== 'organizations') delete env.PLAYWRIGHT_EXPECT_ORGANIZATIONS
   const command = (args) =>
     run('pnpm', ['exec', 'convex', 'env', ...args, '--env-file', file], {
       capture: true,
@@ -99,7 +96,7 @@ try {
     if (mode === 'modules')
       run('pnpm', ['test:e2e:modules'], { env, timeout: 600_000 })
     else if (mode === 'organizations')
-      run('pnpm', ['test:e2e:organizations', '--all'], {
+      run('pnpm', ['test:e2e:organizations'], {
         env,
         timeout: 600_000,
       })

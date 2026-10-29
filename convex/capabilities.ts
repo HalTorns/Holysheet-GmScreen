@@ -2,12 +2,10 @@ import { v } from 'convex/values'
 
 import { query } from './_generated/server'
 import { getAuthModules } from './lib/authModules'
-import { organizationsEnabled } from './lib/modules'
 
 export const get = query({
   args: {},
   returns: v.object({
-    organizations: v.boolean(),
     magicLink: v.boolean(),
     mfa: v.boolean(),
     credentials: v.boolean(),
@@ -20,7 +18,6 @@ export const get = query({
     if (modules.AUTH_GOOGLE_ENABLED) socialProviders.push('google')
     if (modules.AUTH_GITHUB_ENABLED) socialProviders.push('github')
     return {
-      organizations: organizationsEnabled(),
       magicLink: modules.AUTH_MAGIC_LINK_ENABLED,
       mfa: modules.AUTH_MFA_ENABLED,
       credentials:

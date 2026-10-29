@@ -7,8 +7,8 @@ import { api } from '../../convex/_generated/api'
 import { ageSession, grantApplicationAdmin } from './backend-operator'
 import {
   SITE_URL,
+  waitForHydration,
   createEmail,
-  createResource,
   deleteAccountWithClient,
   finishIdentityConfirmation,
   getAuthenticatedClient,
@@ -18,97 +18,6 @@ import {
 } from './helpers'
 
 // Real transport and UI contracts absent from the backend owner tests.
-test('un formulaire conserve le brouillon après conflit et avertit avant une navigation', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await signInWithEmail(page, createEmail())
-  const client = await getAuthenticatedClient(page.context())
-  try {
-    const title = `Version ${randomUUID()}`
-    await createResource(page, title)
-    const resource = (
-      await client.query(api.resources.list, {
-        paginationOpts: { numItems: 10, cursor: null },
-      })
-    ).page[0]
-    if (!resource) throw new Error('Missing resource fixture')
-    await page
-      .getByRole('button', { name: `Modifier ${title}`, exact: true })
-      .click()
-    await page
-      .getByLabel('Titre', { exact: true })
-      .fill('Mon brouillon conservé')
-    await page.getByLabel('Description (facultatif)', { exact: true }).fill('')
-    await client.mutation(api.resources.update, {
-      id: resource._id,
-      expectedUpdatedAt: resource.updatedAt,
-      title: 'Version concurrente',
-      description: 'Autre modification',
-    })
-    await page
-      .getByRole('button', {
-        name: 'Enregistrer les modifications',
-        exact: true,
-      })
-      .click()
-    await expect(page.getByRole('alert')).toContainText(
-      'brouillon est conservé'
-    )
-    await expect(page.getByLabel('Titre', { exact: true })).toHaveValue(
-      'Mon brouillon conservé'
-    )
-    await expect(page.getByText('Version actuelle :')).toBeVisible()
-    await page
-      .getByRole('button', {
-        name: 'Conserver mon brouillon et reprendre sur cette version',
-      })
-      .click()
-    await page
-      .getByRole('button', {
-        name: 'Enregistrer les modifications',
-        exact: true,
-      })
-      .click()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page
-      .getByLabel('Rechercher une ressource', { exact: true })
-      .fill('Mon brouillon')
-    await expect(
-      page.getByText('Mon brouillon conservé', { exact: true })
-    ).toBeVisible()
-    await page.getByLabel('Avec une description', { exact: true }).check()
-    await expect(
-      page.getByText('Aucune ressource ne correspond à ces critères.', {
-        exact: true,
-      })
-    ).toBeVisible()
-    await page.getByLabel('Avec une description', { exact: true }).uncheck()
-    await expect(
-      page.getByText('Mon brouillon conservé', { exact: true })
-    ).toBeVisible()
-    await page.getByRole('link', { name: 'Compte', exact: true }).click()
-    await page.getByLabel('Pseudo', { exact: true }).fill('Brouillon de pseudo')
-    await page.getByRole('link', { name: 'Ressources', exact: true }).click()
-    await expect(page.getByRole('dialog')).toContainText(
-      'Quitter sans enregistrer'
-    )
-    await page.getByRole('button', { name: 'Rester', exact: true }).click()
-    await expect(page.getByLabel('Pseudo', { exact: true })).toHaveValue(
-      'Brouillon de pseudo'
-    )
-    await page.getByRole('link', { name: 'Ressources', exact: true }).click()
-    await page
-      .getByRole('button', { name: 'Quitter sans enregistrer', exact: true })
-      .click()
-    await expect(
-      page.getByRole('heading', { name: 'Mes ressources.' })
-    ).toBeVisible()
-  } finally {
-    await deleteAccountWithClient(client)
-  }
-})
-
 test('le pseudo reste modifiable après une heure et les routes génériques ne contournent pas ses règles', async ({
   page,
 }) => {
@@ -121,6 +30,7 @@ test('le pseudo reste modifiable après une heure et les routes génériques ne 
       .parse(await response.json())
     ageSession(session.id)
     await page.goto('/app/security')
+    await waitForHydration(page)
     await page
       .getByLabel('Pseudo', { exact: true })
       .fill(`Pseudo-${randomUUID().slice(0, 12)}`)
@@ -211,6 +121,7 @@ test('l’administration quotidienne fonctionne sans MFA et applique rôle, susp
       })
     ).rejects.toMatchObject({ data: { code: 'FORBIDDEN' } })
     await page.goto('/app/users')
+    await waitForHydration(page)
     await page
       .getByLabel('Rechercher par email', { exact: true })
       .fill(target.email)
@@ -268,6 +179,7 @@ test('le choix initial conserve sa saisie quand le pseudo change dans un autre o
     ).status()
   ).toBe(200)
   await page.goto('/app')
+  await waitForHydration(page)
   const client = await getAuthenticatedClient(page.context())
   try {
     await page.getByLabel('Pseudo', { exact: true }).fill('Mon choix conservé')

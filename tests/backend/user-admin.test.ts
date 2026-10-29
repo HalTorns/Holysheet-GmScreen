@@ -222,7 +222,7 @@ test('suspension blocks existing sessions immediately and lifting it never resto
   })
   expect(suspended.banned).toBe(true)
   await expect(
-    member.client.query(api.resources.list, { paginationOpts: pageOptions })
+    member.client.query(api.gm.listProjects, { paginationOpts: pageOptions })
   ).rejects.toThrow('UNAUTHENTICATED')
   const restored = await admin.client.mutation(api.userAdmin.apply, {
     targetId: member.userId,
@@ -235,7 +235,7 @@ test('suspension blocks existing sessions immediately and lifting it never resto
     banExpires: null,
   })
   await expect(
-    member.client.query(api.resources.list, { paginationOpts: pageOptions })
+    member.client.query(api.gm.listProjects, { paginationOpts: pageOptions })
   ).rejects.toThrow('UNAUTHENTICATED')
   await backend.finishAllScheduledFunctions(vi.runAllTimers)
   expect(
@@ -270,11 +270,11 @@ test('session revocation denies every old bearer before bounded cleanup and pres
     change: { kind: 'revoke' },
   })
   await expect(
-    member.client.query(api.resources.list, { paginationOpts: pageOptions })
+    member.client.query(api.gm.listProjects, { paginationOpts: pageOptions })
   ).rejects.toThrow('UNAUTHENTICATED')
   expect(
     (
-      await admin.client.query(api.resources.list, {
+      await admin.client.query(api.gm.listProjects, {
         paginationOpts: pageOptions,
       })
     ).page
@@ -298,7 +298,7 @@ test('session revocation denies every old bearer before bounded cleanup and pres
   const id = z.object({ _id: z.string() }).parse(session)._id
   const renewed = backend.withIdentity({ ...member.identity, sessionId: id })
   expect(
-    (await renewed.query(api.resources.list, { paginationOpts: pageOptions }))
+    (await renewed.query(api.gm.listProjects, { paginationOpts: pageOptions }))
       .page
   ).toEqual([])
   const sessions = await admin.client.query(api.userAdmin.sessions, {

@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 
 import { serializeJsonLd } from '../../shared/seo'
-import { sanitizeError, analyticsPage } from '../../shared/telemetry'
+import { sanitizeError } from '../../shared/telemetry'
 
 // The SDK transport consumes this allowlist. Arbitrary error/request data must
 // not survive it; E2E owns actual SSR/CSP serialization and auth callback flow.
@@ -38,7 +38,6 @@ test('telemetry strips arbitrary recovery secrets and private URLs', () => {
   })
   expect(JSON.stringify(event)).not.toContain(secret)
   expect(event.exception?.values?.[0]?.stacktrace?.frames?.[0]?.lineno).toBe(7)
-  expect(analyticsPage('/app/organizations/private-id')).toBe('application')
 })
 test('JSON-LD cannot terminate its script element', () => {
   const payload = { name: '</script><script>alert(1)</script>\u2028' }

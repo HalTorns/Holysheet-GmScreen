@@ -12,12 +12,10 @@ import { ErrorState, LoadingState } from '@/components/page-state'
 import { Button } from '@/components/ui/button'
 import {
   appNavigation,
-  organizationsNavigation,
   supportNavigation,
   adminNavigation,
 } from '@/config/navigation'
 import { ProfileOnboarding } from '@/features/account/display-name-form'
-import { ImpersonationBanner } from '@/features/admin/support-panel'
 import { authErrorMessage } from '@/features/auth/errors'
 import { IdentityConfirmationProvider } from '@/features/auth/identity-confirmation'
 import { WriteReadinessProvider } from '@/features/auth/write-readiness'
@@ -25,7 +23,6 @@ import { authClient } from '@/lib/auth-client'
 import { ensureConvexQuery } from '@/lib/convex-query'
 
 const currentUserQuery = convexQuery(api.auth.getCurrentUser, {})
-const capabilitiesQuery = convexQuery(api.capabilities.get, {})
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context }) => {
@@ -65,7 +62,6 @@ function AuthenticatedLayout() {
   const browserSession = authClient.useSession()
   const access = useQuery(api.auth.getAccessState, {})
   const { data: user } = useSuspenseQuery(currentUserQuery)
-  const { data: capabilities } = useSuspenseQuery(capabilitiesQuery)
   const { isAuthenticated, isLoading } = useConvexAuth()
   const initial = Route.useLoaderData()
   const { userId: validatedUserId } = initial
@@ -83,7 +79,6 @@ function AuthenticatedLayout() {
 
   return (
     <div className="app-layout">
-      <ImpersonationBanner />
       <header className="app-header page-container">
         <Brand />
         <nav
@@ -94,7 +89,6 @@ function AuthenticatedLayout() {
             ...appNavigation,
             ...(access?.isSupport ? [supportNavigation] : []),
             ...(access?.isAdmin ? [adminNavigation] : []),
-            ...(capabilities.organizations ? [organizationsNavigation] : []),
           ].map(({ label, icon: Icon, ...link }) => (
             <Link key={link.to} {...link} className="app-nav-link">
               <Icon aria-hidden="true" />

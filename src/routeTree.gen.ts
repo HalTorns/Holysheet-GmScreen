@@ -20,8 +20,6 @@ import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app/admin'
 import { Route as AuthenticatedAppSecurityRouteImport } from './routes/_authenticated/app/security'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AuthenticatedAppOrganizationsIndexRouteImport } from './routes/_authenticated/app/organizations/index'
-import { Route as AuthenticatedAppOrganizationsOrganizationIdRouteImport } from './routes/_authenticated/app/organizations/$organizationId'
 import { Route as AuthenticatedAppProjectsProjectIdRouteImport } from './routes/_authenticated/app/projects/$projectId'
 import { Route as AuthenticatedAppScreensScreenIdRouteImport } from './routes/_authenticated/app/screens/$screenId'
 import { Route as AuthenticatedAppSheetsSheetIdRouteImport } from './routes/_authenticated/app/sheets/$sheetId'
@@ -85,18 +83,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAppOrganizationsIndexRoute =
-  AuthenticatedAppOrganizationsIndexRouteImport.update({
-    id: '/app/organizations/',
-    path: '/app/organizations/',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedAppOrganizationsOrganizationIdRoute =
-  AuthenticatedAppOrganizationsOrganizationIdRouteImport.update({
-    id: '/app/organizations/$organizationId',
-    path: '/app/organizations/$organizationId',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedAppProjectsProjectIdRoute =
   AuthenticatedAppProjectsProjectIdRouteImport.update({
     id: '/app/projects/$projectId',
@@ -151,12 +137,10 @@ export interface FileRoutesByFullPath {
   '/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/': typeof AuthenticatedAppIndexRoute
-  '/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
   '/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
   '/app/screens/$screenId': typeof AuthenticatedAppScreensScreenIdRoute
   '/app/sheets/$sheetId': typeof AuthenticatedAppSheetsSheetIdRoute
   '/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
-  '/app/organizations/': typeof AuthenticatedAppOrganizationsIndexRoute
   '/app/users/': typeof AuthenticatedAppUsersIndexRoute
   '/app/projects/$projectId/library': typeof AuthenticatedAppProjectsProjectIdLibraryRoute
   '/app/projects/$projectId/variables': typeof AuthenticatedAppProjectsProjectIdVariablesRoute
@@ -172,12 +156,10 @@ export interface FileRoutesByTo {
   '/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app': typeof AuthenticatedAppIndexRoute
-  '/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
   '/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
   '/app/screens/$screenId': typeof AuthenticatedAppScreensScreenIdRoute
   '/app/sheets/$sheetId': typeof AuthenticatedAppSheetsSheetIdRoute
   '/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
-  '/app/organizations': typeof AuthenticatedAppOrganizationsIndexRoute
   '/app/users': typeof AuthenticatedAppUsersIndexRoute
   '/app/projects/$projectId/library': typeof AuthenticatedAppProjectsProjectIdLibraryRoute
   '/app/projects/$projectId/variables': typeof AuthenticatedAppProjectsProjectIdVariablesRoute
@@ -195,12 +177,10 @@ export interface FileRoutesById {
   '/_authenticated/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
-  '/_authenticated/app/organizations/$organizationId': typeof AuthenticatedAppOrganizationsOrganizationIdRoute
   '/_authenticated/app/projects/$projectId': typeof AuthenticatedAppProjectsProjectIdRoute
   '/_authenticated/app/screens/$screenId': typeof AuthenticatedAppScreensScreenIdRoute
   '/_authenticated/app/sheets/$sheetId': typeof AuthenticatedAppSheetsSheetIdRoute
   '/_authenticated/app/users/$userId': typeof AuthenticatedAppUsersUserIdRoute
-  '/_authenticated/app/organizations/': typeof AuthenticatedAppOrganizationsIndexRoute
   '/_authenticated/app/users/': typeof AuthenticatedAppUsersIndexRoute
   '/_authenticated/app/projects/$projectId_/library': typeof AuthenticatedAppProjectsProjectIdLibraryRoute
   '/_authenticated/app/projects/$projectId_/variables': typeof AuthenticatedAppProjectsProjectIdVariablesRoute
@@ -218,12 +198,10 @@ export interface FileRouteTypes {
     | '/app/security'
     | '/api/auth/$'
     | '/app/'
-    | '/app/organizations/$organizationId'
     | '/app/projects/$projectId'
     | '/app/screens/$screenId'
     | '/app/sheets/$sheetId'
     | '/app/users/$userId'
-    | '/app/organizations/'
     | '/app/users/'
     | '/app/projects/$projectId/library'
     | '/app/projects/$projectId/variables'
@@ -239,12 +217,10 @@ export interface FileRouteTypes {
     | '/app/security'
     | '/api/auth/$'
     | '/app'
-    | '/app/organizations/$organizationId'
     | '/app/projects/$projectId'
     | '/app/screens/$screenId'
     | '/app/sheets/$sheetId'
     | '/app/users/$userId'
-    | '/app/organizations'
     | '/app/users'
     | '/app/projects/$projectId/library'
     | '/app/projects/$projectId/variables'
@@ -261,12 +237,10 @@ export interface FileRouteTypes {
     | '/_authenticated/app/security'
     | '/api/auth/$'
     | '/_authenticated/app/'
-    | '/_authenticated/app/organizations/$organizationId'
     | '/_authenticated/app/projects/$projectId'
     | '/_authenticated/app/screens/$screenId'
     | '/_authenticated/app/sheets/$sheetId'
     | '/_authenticated/app/users/$userId'
-    | '/_authenticated/app/organizations/'
     | '/_authenticated/app/users/'
     | '/_authenticated/app/projects/$projectId_/library'
     | '/_authenticated/app/projects/$projectId_/variables'
@@ -362,20 +336,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/app/organizations/': {
-      id: '/_authenticated/app/organizations/'
-      path: '/app/organizations'
-      fullPath: '/app/organizations/'
-      preLoaderRoute: typeof AuthenticatedAppOrganizationsIndexRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/app/organizations/$organizationId': {
-      id: '/_authenticated/app/organizations/$organizationId'
-      path: '/app/organizations/$organizationId'
-      fullPath: '/app/organizations/$organizationId'
-      preLoaderRoute: typeof AuthenticatedAppOrganizationsOrganizationIdRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/app/projects/$projectId': {
       id: '/_authenticated/app/projects/$projectId'
       path: '/app/projects/$projectId'
@@ -432,12 +392,10 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAppAdminRoute: typeof AuthenticatedAppAdminRoute
   AuthenticatedAppSecurityRoute: typeof AuthenticatedAppSecurityRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
-  AuthenticatedAppOrganizationsOrganizationIdRoute: typeof AuthenticatedAppOrganizationsOrganizationIdRoute
   AuthenticatedAppProjectsProjectIdRoute: typeof AuthenticatedAppProjectsProjectIdRoute
   AuthenticatedAppScreensScreenIdRoute: typeof AuthenticatedAppScreensScreenIdRoute
   AuthenticatedAppSheetsSheetIdRoute: typeof AuthenticatedAppSheetsSheetIdRoute
   AuthenticatedAppUsersUserIdRoute: typeof AuthenticatedAppUsersUserIdRoute
-  AuthenticatedAppOrganizationsIndexRoute: typeof AuthenticatedAppOrganizationsIndexRoute
   AuthenticatedAppUsersIndexRoute: typeof AuthenticatedAppUsersIndexRoute
   AuthenticatedAppProjectsProjectIdLibraryRoute: typeof AuthenticatedAppProjectsProjectIdLibraryRoute
   AuthenticatedAppProjectsProjectIdVariablesRoute: typeof AuthenticatedAppProjectsProjectIdVariablesRoute
@@ -447,15 +405,11 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAppAdminRoute: AuthenticatedAppAdminRoute,
   AuthenticatedAppSecurityRoute: AuthenticatedAppSecurityRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
-  AuthenticatedAppOrganizationsOrganizationIdRoute:
-    AuthenticatedAppOrganizationsOrganizationIdRoute,
   AuthenticatedAppProjectsProjectIdRoute:
     AuthenticatedAppProjectsProjectIdRoute,
   AuthenticatedAppScreensScreenIdRoute: AuthenticatedAppScreensScreenIdRoute,
   AuthenticatedAppSheetsSheetIdRoute: AuthenticatedAppSheetsSheetIdRoute,
   AuthenticatedAppUsersUserIdRoute: AuthenticatedAppUsersUserIdRoute,
-  AuthenticatedAppOrganizationsIndexRoute:
-    AuthenticatedAppOrganizationsIndexRoute,
   AuthenticatedAppUsersIndexRoute: AuthenticatedAppUsersIndexRoute,
   AuthenticatedAppProjectsProjectIdLibraryRoute:
     AuthenticatedAppProjectsProjectIdLibraryRoute,

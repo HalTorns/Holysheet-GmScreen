@@ -1,21 +1,9 @@
 import type { PaginationOptions } from 'convex/server'
 import { ConvexError } from 'convex/values'
 
-import { MAX_PAGE_SIZE, resourceSchema } from '../../shared/validation'
-import type { ResourceInput } from '../../shared/validation'
+import { MAX_PAGE_SIZE } from '../../shared/validation'
 import type { Doc } from '../_generated/dataModel'
 import type { QueryCtx } from '../_generated/server'
-
-export function validateResource(input: ResourceInput): ResourceInput {
-  const result = resourceSchema.safeParse(input)
-  if (!result.success) {
-    throw new ConvexError({
-      code: 'INVALID_INPUT',
-      message: result.error.issues[0]?.message ?? 'Entrée invalide.',
-    })
-  }
-  return result.data
-}
 
 export function validatePagination(options: PaginationOptions): void {
   if (

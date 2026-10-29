@@ -12,6 +12,7 @@ import {
   createAuthenticatedUser,
   createBackendTest,
   createPasskey,
+  insertLegacyResource,
 } from './fixtures'
 
 afterEach(() => vi.useRealTimers())
@@ -22,11 +23,11 @@ describe('Protected account lifecycle', () => {
     const backend = createBackendTest()
     const alice = await createAuthenticatedUser(backend, 'alice@example.com')
     const bob = await createAuthenticatedUser(backend, 'bob@example.com')
-    await alice.client.mutation(api.resources.create, {
+    await insertLegacyResource(backend, alice.userId, {
       title: 'Alice private',
       description: 'A',
     })
-    await bob.client.mutation(api.resources.create, {
+    await insertLegacyResource(backend, bob.userId, {
       title: 'Bob private',
       description: 'B',
     })
@@ -64,10 +65,10 @@ describe('Protected account lifecycle', () => {
       alice.client.mutation(api.account.removePasskey, { id: keyId })
     ).rejects.toThrow('IDENTITY_CONFIRMATION_REQUIRED')
     expect(
-      await alice.client.query(api.resources.list, {
+      await alice.client.query(api.account.exportData, {
         paginationOpts: { numItems: 10, cursor: null },
       })
-    ).toMatchObject({ page: [{ title: 'Alice private' }] })
+    ).toMatchObject({ resources: { page: [{ title: 'Alice private' }] } })
   })
 
   it("protects the last passkey and rejects deleting another account's credential", async () => {
@@ -181,7 +182,7 @@ describe('Protected account lifecycle', () => {
         })
       }
     })
-    const bobResource = await bob.client.mutation(api.resources.create, {
+    const bobResource = await insertLegacyResource(backend, bob.userId, {
       title: 'Bob stays',
       description: '',
     })
@@ -191,7 +192,7 @@ describe('Protected account lifecycle', () => {
     })
     expect(await alice.client.query(api.auth.getCurrentUser, {})).toBeNull()
     await expect(
-      alice.client.query(api.resources.list, {
+      alice.client.query(api.gm.listProjects, {
         paginationOpts: { numItems: 10, cursor: null },
       })
     ).rejects.toThrow()
@@ -223,7 +224,7 @@ describe('Protected account lifecycle', () => {
       ).toBeNull()
     }
     expect(
-      await bob.client.query(api.resources.get, { id: bobResource })
+      await backend.run((ctx) => ctx.db.get('resources', bobResource))
     ).toMatchObject({ title: 'Bob stays' })
   })
 })

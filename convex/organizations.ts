@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from 'convex/server'
-import { v } from 'convex/values'
+import { ConvexError, v } from 'convex/values'
 
 import { components, internal } from './_generated/api'
 import { mutation, query } from './_generated/server'
@@ -65,20 +65,8 @@ export const invitations = query({
 export const create = mutation({
   args: { name: v.string() },
   returns: v.string(),
-  handler: async (ctx, { name }) => {
-    requireOrganizationsEnabled()
-    const user = await requireAccountUser(ctx)
-    await limitUserOperation(ctx, 'organizationWrite', user._id)
-    const organizationId = await ctx.runMutation(
-      components.betterAuth.organizations.create,
-      { name, actorId: user._id }
-    )
-    await ctx.db.insert('securityEvents', {
-      event: 'organization.created',
-      organizationId,
-      actorId: user._id,
-    })
-    return organizationId
+  handler: () => {
+    throw new ConvexError({ code: 'SURFACE_REMOVED' })
   },
 })
 
@@ -89,20 +77,8 @@ export const invite = mutation({
     role: invitationRoleValidator,
   },
   returns: v.string(),
-  handler: async (ctx, input) => {
-    requireOrganizationsEnabled()
-    const user = await requireAccountUser(ctx)
-    await limitUserOperation(ctx, 'organizationWrite', user._id)
-    const id = await ctx.runMutation(
-      components.betterAuth.organizations.invite,
-      { ...input, actorId: user._id }
-    )
-    await ctx.db.insert('securityEvents', {
-      event: 'organization.invited',
-      organizationId: input.organizationId,
-      actorId: user._id,
-    })
-    return id
+  handler: () => {
+    throw new ConvexError({ code: 'SURFACE_REMOVED' })
   },
 })
 

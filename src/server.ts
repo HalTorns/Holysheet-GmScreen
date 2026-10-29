@@ -14,7 +14,6 @@ function securityHeaders(nonce: string, requestId: string) {
   const convexSocketOrigin = convexOrigin.replace(/^http/, 'ws')
   const development = import.meta.env.DEV
   const telemetryOrigins = [
-    env.VITE_POSTHOG_KEY ? env.VITE_POSTHOG_HOST : '',
     env.VITE_SENTRY_DSN ? new URL(env.VITE_SENTRY_DSN).origin : '',
     development && env.VITE_SPOTLIGHT_ENABLED ? env.VITE_SPOTLIGHT_URL : '',
   ]

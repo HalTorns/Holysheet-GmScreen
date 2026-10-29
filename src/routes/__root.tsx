@@ -12,7 +12,6 @@ import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
 import { Toaster } from 'sonner'
 
-import { OptionalAnalytics } from '@/features/observability/analytics'
 import { AppAuthProvider } from '@/lib/auth-provider'
 import { getToken } from '@/lib/auth-server'
 
@@ -71,9 +70,7 @@ function Root() {
           client={context.convexQueryClient.convexClient}
           initialToken={context.token ?? null}
         >
-          <OptionalAnalytics>
-            <Outlet />
-          </OptionalAnalytics>
+          <Outlet />
           <Toaster richColors position="bottom-right" />
         </AppAuthProvider>
         <Scripts />

@@ -49,13 +49,3 @@ export function sanitizeError(event: ErrorEvent): ErrorEvent {
     },
   }
 }
-
-export function analyticsPage(
-  pathname: string
-): 'home' | 'sign-in' | 'application' | 'mfa' | 'other' {
-  if (pathname === '/') return 'home'
-  if (pathname === '/sign-in') return 'sign-in'
-  if (pathname === '/verify-mfa') return 'mfa'
-  if (pathname === '/app' || pathname.startsWith('/app/')) return 'application'
-  return 'other'
-}
