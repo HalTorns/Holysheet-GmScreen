@@ -139,3 +139,26 @@
 - CI `40765051424` sur `1391c08` : violation CSP `script-src-attr` pendant le collage hostile. Chromium contrôle les attributs `on*` dès l'analyse, même dans un document inerte : le gestionnaire est bloqué, mais la tentative est rapportée. Reproduit en local par une sonde navigateur (1 violation avec `template` comme avec `DOMParser`). Correction par Claude : `stripEventHandlers` retire les attributs `on*` des balises avant l'analyse (0 violation à la sonde), avec des tests unitaires.
 - CI `40768024562` sur `fb89e4a` : CSP réglée ; écart de 99/100 notes en direct sur le Screen de mesure. Diagnostic délégué à Codex (session neuve) : non reproduit en local (BLOCKED, sans changement). Décision Claude : le test mesure le Screen rechargé et joint le compte vu en direct ; constat **AUD-28 (majeur)** ouvert, sans masquage.
 - CI `40771711735` sur `67aecf3` : application, image Docker et secrets **success**. Fast-forward de `main` avec F4b. Auteurs : Codex (code F4b), Claude (inspection, durcissement du collage, accessibilité des historiques, robustesse des tests).
+
+## Maintenance CI et notifications — 2026-10-29
+
+- Les échecs répétés de la CI envoyaient des mails à l'utilisateur. Trois sources :
+  - le parcours Holysheet échouait par intermittence sur `main` (« Enregistrer bonus » désactivé dans la seconde vue) ;
+  - chaque branche Dependabot lançait deux runs (au push et en PR) ;
+  - Dependabot rebasait ses PR à chaque commit sur `main`.
+- Corrections par Claude (`2d4f8e4`) :
+  - la page Variables conserve la dernière réponse Convex, pour ne pas remonter les lignes ni perdre un brouillon pendant le rafraîchissement d'un jeton ;
+  - le helper E2E ressaisit tant que le brouillon n'est pas reconnu ;
+  - la CI ne lance plus de run au push sur `dependabot/**` ;
+  - Dependabot n'utilise plus `rebase-strategy` et ignore better-auth ≥ 1.7 ainsi que les versions majeures ;
+  - les mises à jour compatibles sont intégrées (Node 26.12.0, outils qualité, Sentry, PostHog), avec les 8 nouvelles erreurs oxlint corrigées. PR #1 à #5 fermées.
+- AUD-28 : l'artefact prévu n'était pas publié par la CI. Le test écrit désormais dans le log CI le compte vu en direct et le délai de convergence (jusqu'à 30 s, sans échec). Hypothèse : latence de la chaîne `loadMore`, et non une perte.
+
+## Chantier 2 — tranche F5a (tableau, horloge, initiative) — 2026-10-29
+
+- Plan `docs/PLAN-F5a.md` (Claude). F5 découpée : images reportées en F5b, à regrouper avec F6 (stockage de fichiers).
+- Review **Codex** (session neuve) R1 : REVISE, avec deux findings acceptés.
+  - F5A-01 (haute) : la restauration historique ne doit ni réaligner ni réinitialiser.
+  - F5A-02 (moyenne) : un collage qui change la largeur doit être atomique.
+  - Contrat simplifié : config et état complets, validés sans recalcul serveur. Restauration de l'horloge en pause.
+- R2 : **APPROVED**.
