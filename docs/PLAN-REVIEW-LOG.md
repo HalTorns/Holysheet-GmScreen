@@ -199,3 +199,11 @@ Implémentation du work order C2 sur codex/c2-surfaces : surfaces organisations/
 Preuves C2 observées : 36 tests ciblés réussis ; audits Convex et production high à 0. Collecte seule : 12 E2E concernés, dont 9 modules ; aucune exécution Docker/CI revendiquée.
 
 Validation finale C2 : `pnpm check` réussi (39 fichiers / 246 tests backend et unitaires, 7 fichiers / 19 tests navigateur, types, lint, format, Knip et build). `git diff --check` réussi. Avertissements de bundling upstream conservés. Les 33 tests du lanceur local passent après maintien du filtrage de son ancien sélecteur de capacité.
+
+- Build C2 (**Codex**, session neuve) : 72 fichiers, −4 500 lignes. **Inspection Claude** :
+  - sessions impersonées refusées dans `access.ts` et `sessionAccess.ts` (cookie et JWT) ;
+  - création et invitations d'organisation refusées (`SURFACE_REMOVED`), endpoints natifs `/organization/*` déjà refusés ;
+  - variables et arguments de build PostHog restants sans effet ;
+  - aucune table ni schéma auth modifié.
+  - Preuves relancées par Claude : `pnpm check` vert, `pnpm audit:convex` (72/0), `pnpm audit` sans nouvelle vulnérabilité non ignorée.
+- CI `40874751542` sur `95cd975` : **success du premier coup**. E2E réellement exécutés : 8 principaux, 9 modules auth (lanceur protégé), 1 organisations. Fast-forward de `main`. Arrêt demandé par l'utilisateur jusqu'au lundi 2 novembre.
