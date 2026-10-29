@@ -352,6 +352,15 @@ export async function verifyWidgetKinds(
     .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
     .uncheck()
   await add('clock')
+  // Diagnostic temporaire F5a : régions de widgets visibles après l'ajout.
+  console.log(
+    'F5a regions',
+    await page
+      .locator('[aria-label^="Widget "]')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute('aria-label'))
+      )
+  )
   const clock = page.getByRole('region', {
     name: 'Widget horloge 8',
     exact: true,
