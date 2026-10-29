@@ -2,6 +2,7 @@ import { GM_HISTORY_LIMIT } from '@shared/gm'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { operationErrorMessage } from '@/features/auth/errors'
+import { useWriteReady } from '@/features/auth/write-readiness'
 
 type Draft<T> = { value: T; version: number; sequence: number }
 type Timeline<T> = { back: T[]; forward: T[]; version: number }
@@ -12,7 +13,7 @@ export function useEditorDraft<T>({
   version,
   onSave,
   autoSave = true,
-  paused = false,
+  paused: pausedByCaller = false,
 }: {
   value: T
   version: number
@@ -20,6 +21,8 @@ export function useEditorDraft<T>({
   autoSave?: boolean
   paused?: boolean
 }) {
+  const writeReady = useWriteReady()
+  const paused = pausedByCaller || !writeReady
   const [draft, setDraft] = useState<Draft<T> | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)

@@ -4,6 +4,7 @@ import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
 import { readScreen } from '../helpers/gm-screen'
+import { resetResourceWriteBudget } from './backend-operator'
 import { waitForHydration } from './helpers'
 
 export async function verifyWidgetKinds(
@@ -308,6 +309,7 @@ export async function verifyWidgetKinds(
   await page
     .getByRole('button', { name: 'Reprendre l’édition', exact: true })
     .click()
+  resetResourceWriteBudget(data.screen.ownerId)
   await add('table')
   const table = page.getByRole('region', {
     name: 'Widget tableau 7',

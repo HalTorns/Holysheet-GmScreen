@@ -20,6 +20,7 @@ import { ProfileOnboarding } from '@/features/account/display-name-form'
 import { ImpersonationBanner } from '@/features/admin/support-panel'
 import { authErrorMessage } from '@/features/auth/errors'
 import { IdentityConfirmationProvider } from '@/features/auth/identity-confirmation'
+import { WriteReadinessProvider } from '@/features/auth/write-readiness'
 import { authClient } from '@/lib/auth-client'
 import { ensureConvexQuery } from '@/lib/convex-query'
 
@@ -116,18 +117,22 @@ function AuthenticatedLayout() {
           disabled={expired || isLoading || Boolean(access?.isImpersonating)}
           aria-label="Contenu de votre espace"
         >
-          <IdentityConfirmationProvider key={validatedUserId}>
-            {onboarding && !access?.isImpersonating ? (
-              <ProfileOnboarding
-                name={user?.name ?? initial.name}
-                profileVersion={user?.profileVersion ?? initial.profileVersion}
-                hasName={user?.hasName ?? false}
-                onComplete={() => setOnboarding(false)}
-              />
-            ) : (
-              <Outlet />
-            )}
-          </IdentityConfirmationProvider>
+          <WriteReadinessProvider value={!expired && !isLoading}>
+            <IdentityConfirmationProvider key={validatedUserId}>
+              {onboarding && !access?.isImpersonating ? (
+                <ProfileOnboarding
+                  name={user?.name ?? initial.name}
+                  profileVersion={
+                    user?.profileVersion ?? initial.profileVersion
+                  }
+                  hasName={user?.hasName ?? false}
+                  onComplete={() => setOnboarding(false)}
+                />
+              ) : (
+                <Outlet />
+              )}
+            </IdentityConfirmationProvider>
+          </WriteReadinessProvider>
         </fieldset>
       </main>
       <footer className="page-container flex flex-wrap justify-between gap-3 border-t py-6 text-xs text-muted-foreground">

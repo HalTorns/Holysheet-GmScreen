@@ -104,7 +104,27 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
     ).toHaveText(literal)
     await page.getByRole('button', { name: 'Éditer', exact: true }).click()
     await field.fill('sélection')
-    await field.selectText()
+    await expect(field).toHaveValue('sélection')
+    // React peut replacer le curseur après avoir appliqué la valeur : reposer
+    // la sélection jusqu'à ce qu'elle couvre tout le texte.
+    await expect
+      .poll(() =>
+        field.evaluate((element) => {
+          if (!(element instanceof HTMLTextAreaElement)) return false
+          element.select()
+          return new Promise<boolean>((resolve) => {
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() =>
+                resolve(
+                  element.selectionStart === 0 &&
+                    element.selectionEnd === element.value.length
+                )
+              )
+            )
+          })
+        })
+      )
+      .toBe(true)
     await page.getByRole('button', { name: 'Gras', exact: true }).click()
     await expect(field).toHaveValue('**sélection**')
     await expect(field).toBeFocused()

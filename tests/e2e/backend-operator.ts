@@ -108,3 +108,15 @@ export async function addPasswordCredential(userId: string, password: string) {
     }),
   ])
 }
+export function resetResourceWriteBudget(userId: string) {
+  // Le long parcours enchaîne bibliothèque, variables et widgets plus vite
+  // qu'un MJ réel : on remet à zéro le seul seau de ce compte de test, sans
+  // changer la limite de production.
+  runLocalOperator([
+    'run',
+    '--component',
+    'rateLimiter',
+    'lib:resetRateLimit',
+    JSON.stringify({ name: 'resourceWrite', key: userId }),
+  ])
+}
