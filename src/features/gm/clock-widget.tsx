@@ -96,6 +96,7 @@ export function ClockWidget({
           <label>
             Mode de l’horloge
             <select
+              aria-label="Mode de l’horloge"
               value={widget.config.mode}
               disabled={locked || disabled}
               onChange={(event) => {
@@ -133,6 +134,7 @@ export function ClockWidget({
             <label>
               Durée en secondes
               <input
+                aria-label="Durée en secondes"
                 type="number"
                 min={1}
                 max={86_400}
@@ -156,6 +158,7 @@ export function ClockWidget({
             <label>
               Nombre de cases
               <input
+                aria-label="Nombre de cases"
                 type="number"
                 min={2}
                 max={12}
