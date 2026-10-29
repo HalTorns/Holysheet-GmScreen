@@ -162,3 +162,19 @@
   - F5A-02 (moyenne) : un collage qui change la largeur doit être atomique.
   - Contrat simplifié : config et état complets, validés sans recalcul serveur. Restauration de l'horloge en pause.
 - R2 : **APPROVED**.
+- Build F5a (**Codex**, session neuve) : kinds `table`, `clock` et `initiative`, mutation `controlClock` (heure serveur), parseur de collage, tests backend, unitaires, navigateur et E2E. **Inspection Claude** : droits (`requireUser`, `ownedNote`), le temps de l'horloge ne peut pas être modifié par `updateWidget`, restauration en pause, parseur inerte (`textContent` seulement), aucune troncature silencieuse. `pnpm check` et `pnpm audit:convex` (77/0) relancés par Claude : verts.
+- Stabilisation CI (Claude, 9 runs sur la branche, ce qui a provoqué des mails d'échec pour l'utilisateur) :
+  - test navigateur F4b : sélection reposée jusqu'à survivre au rendu ;
+  - `useRetained` partagé (Screen, fiches, projets, variables, contenu de note) ;
+  - layout authentifié : la page n'est plus démontée pendant une confirmation de jeton, et les écritures sont suspendues (`WriteReadinessProvider`) ;
+  - CI : publication des contextes d'échec E2E et journal des erreurs JS et des navigations ;
+  - E2E : remise à zéro du seau `resourceWrite` du compte de test avant F5a.
+- **Diagnostic délégué à Codex** (lecture seule) après plusieurs hypothèses infirmées. Deux causes réelles :
+  - le cache de widgets purgeait un widget arrivé avant son placement ;
+  - double cycle d'authentification Convex au chargement (jeton SSR puis résolution de la session), page désactivée pendant un clic.
+  - Claude a ensuite reproduit en local la dernière cause : un `<select>` imbriqué dans son libellé ajoutait le texte des options au nom accessible. Nom explicite ajouté (gain d'accessibilité).
+- Inspections **Codex** des commits de Claude :
+  - R1 : REVISE, autosave possible pendant la fenêtre non authentifiée → écritures suspendues ;
+  - R2 : REVISE, session en échec qui bloquait un jeton valide et cache non borné → corrigés ;
+  - R3 : **APPROVED**.
+- CI `40864040850` puis `40867165957` sur `ee7888e` : application, image Docker et secrets **success**. Fast-forward de `main`. AUD-28 partiellement corrigé et requalifié dans l'audit : l'insertion en masse en direct reste incomplète ; le correctif structurel viendra après F3c. Auteurs : Codex (code F5a, diagnostics, inspections), Claude (plan, inspection, stabilisation).
