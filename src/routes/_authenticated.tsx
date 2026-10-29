@@ -78,7 +78,7 @@ function AuthenticatedLayout() {
     if (accountChanged) window.location.reload()
   }, [accountChanged])
   if (accountChanged) return <LoadingState />
-  if (!user && !isLoading) return <SessionExpiredState />
+  const expired = !isLoading && (!isAuthenticated || !user)
 
   return (
     <div className="app-layout">
@@ -104,33 +104,31 @@ function AuthenticatedLayout() {
         <SignOutButton />
       </header>
       <main id="main-content" className="app-main page-container">
-        {/* The route loader already validates the session. Keep drafts mounted
-            while Convex confirms a refreshed token; every backend access still
-            revalidates the live session and resource permissions. */}
-        {isAuthenticated || isLoading ? (
-          <fieldset
-            className="contents"
-            disabled={isLoading || Boolean(access?.isImpersonating)}
-            aria-label="Contenu de votre espace"
-          >
-            <IdentityConfirmationProvider key={validatedUserId}>
-              {onboarding && !access?.isImpersonating ? (
-                <ProfileOnboarding
-                  name={user?.name ?? initial.name}
-                  profileVersion={
-                    user?.profileVersion ?? initial.profileVersion
-                  }
-                  hasName={user?.hasName ?? false}
-                  onComplete={() => setOnboarding(false)}
-                />
-              ) : (
-                <Outlet />
-              )}
-            </IdentityConfirmationProvider>
-          </fieldset>
-        ) : (
-          <SessionExpiredState />
-        )}
+        {/* The route loader already validates the session. Keep the page and
+            its drafts mounted while Convex confirms a refreshed token: a
+            transient unauthenticated state used to unmount the whole outlet
+            and reset local state. Writes stay disabled until Convex confirms
+            the token, and every backend access still revalidates the live
+            session and resource permissions. */}
+        {expired && <SessionExpiredState />}
+        <fieldset
+          className="contents"
+          disabled={expired || isLoading || Boolean(access?.isImpersonating)}
+          aria-label="Contenu de votre espace"
+        >
+          <IdentityConfirmationProvider key={validatedUserId}>
+            {onboarding && !access?.isImpersonating ? (
+              <ProfileOnboarding
+                name={user?.name ?? initial.name}
+                profileVersion={user?.profileVersion ?? initial.profileVersion}
+                hasName={user?.hasName ?? false}
+                onComplete={() => setOnboarding(false)}
+              />
+            ) : (
+              <Outlet />
+            )}
+          </IdentityConfirmationProvider>
+        </fieldset>
       </main>
       <footer className="page-container flex flex-wrap justify-between gap-3 border-t py-6 text-xs text-muted-foreground">
         <span className="max-w-full truncate">{user?.email}</span>
