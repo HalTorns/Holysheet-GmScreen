@@ -3,14 +3,15 @@ import type { Doc, Id } from '@convex/_generated/dataModel'
 import type { Layout } from '@convex/lib/gmFormats'
 import { gmWidgetKinds, gmWidgetLabels } from '@shared/gm'
 import { Link } from '@tanstack/react-router'
-import { useMutation, useQuery, usePaginatedQuery } from 'convex/react'
-import { useCallback, useState, useEffect } from 'react'
+import { useMutation, useQuery } from 'convex/react'
+import { useCallback, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 import { useRetained } from '@/hooks/use-retained'
 
 import { LayoutEditor } from './layout-editor'
+import { useScreenWidgets } from './use-screen-widgets'
 
 export function Screen({ screenId }: { screenId: string }) {
   const data = useRetained(useQuery(api.gm.getScreen, { id: screenId }))
@@ -26,18 +27,7 @@ function ScreenWorkspace({
   screen: Doc<'gmScreens'>
   layouts: Layout[]
 }) {
-  const {
-    results: notes,
-    status,
-    loadMore,
-  } = usePaginatedQuery(
-    api.gmWidgets.listScreenWidgets,
-    { screenId: screen._id },
-    { initialNumItems: 10 }
-  )
-  useEffect(() => {
-    if (status === 'CanLoadMore') loadMore(10)
-  }, [status, loadMore])
+  const { widgets: notes, pages } = useScreenWidgets(screen._id, layouts)
   const addNote = useMutation(api.gm.addNote)
   const addWidget = useMutation(api.gmWidgets.addWidget)
   const variables = useQuery(api.gmVariables.listVariables, {
@@ -201,6 +191,7 @@ function ScreenWorkspace({
           {error}
         </p>
       )}
+      {pages}
       {layout && (
         <LayoutEditor
           key={layout._id}
