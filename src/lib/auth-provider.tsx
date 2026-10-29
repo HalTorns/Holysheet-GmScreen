@@ -108,10 +108,13 @@ function useCookieAuth() {
     },
     [sessionId, absent, setUnavailable, retry]
   )
+  // Attendre la session Better Auth avant d'authentifier Convex : sa résolution
+  // change l'identité de fetchAccessToken, et un premier cycle lancé avec le
+  // seul jeton SSR était aussitôt relancé, désactivant la page une seconde fois.
   return {
-    isLoading:
-      (session.isPending || Boolean(session.error && !denied)) && !token,
-    isAuthenticated: !absent && Boolean(session.data || token),
+    isLoading: session.isPending || Boolean(session.error && !denied),
+    isAuthenticated:
+      !session.isPending && !absent && Boolean(session.data || token),
     fetchAccessToken,
   }
 }

@@ -317,6 +317,15 @@ export async function waitForHydration(page: Page) {
   await page.waitForFunction(
     () => document.documentElement.dataset.hydrated === 'true'
   )
+  // Dans l'espace connecté, attendre aussi que Convex ait confirmé le jeton :
+  // la page reste désactivée (fieldset) jusque-là, et un clic tombé pendant
+  // la transition serait ignoré sans erreur.
+  await page.waitForFunction(() => {
+    const space = document.querySelector(
+      'fieldset[aria-label="Contenu de votre espace"]'
+    )
+    return !(space instanceof HTMLFieldSetElement) || !space.disabled
+  })
 }
 
 // Diagnostic CI : la config interdit captures et traces (données d'auth). On
