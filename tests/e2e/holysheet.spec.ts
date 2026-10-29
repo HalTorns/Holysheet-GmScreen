@@ -14,6 +14,7 @@ import {
   waitForVerificationCode,
   getAnonymousClient,
   waitForHydration,
+  logPageLifecycle,
 } from './helpers'
 import { verifyLibrary } from './library'
 import { verifyScreenEditor } from './screen-editor'
@@ -26,6 +27,7 @@ test('password registration, project, folder and Screen survive reload, synchron
   context,
 }) => {
   test.setTimeout(300_000)
+  logPageLifecycle(context)
   const email = createEmail()
   const password = `Synthetic-${randomUUID()}`
   let client: Awaited<ReturnType<typeof getAuthenticatedClient>> | undefined

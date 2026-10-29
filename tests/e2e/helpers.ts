@@ -318,3 +318,25 @@ export async function waitForHydration(page: Page) {
     () => document.documentElement.dataset.hydrated === 'true'
   )
 }
+
+// Diagnostic CI : la config interdit captures et traces (données d'auth). On
+// journalise seulement les erreurs JavaScript, les erreurs console et les
+// navigations du cadre principal (chemin seul, sans requête ni fragment).
+export function logPageLifecycle(context: BrowserContext) {
+  const watch = (target: Page) => {
+    const tag = `page${context.pages().indexOf(target)}`
+    target.on('pageerror', (error) =>
+      console.log(`[diag ${tag}] pageerror ${error.message.slice(0, 300)}`)
+    )
+    target.on('console', (message) => {
+      if (message.type() === 'error')
+        console.log(`[diag ${tag}] console ${message.text().slice(0, 300)}`)
+    })
+    target.on('framenavigated', (frame) => {
+      if (frame === target.mainFrame())
+        console.log(`[diag ${tag}] navigated ${new URL(frame.url()).pathname}`)
+    })
+  }
+  for (const target of context.pages()) watch(target)
+  context.on('page', watch)
+}

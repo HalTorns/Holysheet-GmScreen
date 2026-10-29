@@ -12,6 +12,7 @@ import {
   readMailbox,
   waitForVerificationCode,
   waitForHydration,
+  logPageLifecycle,
 } from './helpers'
 
 test('rich notes activate literally, paste safely, synchronize, conflict and restore plain revisions', async ({
@@ -19,6 +20,7 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
   context,
 }) => {
   test.setTimeout(300_000)
+  logPageLifecycle(context)
   const email = createEmail()
   const password = `Synthetic-${randomUUID()}`
   let client: Awaited<ReturnType<typeof getAuthenticatedClient>> | undefined
