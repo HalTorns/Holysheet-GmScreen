@@ -34,7 +34,7 @@ function check(name, inspect) {
 check('Runtime Node compatible', () => {
   const [major = 0, minor = 0] = process.versions.node.split('.').map(Number)
   if (major < 24 || (major === 24 && minor < 5) || major >= 27)
-    throw new Error('Utiliser Node >=24.5 <27, recommandé 26.11.1.')
+    throw new Error('Utiliser Node >=24.5 <27, recommandé 26.12.0.')
 })
 check('pnpm verrouillé', () => {
   if (run('pnpm', ['--version'], { capture: true }) !== '11.8.0')

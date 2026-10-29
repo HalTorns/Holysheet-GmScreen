@@ -15,7 +15,7 @@ export function stripEventHandlers(html: string) {
   // Une passe peut révéler un attribut suivant dans la même balise.
   for (let pass = 0; pass < 64 && current !== previous; pass++) {
     previous = current
-    current = current.replace(eventHandler, '$1')
+    current = current.replaceAll(eventHandler, '$1')
   }
   return current
 }

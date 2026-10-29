@@ -134,7 +134,7 @@ export function writePrivateEnvironment(name, values) {
       'g'
     )
     if (Object.hasOwn(current, key))
-      contents = contents.replace(
+      contents = contents.replaceAll(
         pattern,
         (_, separator) => `${separator}${assignment}`
       )

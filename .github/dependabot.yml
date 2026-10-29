@@ -5,6 +5,20 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Ne pas relancer la CI de chaque PR à chaque commit sur main.
+    rebase-strategy: disabled
+    ignore:
+      # Le composant Convex importe oidc-provider, retiré en 1.7 : voir
+      # docs/upgrades.md (exception encadrée jusqu'au 2026-11-30).
+      - dependency-name: 'better-auth'
+        versions: ['>=1.7.0']
+      - dependency-name: '@better-auth/*'
+        versions: ['>=1.7.0']
+      - dependency-name: 'auth'
+        versions: ['>=1.7.0']
+      # Les majeures se font dans une tranche dédiée, pas en PR automatique.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       auth:
         patterns:

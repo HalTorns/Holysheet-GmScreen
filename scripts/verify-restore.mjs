@@ -429,7 +429,7 @@ async function verifyRestore() {
   )
 }
 
-verifyRestore()
+void verifyRestore()
   .catch((error) => {
     console.error(
       error instanceof Error ? error.message : 'Restore verification failed.'

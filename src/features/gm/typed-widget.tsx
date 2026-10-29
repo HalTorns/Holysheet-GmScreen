@@ -299,6 +299,7 @@ function TypedWidgetEditor({
                       ).then((saved) => {
                         if (!saved)
                           setOptimistic({ version: widget.version, checks: {} })
+                        return undefined
                       })
                     }}
                   />

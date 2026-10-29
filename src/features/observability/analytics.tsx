@@ -13,6 +13,7 @@ export function OptionalAnalytics({ children }: { children: ReactNode }) {
     void import('./posthog-provider')
       .then((module) => {
         if (active) setTrackingComponent(() => module.default)
+        return undefined
       })
       .catch(() => {
         console.warn('Analytics unavailable; application remains usable.')

@@ -192,7 +192,7 @@ async function migrate() {
   }
 }
 
-migrate()
+void migrate()
   .catch((error) => {
     console.error(
       error instanceof Error

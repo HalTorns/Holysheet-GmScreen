@@ -1,7 +1,10 @@
 name: Validation
 
 on:
+  # Les branches Dependabot sont validées par leur pull request : un second
+  # run au push doublait chaque échec et chaque notification.
   push:
+    branches-ignore: ['dependabot/**']
   pull_request:
   workflow_dispatch:
 
@@ -25,7 +28,7 @@ jobs:
       - name: Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26.11.1
+          node-version: 26.12.0
       - name: pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:

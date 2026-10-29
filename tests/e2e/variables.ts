@@ -73,8 +73,7 @@ export async function verifyVariables(page: Page, client: ConvexHttpClient) {
       'force * 2 + 1'
     )
     await page.getByLabel('Valeur de bonus').fill('force * 3')
-    await other.getByLabel('Valeur de bonus').fill('force * 4')
-    await other.getByRole('button', { name: 'Enregistrer bonus' }).click()
+    await fillAndSave(other, 'force * 4')
     await expect(page.getByLabel('Résultat de bonus')).toHaveText('20')
     await expect(page.getByLabel('Valeur de bonus')).toHaveValue('force * 3')
     await page.getByRole('button', { name: 'Enregistrer bonus' }).click()
@@ -87,12 +86,22 @@ export async function verifyVariables(page: Page, client: ConvexHttpClient) {
       .getByRole('button', { name: 'Charger la version enregistrée' })
       .click()
     await expect(page.getByLabel('Valeur de bonus')).toHaveValue('force * 4')
-    await other.getByLabel('Valeur de bonus').fill('force * 5')
-    await other.getByRole('button', { name: 'Enregistrer bonus' }).click()
+    await fillAndSave(other, 'force * 5')
     await expect(page.getByLabel('Valeur de bonus')).toHaveValue('force * 5')
   } finally {
     await other.close()
   }
   await create('boucle', 'formula', 'boucle + 1')
   await expect(form.getByRole('alert')).toContainText('circulaire')
+}
+
+// La seconde vue peut encore recevoir sa première réponse temps réel : on
+// ressaisit tant que le brouillon n'est pas reconnu comme modifié.
+async function fillAndSave(view: Page, expression: string) {
+  const save = view.getByRole('button', { name: 'Enregistrer bonus' })
+  await expect(async () => {
+    await view.getByLabel('Valeur de bonus').fill(expression)
+    await expect(save).toBeEnabled({ timeout: 1000 })
+  }).toPass()
+  await save.click()
 }

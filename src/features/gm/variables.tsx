@@ -48,8 +48,17 @@ function formatComputed(computed: Row['computed']) {
   return String(computed.value)
 }
 
+// Convex peut repasser une requête à undefined le temps de confirmer un jeton
+// rafraîchi : garder la dernière réponse évite de remonter les lignes et de
+// perdre un brouillon en cours de saisie. Le composant est clé par projet.
+function useRetained<T>(value: T | undefined) {
+  const [kept, setKept] = useState(value)
+  if (value !== undefined && value !== kept) setKept(value)
+  return value ?? kept
+}
+
 export function Variables({ projectId }: { projectId: string }) {
-  const project = useQuery(api.gm.getProject, { id: projectId })
+  const project = useRetained(useQuery(api.gm.getProject, { id: projectId }))
   if (project === undefined)
     return <p role="status">Chargement des variables…</p>
   if (!project) return <p role="alert">Projet introuvable ou inaccessible.</p>
@@ -57,9 +66,9 @@ export function Variables({ projectId }: { projectId: string }) {
 }
 
 function VariablesContent({ project }: { project: Doc<'gmProjects'> }) {
-  const rows = useQuery(api.gmVariables.listVariables, {
-    projectId: project._id,
-  })
+  const rows = useRetained(
+    useQuery(api.gmVariables.listVariables, { projectId: project._id })
+  )
   return (
     <>
       <Link
@@ -133,7 +142,7 @@ function CreateVariable({ projectId }: { projectId: Id<'gmProjects'> }) {
         }
         setPending(true)
         setError(null)
-        create({
+        void create({
           projectId,
           name,
           label,
@@ -143,6 +152,7 @@ function CreateVariable({ projectId }: { projectId: Id<'gmProjects'> }) {
             setName('')
             setLabel('')
             setInput(type === 'number' ? '0' : '')
+            return undefined
           })
           .catch((error_: unknown) => setError(variableError(error_)))
           .finally(() => setPending(false))
