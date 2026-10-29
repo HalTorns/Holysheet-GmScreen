@@ -177,8 +177,8 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
       ultracite:
-        specifier: 8.0.2
-        version: 8.0.2(eslint@10.12.0(jiti@2.7.0))(oxfmt@0.74.0)(oxlint@1.89.0(oxlint-tsgolint@7.0.2005))(prettier@3.9.10)
+        specifier: 8.1.0
+        version: 8.1.0(eslint@10.12.0(jiti@2.7.0))(oxfmt@0.74.0)(oxlint@1.89.0(oxlint-tsgolint@7.0.2005))(prettier@3.9.10)
       vite:
         specifier: 8.3.5
         version: 8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -3704,8 +3704,8 @@ packages:
     resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==}
     engines: {node: '>=18'}
 
-  nypm@0.6.12:
-    resolution: {integrity: sha512-4AhWntz+ds/P5kz1rN25yGegTPYsO5ffOy+8S0TeuXKZrgjlmgcEBLA1xubzcP/dWX4zYfNybv4TQERlL9Z0LQ==}
+  nypm@0.6.11:
+    resolution: {integrity: sha512-wrVBTLWDu7nTUKGWplQebWOXWnhaIwyKQhBxobH/CGxJHoVw27r9vG5ba7kdZnxG+f4rC6dZd6m2oHmpkOcO7g==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -4214,12 +4214,12 @@ packages:
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
-  ultracite@8.0.2:
-    resolution: {integrity: sha512-fXAMds8JnXvwizV4Ee3PFQNIu9zPvZtd2/+X6gh6ZWSvuzpiLkSWeUlsZvXIWRync+oLHgyKAje5cPgpeb61jw==}
-    engines: {node: '>=22.18.0'}
+  ultracite@8.1.0:
+    resolution: {integrity: sha512-YX14p9HzKjOZFi2N4zug+zM3757BZcRpxn8vnGKgO+0Vh3mnU9G1hZAgvSD9d1HAUyV1KSaCUAB8BfbqVXEnmQ==}
+    engines: {node: ^22.22.2 || >=24.15.0}
     hasBin: true
     peerDependencies:
-      '@biomejs/biome': ^2.5.0
+      '@biomejs/biome': ^2.6.2
       eslint: ^10.9.0
       oxfmt: '>=0.71.0 <1'
       oxlint: ^1.86.0
@@ -4627,7 +4627,7 @@ snapshots:
 
   '@babel/helper-annotate-as-pure@7.29.7':
     dependencies:
-      '@babel/types': 7.29.8
+      '@babel/types': 7.29.11
 
   '@babel/helper-compilation-targets@7.29.7':
     dependencies:
@@ -4662,7 +4662,7 @@ snapshots:
   '@babel/helper-module-imports@7.29.7':
     dependencies:
       '@babel/traverse': 7.29.10
-      '@babel/types': 7.29.8
+      '@babel/types': 7.29.11
     transitivePeerDependencies:
       - supports-color
 
@@ -6240,7 +6240,7 @@ snapshots:
 
   '@tanstack/router-generator@1.167.41':
     dependencies:
-      '@babel/types': 7.29.8
+      '@babel/types': 7.29.11
       '@tanstack/router-core': 1.171.35
       '@tanstack/router-utils': 1.162.3
       '@tanstack/virtual-file-routes': 1.162.0
@@ -6255,7 +6255,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.29.7
       '@babel/template': 7.29.7
-      '@babel/types': 7.29.8
+      '@babel/types': 7.29.11
       '@tanstack/router-core': 1.171.35
       '@tanstack/router-generator': 1.167.41
       '@tanstack/router-utils': 1.162.3
@@ -6644,7 +6644,7 @@ snapshots:
   better-call@1.3.7(zod@4.6.6):
     dependencies:
       '@better-auth/utils': 0.4.2
-      '@better-fetch/fetch': 1.3.1
+      '@better-fetch/fetch': 1.3.2
       rou3: 0.7.12
       set-cookie-parser: 3.2.1
     optionalDependencies:
@@ -7832,7 +7832,7 @@ snapshots:
       path-key: 4.0.0
       unicorn-magic: 0.3.0
 
-  nypm@0.6.12:
+  nypm@0.6.11:
     dependencies:
       citty: 0.2.2
       pathe: 2.0.3
@@ -8412,7 +8412,7 @@ snapshots:
 
   ufo@1.6.4: {}
 
-  ultracite@8.0.2(eslint@10.12.0(jiti@2.7.0))(oxfmt@0.74.0)(oxlint@1.89.0(oxlint-tsgolint@7.0.2005))(prettier@3.9.10):
+  ultracite@8.1.0(eslint@10.12.0(jiti@2.7.0))(oxfmt@0.74.0)(oxlint@1.89.0(oxlint-tsgolint@7.0.2005))(prettier@3.9.10):
     dependencies:
       '@clack/prompts': 1.8.1
       cli-truncate: 6.1.1
@@ -8426,7 +8426,7 @@ snapshots:
       log-update: 8.0.0
       magicast: 0.5.5
       npm-run-path: 6.0.0
-      nypm: 0.6.12
+      nypm: 0.6.11
       resolve.exports: 2.0.4
       semver: 7.8.5
       string-width: 8.3.0
