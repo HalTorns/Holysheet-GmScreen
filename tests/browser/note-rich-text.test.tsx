@@ -65,6 +65,19 @@ function field() {
   if (!element) throw new Error('Missing note textarea')
   return element
 }
+// Un rendu React encore en attente peut replacer le curseur en fin de texte :
+// reposer la sélection jusqu'à ce qu'elle survive à deux images.
+async function select(start: number, end: number) {
+  await expect
+    .poll(async () => {
+      field().setSelectionRange(start, end)
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      })
+      return [field().selectionStart, field().selectionEnd]
+    })
+    .toEqual([start, end])
+}
 function paste(html: string, plain = 'secours') {
   const data = new DataTransfer()
   data.setData('text/html', html)
@@ -81,7 +94,7 @@ function paste(html: string, plain = 'secours') {
 test('toolbar selection, local shortcuts, IME, dialog escape and preview keep the complete draft', async () => {
   const screen = await render(<Harness />)
   field().focus()
-  field().setSelectionRange(0, 5)
+  await select(0, 5)
   await screen.getByRole('button', { name: 'Gras', exact: true }).click()
   await expect
     .element(screen.getByRole('textbox', { name: 'Contenu de la note' }))
@@ -181,7 +194,7 @@ test('activation is explicit, literal, bounded and preview never dirties a clean
 
 test('Word/Docs semantic paste is inert, preserves selection, simplifies unsupported content and refuses oversized insertion', async () => {
   const screen = await render(<Harness />)
-  field().setSelectionRange(0, 5)
+  await select(0, 5)
   paste(
     '<html><body><p class="MsoNormal" style="color:red"><b>Gras</b> <i>italique</i></p><ol><li>un</li><li>deux</li></ol><a href="https://example.test">lien</a><img src="https://evil.test/image" alt="image"><table><tr><td>A</td><td>B</td></tr></table><script>window.evil=1</script><svg onload="evil()"></svg></body></html>'
   )
@@ -196,7 +209,7 @@ test('Word/Docs semantic paste is inert, preserves selection, simplifies unsuppo
   await expect.element(screen.getByRole('region')).toHaveTextContent('A B')
   await screen.getByRole('button', { name: 'Éditer', exact: true }).click()
   await screen.getByRole('textbox').fill('x'.repeat(49_999))
-  field().setSelectionRange(49_999, 49_999)
+  await select(49_999, 49_999)
   paste('<b>trop long</b>')
   await expect
     .element(screen.getByRole('status'))
@@ -305,7 +318,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
 
   await expect.element(screen.getByRole('textbox')).toHaveValue('un\ndeux')
 
-  field().setSelectionRange(0, 7)
+  await select(0, 7)
   await screen
     .getByRole('button', { name: 'Liste à puces', exact: true })
     .click()
@@ -316,7 +329,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
 
   await expect.element(screen.getByRole('textbox')).toHaveValue('un\ndeux')
 
-  field().setSelectionRange(0, 7)
+  await select(0, 7)
   await screen
     .getByRole('button', { name: 'Liste numérotée', exact: true })
     .click()
@@ -329,7 +342,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
 
   await expect.element(screen.getByRole('textbox')).toHaveValue('code\nbloc')
 
-  field().setSelectionRange(0, 9)
+  await select(0, 9)
   await screen
     .getByRole('button', { name: 'Code littéral', exact: true })
     .click()
@@ -342,7 +355,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
 
   await expect.element(screen.getByRole('textbox')).toHaveValue('secret')
 
-  field().setSelectionRange(0, 6)
+  await select(0, 6)
   await screen
     .getByRole('button', { name: 'Bloc repliable', exact: true })
     .click()
@@ -358,7 +371,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
 
   await expect.element(screen.getByRole('textbox')).toHaveValue('lien')
 
-  field().setSelectionRange(0, 4)
+  await select(0, 4)
   await screen.getByRole('button', { name: 'Lien', exact: true }).click()
   await screen
     .getByLabelText('URL', { exact: true })
@@ -376,7 +389,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
     })
   )
   await expect.poll(() => document.activeElement === field()).toBe(true)
-  field().setSelectionRange(0, field().value.length)
+  await select(0, field().value.length)
   paste('x'.repeat(200_001), '**brut**')
   await expect
     .element(screen.getByRole('textbox'))
