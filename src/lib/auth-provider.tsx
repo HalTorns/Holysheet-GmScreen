@@ -112,7 +112,9 @@ function useCookieAuth() {
   // change l'identité de fetchAccessToken, et un premier cycle lancé avec le
   // seul jeton SSR était aussitôt relancé, désactivant la page une seconde fois.
   return {
-    isLoading: session.isPending || Boolean(session.error && !denied),
+    // Une lecture de session en échec ne bloque pas un jeton déjà valide.
+    isLoading:
+      session.isPending || (Boolean(session.error && !denied) && !token),
     isAuthenticated:
       !session.isPending && !absent && Boolean(session.data || token),
     fetchAccessToken,

@@ -32,6 +32,11 @@ export function useScreenWidgets(screenId: Id<'gmScreens'>, layouts: Layout[]) {
     if (page.results.length) {
       const next = new Map(known)
       for (const widget of page.results) next.set(widget._id, widget)
+      // Borné : on ne garde que les widgets placés ou présents dans la
+      // dernière réponse (un widget peut arriver avant son placement).
+      const fresh = new Set(page.results.map((widget) => widget._id))
+      for (const id of next.keys())
+        if (!placed.has(id) && !fresh.has(id)) next.delete(id)
       setKnown(next)
     }
   }
