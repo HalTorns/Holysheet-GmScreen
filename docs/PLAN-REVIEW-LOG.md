@@ -178,3 +178,16 @@
   - R2 : REVISE, session en échec qui bloquait un jeton valide et cache non borné → corrigés ;
   - R3 : **APPROVED**.
 - CI `40864040850` puis `40867165957` sur `ee7888e` : application, image Docker et secrets **success**. Fast-forward de `main`. AUD-28 partiellement corrigé et requalifié dans l'audit : l'insertion en masse en direct reste incomplète ; le correctif structurel viendra après F3c. Auteurs : Codex (code F5a, diagnostics, inspections), Claude (plan, inspection, stabilisation).
+
+## Dette — tranche C2 (surfaces du socle) — 2026-10-29
+
+- Plan `docs/PLAN-C2.md` (Claude), d'après les recommandations AUD-10 à AUD-14 acceptées au cadrage.
+- Review **Codex** (session neuve), 3 rounds :
+  - R1 : REVISE, 4 findings acceptés :
+    - C2-01 : ressources partagées devenues inexportables ;
+    - C2-02 : dernier propriétaire bloqué à la suppression du compte ;
+    - C2-03 : sessions d'impersonation existantes encore acceptées ;
+    - C2-04 : specs de restauration et de modules auth non exécutées en CI.
+  - Les organisations sont réduites au retrait de l'interface, avec refus serveur de toute création ; l'API de gestion, d'export et de suppression est gardée.
+  - R2 : REVISE (C2-04-R2), la spec des modules auth serait ignorée sans son lanceur protégé ; étape CI dédiée et interdiction des `skip`.
+  - R3 : **APPROVED**.
