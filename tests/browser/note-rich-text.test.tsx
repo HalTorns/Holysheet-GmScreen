@@ -3,6 +3,7 @@ import type { NoteValue } from '@shared/gm'
 import { useCallback, useState } from 'react'
 import { expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
+import { userEvent } from 'vitest/browser'
 
 import { NoteInput } from '../../src/features/gm/rich-text/input'
 import { convertNotePaste } from '../../src/features/gm/rich-text/paste'
@@ -64,6 +65,22 @@ function field() {
   const element = document.querySelector('textarea')
   if (!element) throw new Error('Missing note textarea')
   return element
+}
+// Une action de barre d'outils replace le curseur à l'image suivante : si
+// cette image tombe pendant fill, le texte s'insère au mauvais endroit.
+// Ressaisir jusqu'à obtenir exactement la valeur voulue.
+async function fillNote(value: string) {
+  await expect
+    .poll(async () => {
+      field().focus()
+      field().select()
+      await userEvent.fill(field(), value)
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      })
+      return field().value
+    })
+    .toBe(value)
 }
 // Un rendu React encore en attente peut replacer le curseur en fin de texte :
 // reposer la sélection jusqu'à ce qu'elle survive à deux images.
@@ -149,7 +166,7 @@ test('toolbar selection, local shortcuts, IME, dialog escape and preview keep th
     .element(screen.getByText('propre', { exact: true }))
     .toBeVisible()
   await screen.getByRole('button', { name: 'Éditer', exact: true }).click()
-  await screen.getByRole('textbox').fill('mon brouillon')
+  await fillNote('mon brouillon')
   await screen.getByRole('button', { name: 'Distant', exact: true }).click()
   await expect
     .element(screen.getByText('conflit', { exact: true }))
@@ -208,7 +225,7 @@ test('Word/Docs semantic paste is inert, preserves selection, simplifies unsuppo
   ).toBeNull()
   await expect.element(screen.getByRole('region')).toHaveTextContent('A B')
   await screen.getByRole('button', { name: 'Éditer', exact: true }).click()
-  await screen.getByRole('textbox').fill('x'.repeat(49_999))
+  await fillNote('x'.repeat(49_999))
   await select(49_999, 49_999)
   paste('<b>trop long</b>')
   await expect
@@ -312,7 +329,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
     .getByLabelText('Niveau du titre', { exact: true })
     .selectOptions('2')
   await expect.element(screen.getByRole('textbox')).toHaveValue('## texte')
-  await screen.getByRole('textbox').fill('un\ndeux')
+  await fillNote('un\ndeux')
 
   // Attendre la valeur appliquée par React avant de placer la sélection.
 
@@ -323,7 +340,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
     .getByRole('button', { name: 'Liste à puces', exact: true })
     .click()
   await expect.element(screen.getByRole('textbox')).toHaveValue('- un\n- deux')
-  await screen.getByRole('textbox').fill('un\ndeux')
+  await fillNote('un\ndeux')
 
   // Attendre la valeur appliquée par React avant de placer la sélection.
 
@@ -336,7 +353,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
   await expect
     .element(screen.getByRole('textbox'))
     .toHaveValue('1. un\n1. deux')
-  await screen.getByRole('textbox').fill('code\nbloc')
+  await fillNote('code\nbloc')
 
   // Attendre la valeur appliquée par React avant de placer la sélection.
 
@@ -349,7 +366,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
   await expect
     .element(screen.getByRole('textbox'))
     .toHaveValue('\n```\ncode\nbloc\n```\n')
-  await screen.getByRole('textbox').fill('secret')
+  await fillNote('secret')
 
   // Attendre la valeur appliquée par React avant de placer la sélection.
 
@@ -365,7 +382,7 @@ test('all toolbar insertions preserve the draft, links validate, Escape restores
     .element(screen.getByRole('textbox'))
     .toHaveValue('\n:::details[Résumé]\nsecret\n:::\n')
   await expect.poll(() => document.activeElement === field()).toBe(true)
-  await screen.getByRole('textbox').fill('lien')
+  await fillNote('lien')
 
   // Attendre la valeur appliquée par React avant de placer la sélection.
 
