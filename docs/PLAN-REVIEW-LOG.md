@@ -207,3 +207,24 @@ Validation finale C2 : `pnpm check` réussi (39 fichiers / 246 tests backend et 
   - aucune table ni schéma auth modifié.
   - Preuves relancées par Claude : `pnpm check` vert, `pnpm audit:convex` (72/0), `pnpm audit` sans nouvelle vulnérabilité non ignorée.
 - CI `40874751542` sur `95cd975` : **success du premier coup**. E2E réellement exécutés : 8 principaux, 9 modules auth (lanceur protégé), 1 organisations. Fast-forward de `main`. Arrêt demandé par l'utilisateur jusqu'au lundi 2 novembre.
+
+### Migration B en production — 2 novembre 2026
+
+Exécutée par l'utilisateur depuis le terminal Coolify `operations`, après le redeploy de `main` (`43e6ea8`) :
+
+- `pnpm backend:deploy` : index V2 ajoutés, composant `migrations` installé ;
+- sauvegarde : `convex export --include-file-storage` (25 Ko, prod quasi vide), copiée hors du conteneur sur le serveur. l'utilisateur considère AUD-25 comme satisfait pour cette prod quasi vide (décision du 2 novembre 2026) ;
+- `gmWidgetMigrations:run` : passes `notes` (3), `layouts` (4) et `history` (0), toutes `success`, `isDone: true`.
+
+L'inventaire paginé exigé par l'ADR avant la contraction (absence de V1, unicité des payloads, relations) n'a pas encore été fait : il devient le premier livrable de F3c.
+
+### F3c — revue du plan, 2 novembre 2026
+
+- Round 1 (**Codex**, session neuve) : REVISE, 3 constats, tous acceptés :
+  - F3c-01 : les anciens snapshots de disposition gardent légitimement des références vers des widgets purgés, donc compteur informatif seulement ;
+  - F3c-02 : nouvelle query `getScreenWidgetMetadata`, `listScreenWidgets` paginée conservée pour les clients ouverts et le retour arrière ;
+  - F3c-03 : compteurs de discordance kind/propriétaire/projet/Screen.
+
+  Le garde-fou d'empreinte a signalé une écriture : c'était l'ajout du coordinateur à ce journal pendant la revue, pas Codex.
+
+- Round 2 (même session) : **APPROVED** sur `docs/PLAN-F3c.md` (SHA256 `d2f746b104f492ee79d8624436d8743498bbb091590d136609f6aa8f49d71b6d`).
