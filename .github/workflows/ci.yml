@@ -64,6 +64,15 @@ jobs:
           path: test-results/**/error-context.md
           retention-days: 3
           if-no-files-found: ignore
+      # AUD-28 : erreurs serveur passagères (« Server Error ») sous charge. On
+      # n'affiche que les lignes d'erreur du backend, jamais tout le journal.
+      - name: Erreurs du backend Convex
+        if: always()
+        run: |
+          for name in $(docker ps -a --format '{{.Names}}' | grep -i backend); do
+            echo "== $name"
+            docker logs "$name" 2>&1 | grep -iE 'uncaught|panic|error|too many|timed out|limit' | grep -viE 'admin.?key|secret|token|password' | tail -60 || true
+          done
       - name: Arrêter les services
         if: always()
         run: pnpm services:down

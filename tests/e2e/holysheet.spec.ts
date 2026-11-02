@@ -221,6 +221,25 @@ test('password registration, project, folder and Screen survive reload, synchron
         fileId: file.id,
       })
     }
+    // F7 : le rapport exige des lignes dans chaque table GM, catalogue compris.
+    const itemId = await client.mutation(api.gmSheets.createSheet, {
+      projectId: restoreSource.screen.projectId,
+      kind: 'item',
+      title: 'Objet restauré',
+    })
+    await client.mutation(api.items.setProfile, {
+      sheetId: itemId,
+      expectedVersion: 0,
+      price: 3,
+      currency: 'po',
+      category: 'Divers',
+    })
+    const merchantId = await client.mutation(api.gmSheets.createSheet, {
+      projectId: restoreSource.screen.projectId,
+      kind: 'merchant',
+      title: 'Marchand restauré',
+    })
+    await client.mutation(api.merchants.addStock, { merchantId, itemId })
     const report = await verifyLocalRestore()
     expect(report.widgetRelations).toMatchObject({
       valid: true,
