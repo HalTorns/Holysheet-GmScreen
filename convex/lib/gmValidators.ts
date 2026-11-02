@@ -480,7 +480,39 @@ const fileUsageValidator = v.object({
   _creationTime: v.number(),
   ...fileUsageFields,
 })
+export const itemProfileFields = {
+  ownerId: v.string(),
+  projectId: v.id('gmProjects'),
+  sheetId: v.id('gmSheets'),
+  price: v.optional(v.number()),
+  currency: v.string(),
+  category: v.string(),
+  version: v.number(),
+}
+export const stockFields = {
+  ownerId: v.string(),
+  projectId: v.id('gmProjects'),
+  merchantId: v.id('gmSheets'),
+  itemId: v.id('gmSheets'),
+  quantity: v.union(v.number(), v.null()),
+  price: v.optional(v.number()),
+  available: v.boolean(),
+  order: v.number(),
+  version: v.number(),
+}
+export const itemProfileValidator = v.object({
+  _id: v.id('gmItemProfiles'),
+  _creationTime: v.number(),
+  ...itemProfileFields,
+})
+export const stockValidator = v.object({
+  _id: v.id('gmMerchantStock'),
+  _creationTime: v.number(),
+  ...stockFields,
+})
 export const gmCollection = v.union(
+  v.literal('gmItemProfiles'),
+  v.literal('gmMerchantStock'),
   v.literal('gmProjects'),
   v.literal('gmFolders'),
   v.literal('gmScreens'),
@@ -496,6 +528,8 @@ export const gmCollection = v.union(
   v.literal('gmFileUsage')
 )
 export const gmDocument = v.union(
+  itemProfileValidator,
+  stockValidator,
   projectValidator,
   folderValidator,
   screenValidator,

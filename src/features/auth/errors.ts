@@ -1,6 +1,11 @@
 import { ConvexError } from 'convex/values'
 
 const messages: Record<string, string> = {
+  SHEET_KIND_IN_USE:
+    'Retirez les lignes de stock avant de changer le type de cette fiche.',
+  STOCK_DUPLICATE: 'Cet objet est déjà présent chez ce marchand.',
+  STOCK_LIMIT: 'Un marchand peut contenir au plus 200 lignes de stock.',
+  ITEM_PROFILE_LIMIT: 'Ce projet a atteint sa limite de 2 000 profils d’objet.',
   DOCUMENT_LIMIT: 'Ce contenu dépasse le budget de taille autorisé.',
   LAYOUT_LOCKED:
     'La disposition de ce Screen est verrouillée. Déverrouillez-la pour la modifier.',

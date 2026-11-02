@@ -113,6 +113,24 @@ describe('Holysheet personal workspace', () => {
       label: 'Force',
       definition: { type: 'number', value: 3 },
     })
+    const merchantId = await alice.client.mutation(api.gmSheets.createSheet, {
+      projectId,
+      kind: 'merchant',
+      title: 'Marchand',
+    })
+    const itemId = await alice.client.mutation(api.gmSheets.createSheet, {
+      projectId,
+      kind: 'item',
+      title: 'Potion',
+    })
+    await alice.client.mutation(api.items.setProfile, {
+      sheetId: itemId,
+      expectedVersion: 0,
+      price: 10,
+      currency: 'po',
+      category: 'Potion',
+    })
+    await alice.client.mutation(api.merchants.addStock, { merchantId, itemId })
     vi.stubEnv('SITE_URL', 'http://localhost:3000')
     const importedFile = await alice.client.fetch(
       `/files/upload?projectId=${projectId}&name=fixture.png`,

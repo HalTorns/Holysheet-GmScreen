@@ -40,6 +40,26 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
     const projectId = await client.mutation(api.gm.createProject, {
       title: 'Projet restauré C2',
     })
+    const itemId = await client.mutation(api.gmSheets.createSheet, {
+      projectId,
+      kind: 'item',
+      title: 'Potion partagée restaurée',
+    })
+    await client.mutation(api.items.setProfile, {
+      sheetId: itemId,
+      expectedVersion: 0,
+      price: 12.5,
+      currency: 'po',
+      category: 'Potions',
+    })
+    for (const title of ['Alchimiste restauré', 'Épicier restauré']) {
+      const merchantId = await client.mutation(api.gmSheets.createSheet, {
+        projectId,
+        kind: 'merchant',
+        title,
+      })
+      await client.mutation(api.merchants.addStock, { merchantId, itemId })
+    }
     const screenId = await client.mutation(api.gm.createScreen, {
       projectId,
       title: 'Fichiers restaurés',
@@ -93,6 +113,9 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
     expect(report.tables.resources).toBeGreaterThan(0)
     expect(report.tables.gmFiles).toBeGreaterThanOrEqual(2)
     expect(report.widgetRelations.valid).toBe(true)
+    expect(report.tables.gmItemProfiles).toBeGreaterThanOrEqual(1)
+    expect(report.tables.gmMerchantStock).toBeGreaterThanOrEqual(2)
+    expect(report.widgetRelations.sharedStockItems).toBeGreaterThanOrEqual(1)
     expect(report.widgetRelations.kinds).toEqual(
       expect.arrayContaining(['image', 'pdf'])
     )

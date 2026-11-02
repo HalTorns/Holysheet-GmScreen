@@ -1,0 +1,13 @@
+# Catalogue et stocks des marchands — F7
+
+Une fiche `item` décrit un objet partagé dans un projet personnel. Son corps reste dans `gmSheetContents` ; `gmItemProfiles` porte seulement prix de référence, devise libre, catégorie et version. Une fiche `merchant` possède ses lignes `gmMerchantStock` : quantité ou illimité, prix appliqué optionnel, disponibilité et ordre. Le prix effectif est résolu à la lecture ; modifier un modèle ne recopie aucune ligne de stock.
+
+Les mutations vérifient session, propriétaire, projet et kinds des deux extrémités. Les index `by_sheet` et `by_merchant_item`, lus avant insertion dans la même transaction, garantissent l’unicité. Hypothèses réversibles : 200 lignes par marchand, 2 000 profils par projet (la limite existante de 500 fiches vivantes reste applicable), quantités entières de 0 à 1 000 000, prix non négatifs représentables au centime, devise de 20 caractères et catégorie de 80 caractères. Aucune conversion monétaire ni comptabilité de vente.
+
+Les éditions absolues demandent une version attendue. Les ajustements rapides appliquent un delta transactionnel sans version cliente et incrémentent la version pour chaque changement effectif ; une édition devenue obsolète ne peut donc pas écraser une vente. La quantité est bornée ; les lignes illimitées restent inchangées. `resourceWrite` protège la structure, `gmEditorWrite` les ajustements.
+
+F7 n’ajoute aucun historique d’annulation du catalogue ou du stock. L’historique existant concerne les contenus et dispositions des Screens. Un historique au niveau projet exigerait un schéma et un cycle d’autorisation, restauration et purge distincts. Les brouillons en conflit sont conservés jusqu’à un abandon explicite.
+
+La corbeille conserve les relations. Un objet en corbeille apparaît indisponible, sa restauration rétablit l’affichage. Une purge retire profil et lignes dans la même transaction ; les relations entrantes sont bornées par les 500 fiches vivantes et 100 fiches en corbeille du projet, les sortantes par les 200 lignes du marchand. Le changement de kind est refusé tant que la fiche possède des relations de stock ; sans stock, quitter le kind objet retire son profil atomiquement. Il n’existe pas de duplication de fiche dans F1 : aucun nouveau parcours de duplication n’est introduit. La duplication d’un widget continue de référencer la même fiche.
+
+Les deux tables participent à l’export paginé et au nettoyage borné du compte, avant suppression des fiches référencées. Les sauvegardes contrôlent existence, kinds, projet, propriétaire et unicité des relations. La fixture de restauration comprend deux marchands partageant un objet avec profil et stock non vide.

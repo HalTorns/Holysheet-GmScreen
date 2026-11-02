@@ -2,6 +2,8 @@ import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
 import {
+  itemProfileFields,
+  stockFields,
   projectFields,
   folderFields,
   screenFields,
@@ -18,6 +20,15 @@ import {
 } from './lib/gmValidators'
 
 export default defineSchema({
+  gmItemProfiles: defineTable(itemProfileFields)
+    .index('by_sheet', ['sheetId'])
+    .index('by_owner', ['ownerId'])
+    .index('by_project_category', ['projectId', 'category']),
+  gmMerchantStock: defineTable(stockFields)
+    .index('by_merchant', ['merchantId'])
+    .index('by_item', ['itemId'])
+    .index('by_owner', ['ownerId'])
+    .index('by_merchant_item', ['merchantId', 'itemId']),
   gmFiles: defineTable(fileFields)
     .index('by_owner', ['ownerId'])
     .index('by_project_live', ['projectId', 'deletedAt'])
@@ -50,7 +61,7 @@ export default defineSchema({
     .index('by_project_kind_live', ['projectId', 'kind', 'deletedAt'])
     .searchIndex('search_title', {
       searchField: 'title',
-      filterFields: ['projectId', 'deletedAt'],
+      filterFields: ['projectId', 'deletedAt', 'kind'],
     }),
   gmSheetContents: defineTable(sheetContentFields)
     .index('by_owner', ['ownerId'])

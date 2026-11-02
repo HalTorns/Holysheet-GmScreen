@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { convexErrorCode, operationErrorMessage } from '@/features/auth/errors'
 import { useRetained } from '@/hooks/use-retained'
 
+import { ItemProfile, MerchantStock } from './merchant-stock'
 import { reconcileDraft } from './sheet-draft'
 
 type SheetView = NonNullable<FunctionReturnType<typeof api.gmSheets.getSheet>>
@@ -135,6 +136,16 @@ function SheetContent({ view }: { view: SheetView }) {
           )}
         </div>
       </div>
+      {sheet.kind === 'item' && (
+        <ItemProfile sheetId={sheet._id} disabled={deleted} />
+      )}
+      {sheet.kind === 'merchant' && (
+        <MerchantStock
+          merchantId={sheet._id}
+          projectId={sheet.projectId}
+          disabled={deleted}
+        />
+      )}
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <form
           className="panel grid content-start gap-4 p-5"

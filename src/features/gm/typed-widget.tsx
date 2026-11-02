@@ -15,6 +15,7 @@ import {
 } from '@/features/auth/errors'
 
 import { FileWidget } from './file-widget'
+import { ItemCatalogPreview, MerchantStockPreview } from './merchant-stock'
 import { NoteEditor } from './note-editor'
 import { RevisionHistory } from './revision-history'
 import { SessionWidget } from './session-widget'
@@ -80,7 +81,8 @@ function WidgetStatic({
         {counterSource(widget, variables)?.value ?? 'Variable indisponible'}
       </p>
     )
-  if (widget.kind === 'sheet') return <SheetPreview widget={widget} />
+  if (widget.kind === 'sheet')
+    return <SheetPreview widget={widget} staticRender />
   return <p>{widget.config.expression} · Résultat indisponible</p>
 }
 export function WidgetContent(props: Props) {
@@ -276,7 +278,10 @@ function TypedWidgetEditor({
       </label>
       {current.kind === 'sheet' && (
         <>
-          <SheetPreview widget={widget.kind === 'sheet' ? widget : current} />
+          <SheetPreview
+            widget={widget.kind === 'sheet' ? widget : current}
+            disabled={locked || readOnly}
+          />
           <CatchBoundary
             getResetKey={() => current.config.sheetId ?? ''}
             errorComponent={SheetSearchError}
@@ -703,17 +708,37 @@ function TypedWidgetEditor({
 }
 
 type SheetWidget = Extract<Widget, { kind: 'sheet' }>
-function SheetPreview({ widget }: { widget: SheetWidget }) {
+function SheetPreview({
+  widget,
+  disabled = true,
+  staticRender = false,
+}: {
+  widget: SheetWidget
+  disabled?: boolean
+  staticRender?: boolean
+}) {
   return (
     <CatchBoundary
       getResetKey={() => `${widget._id}:${widget.version}`}
       errorComponent={SheetContentError}
     >
-      <ResolvedSheet widget={widget} />
+      <ResolvedSheet
+        widget={widget}
+        disabled={disabled}
+        staticRender={staticRender}
+      />
     </CatchBoundary>
   )
 }
-function ResolvedSheet({ widget }: { widget: SheetWidget }) {
+function ResolvedSheet({
+  widget,
+  disabled,
+  staticRender,
+}: {
+  widget: SheetWidget
+  disabled: boolean
+  staticRender: boolean
+}) {
   const preview = useQuery(api.gmWidgets.getSheetPreview, {
     widgetId: widget._id,
   })
@@ -729,6 +754,16 @@ function ResolvedSheet({ widget }: { widget: SheetWidget }) {
       <p>{gmSheetKindLabels[preview.sheet.kind]}</p>
       <h3>{widget.config.title || preview.sheet.title}</h3>
       <p>{preview.sheet.summary}</p>
+      {preview.sheet.kind === 'item' && (
+        <ItemCatalogPreview sheetId={preview.sheet._id} />
+      )}
+      {preview.sheet.kind === 'merchant' && (
+        <MerchantStockPreview
+          merchantId={preview.sheet._id}
+          disabled={disabled}
+          staticRender={staticRender}
+        />
+      )}
       {preview.fields && (
         <dl>
           {preview.fields.map((field, index) => (

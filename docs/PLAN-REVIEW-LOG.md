@@ -308,3 +308,19 @@ Limites : Context7 indisponible ; sources/types installés et sources officielle
   - F7-03 : chaque ajustement incrémente la version de la ligne, et une édition périmée est refusée en conflit.
 - Round 2 : REVISE, une contradiction de rédaction sur F7-01, corrigée.
 - Round 3 : **APPROVED** sur `docs/PLAN-F7.md` (SHA256 `cd378236d650a051ea8c4a9e0cd0f6200e5d0d209ac0744720109a890859e361`).
+
+### F7 — build Codex, 2 novembre 2026
+
+Implémenté sur `codex/f7-merchants` : profils et stocks indexés, versions et ajustements atomiques, garde de kind, pages objet/marchand, widget direct/statique, corbeille/restauration/purge, export/nettoyage et relations de sauvegarde. ADR `decisions/merchants.md`, inventaire, produit et runbook à jour. Pas de duplication de fiche préexistante : aucune ajoutée ; la duplication de widget conserve sa référence. La purge reste atomique : au plus 600 marchands entrants par objet, ou 200 lignes sortantes. Aucun changement d’architecture ou de dépendances.
+
+Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/archives **12/12**, navigateur **2/2** ; **`pnpm check` exit 0**, **265 tests** backend/unitaires/scripts et **23 tests navigateur**, types, lint strict, format, Knip et build réussis. `pnpm audit:convex` **exit 0**, **91 fonctions publiques**, zéro hors inventaire. Playwright `--list` collecte les **2 specs/cas** marchands et restauration ; la commande CI inclut la nouvelle spec. `git diff --check` **exit 0**. Les premières passes ont signalé du lint/Knip puis une fixture d’export général sans les nouvelles collections : corrigés sans réduire ses assertions d’isolation. Avertissements upstream de build conservés.
+
+Écarts au plan : aucun. Context7 indisponible, patterns et types installés réutilisés sans nouvelle API de dépendance. E2E, concurrence réelle à deux onglets et restauration réelle non exécutés localement faute de Docker ; restent à prouver en CI. Aucun commit, push, déploiement ni écriture GitHub.
+
+- **Inspection Claude** (build Codex F7) :
+  - `adjustQuantity` borne la quantité, incrémente la version et n'a pas d'effet sur une ligne illimitée ;
+  - garde de changement de kind transactionnelle dans `updateSheet` ;
+  - purge d'un objet ou d'un marchand : lignes et profil supprimés ;
+  - les deux tables sont présentes dans `gmCollection` (export), `cleanup` et `snapshots.mjs`.
+
+  Construction lancée à 64 % du quota Codex, à la demande de l'utilisateur (« n'attend pas le reset »).

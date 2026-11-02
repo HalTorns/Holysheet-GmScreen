@@ -111,6 +111,15 @@ async function cleanDeletedAccount(
       bytes: Math.max(0, fileUsage.bytes - removedBytes),
     })
   if (files.length === 20) return true
+  // Drain catalogue relations before deleting the referenced sheets/projects.
+  for (const table of ['gmMerchantStock', 'gmItemProfiles'] as const) {
+    const rows = await ctx.db
+      .query(table)
+      .withIndex('by_owner', (q) => q.eq('ownerId', userId))
+      .take(20)
+    for (const row of rows) await ctx.db.delete(table, row._id)
+    if (rows.length === 20) return true
+  }
   let gmDataRemain = false
   for (const table of gmTables) {
     if (table === 'gmFiles') continue

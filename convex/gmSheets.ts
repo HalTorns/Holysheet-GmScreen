@@ -9,6 +9,7 @@ import {
   gmSheetSearch,
   gmTitle,
 } from '../shared/gm'
+import { GM_MAX_MERCHANT_STOCK } from '../shared/merchants'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { mutation, query } from './_generated/server'
@@ -115,21 +116,26 @@ export const listSheets = query({
 })
 
 export const searchSheets = query({
-  args: { projectId: v.id('gmProjects'), text: v.string() },
+  args: {
+    projectId: v.id('gmProjects'),
+    text: v.string(),
+    kind: v.optional(sheetKindValidator),
+  },
   returns: v.array(linkSummary),
-  handler: async (ctx, { projectId, text }) => {
+  handler: async (ctx, { projectId, text, kind }) => {
     const user = await requireUser(ctx)
     await ownedProject(ctx, projectId, user._id)
     const search = gmSheetSearch.safeParse(text)
     if (!search.success) return []
     const sheets = await ctx.db
       .query('gmSheets')
-      .withSearchIndex('search_title', (q) =>
-        q
+      .withSearchIndex('search_title', (q) => {
+        const searchQuery = q
           .search('title', search.data)
           .eq('projectId', projectId)
           .eq('deletedAt', undefined)
-      )
+        return kind ? searchQuery.eq('kind', kind) : searchQuery
+      })
       .take(20)
     return sheets.map(summarize)
   },
@@ -242,6 +248,24 @@ export const updateSheet = mutation({
     if (sheet.version !== expectedVersion)
       throw new ConvexError({ code: 'CONFLICT' })
     await limitUserOperation(ctx, 'resourceWrite', user._id)
+    if (kind !== sheet.kind) {
+      const stock =
+        sheet.kind === 'item'
+          ? await ctx.db
+              .query('gmMerchantStock')
+              .withIndex('by_item', (q) => q.eq('itemId', id))
+              .first()
+          : await ctx.db
+              .query('gmMerchantStock')
+              .withIndex('by_merchant', (q) => q.eq('merchantId', id))
+              .first()
+      if (stock) throw new ConvexError({ code: 'SHEET_KIND_IN_USE' })
+      const profile = await ctx.db
+        .query('gmItemProfiles')
+        .withIndex('by_sheet', (q) => q.eq('sheetId', id))
+        .unique()
+      if (profile) await ctx.db.delete('gmItemProfiles', profile._id)
+    }
     const content = await contentOf(ctx, id)
     const updatedAt = Date.now()
     const version = sheet.version + 1
@@ -389,6 +413,24 @@ export const deleteSheetForever = mutation({
     if (sheet.deletedAt === undefined)
       throw new ConvexError({ code: 'NOT_IN_TRASH' })
     await limitUserOperation(ctx, 'resourceWrite', user._id)
+    // Un objet ne peut avoir qu'une ligne par marchand ; le nombre de
+    // marchands est borné par les fiches vivantes + corbeille du projet.
+    const stock =
+      sheet.kind === 'item'
+        ? await ctx.db
+            .query('gmMerchantStock')
+            .withIndex('by_item', (q) => q.eq('itemId', id))
+            .take(GM_MAX_SHEETS + GM_MAX_TRASH)
+        : await ctx.db
+            .query('gmMerchantStock')
+            .withIndex('by_merchant', (q) => q.eq('merchantId', id))
+            .take(GM_MAX_MERCHANT_STOCK)
+    for (const row of stock) await ctx.db.delete('gmMerchantStock', row._id)
+    const profile = await ctx.db
+      .query('gmItemProfiles')
+      .withIndex('by_sheet', (q) => q.eq('sheetId', id))
+      .unique()
+    if (profile) await ctx.db.delete('gmItemProfiles', profile._id)
     await deleteLinks(ctx, 'by_from', id)
     await deleteLinks(ctx, 'by_to', id)
     const content = await ctx.db

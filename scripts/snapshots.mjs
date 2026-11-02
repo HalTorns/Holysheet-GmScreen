@@ -76,6 +76,8 @@ export async function archiveInventory(path) {
           'gmEditorHistory',
           'gmVariables',
           'gmSheets',
+          'gmItemProfiles',
+          'gmMerchantStock',
         ].includes(tableName)
       )
         widgets[tableName] = documents.map((document) => JSON.parse(document))
@@ -200,6 +202,41 @@ export async function archiveInventory(path) {
   const projectById = new Map(
     (widgets.gmProjects ?? []).map((project) => [project._id, project])
   )
+  const profiles = widgets.gmItemProfiles ?? []
+  const stocks = widgets.gmMerchantStock ?? []
+  const profileSheets = new Set()
+  const stockPairs = new Set()
+  const sellersPerItem = new Map()
+  const validCatalogSheet = (id, row, kind) => {
+    const sheet = sheetsById.get(id)
+    return (
+      sheet &&
+      sheet.kind === kind &&
+      sheet.ownerId === row.ownerId &&
+      sheet.projectId === row.projectId &&
+      projectById.get(row.projectId)?.ownerId === row.ownerId
+    )
+  }
+  const validProfiles = profiles.every((profile) => {
+    const duplicate = profileSheets.has(profile.sheetId)
+    profileSheets.add(profile.sheetId)
+    return !duplicate && validCatalogSheet(profile.sheetId, profile, 'item')
+  })
+  const validStock = stocks.every((row) => {
+    const pair = `${row.merchantId}:${row.itemId}`
+    const duplicate = stockPairs.has(pair)
+    stockPairs.add(pair)
+    sellersPerItem.set(row.itemId, (sellersPerItem.get(row.itemId) ?? 0) + 1)
+    return (
+      !duplicate &&
+      validCatalogSheet(row.merchantId, row, 'merchant') &&
+      validCatalogSheet(row.itemId, row, 'item')
+    )
+  })
+  if (!validProfiles || !validStock)
+    throw new Error(
+      'Snapshot catalogue or merchant stock relations are invalid.'
+    )
   const fileById = new Map(
     (widgets.gmFiles ?? []).map((file) => [file._id, file])
   )
@@ -264,9 +301,15 @@ export async function archiveInventory(path) {
       validHistory &&
       validLinks &&
       validSheets &&
+      validProfiles &&
+      validStock &&
       validFiles &&
       validFileWidgets &&
       validUsage,
+    itemProfiles: profiles.length,
+    stockLines: stocks.length,
+    sharedStockItems: [...sellersPerItem.values()].filter((count) => count >= 2)
+      .length,
     fileCount: fileById.size,
     linkedCounters: linkedCounters.length,
     availableCounters: linkedCounters.filter((note) => {

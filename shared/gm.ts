@@ -42,6 +42,8 @@ export const gmLayoutSize = z.object({
   height: z.number().int().min(240).max(GM_MAX_DIMENSION),
 })
 export const gmTables = [
+  'gmItemProfiles',
+  'gmMerchantStock',
   'gmProjects',
   'gmFolders',
   'gmScreens',
