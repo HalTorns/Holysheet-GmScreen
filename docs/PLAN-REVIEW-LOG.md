@@ -292,3 +292,10 @@ Limites : Context7 indisponible ; sources/types installés et sources officielle
   - `fileId` optionnel, pour un widget pas encore relié à un fichier.
 
   Preuves E2E et en-têtes réels : en CI.
+
+- CI F6 `41437184498` : deux échecs.
+  - `files.spec` : les widgets posés par `placeFile` se superposent, et le bouton du PDF était recouvert. Le test active désormais le bouton au clavier ; la superposition est une dette d'ergonomie pour le chantier 3.
+  - AUD-28 à 99/100 : **cause trouvée**. Le diagnostic montrait `sections=100 loading=0` et une erreur serveur non typée sur `getNoteContent`. Une erreur passagère faisait basculer la note sur « contenu indisponible », sans réessai.
+- Correction **Claude** (`dd881f1`) : réessai automatique des erreurs non typées, avec délai croissant et 5 essais au plus ; une `ConvexError` reste définitive. L'E2E AUD-28 redevient strict.
+  - Inspection **Codex** (session neuve) : REVISE R1, le budget de réessai n'était pas remis à zéro après un succès. Corrigé par Claude (`onLoaded`). Cette correction de six lignes n'a pas été réinspectée.
+- CI `41440704431` : **success**. 9 E2E principaux, dont `files.spec` ; AUD-28 à **100/100 en direct en 2,4 s**.
