@@ -228,3 +228,15 @@ L'inventaire paginé exigé par l'ADR avant la contraction (absence de V1, unici
   Le garde-fou d'empreinte a signalé une écriture : c'était l'ajout du coordinateur à ce journal pendant la revue, pas Codex.
 
 - Round 2 (même session) : **APPROVED** sur `docs/PLAN-F3c.md` (SHA256 `d2f746b104f492ee79d8624436d8743498bbb091590d136609f6aa8f49d71b6d`).
+
+### F3c-1 — build additif, 2 novembre 2026 (Codex)
+
+- Inventaire interne paginé (un document, cinq références par appel), compteurs bloquants séparés des anciens placements purgés informatifs ; script d'agrégation opérateur et runbook dans l'ADR migrations. Les correspondances de l'analyse d'archives sont reprises sans partager son algorithme en mémoire.
+- `getScreenWidgetMetadata` réactive, normalisée V1/V2 sans corps, limites et propriété contrôlées ; client sans pagination/cache des widgets connus. `listScreenWidgets` reste paginée, contrat testé ; E2E AUD-28 exige 100/100 sans reload. Aucune contraction, aucune suppression des passes B ou protections transitoires.
+- Preuves locales : tests ciblés (migrations, widgets, script opérateur) **33/33** ; `pnpm check` réussi (**262** tests backend/unitaires/scripts, **19** tests navigateur, types/lint/format/Knip/build) ; `pnpm audit:convex` à **0** (73 fonctions, aucune hors inventaire). Avertissements de bundling upstream conservés.
+- Limites : Docker absent, E2E/backend réel et CI non exécutés ; AUD-28 reste « partiellement corrigé ». Aucun inventaire de production, déploiement, commit ou push. Context7 indisponible, API vérifiées dans Convex 1.46.0 installé et docs officielles ; aucune dépendance modifiée. Pas d'écart de périmètre au work order.
+- **Inspection Claude** (build Codex F3c-1) :
+  - `convex run` renvoie du JSON quand sa sortie n'est pas un terminal, donc le script d'agrégation est correct ;
+  - un appel CLI par document : acceptable pour la prod actuelle (une quinzaine de documents), à revoir si la base grossit ;
+  - correction Claude : `useScreenWidgets` passe par `useRetained`, pour que la liste ne se vide pas pendant une ré-authentification ;
+  - limite connue : en code de transition, un Screen qui contiendrait encore des notes V1 lourdes pourrait dépasser la limite de lecture de `getScreenWidgetMetadata`. Ce n'est pas le cas en prod, où tout est en V2 ; F3c-2 l'interdit.

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../../convex/_generated/api'
 import { defaultWidgetStyle } from '../../shared/gm'
 import { readScreen } from '../helpers/gm-screen'
+import { widgetInventory } from '../helpers/widget-inventory'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
 afterEach(() => vi.useRealTimers())
@@ -316,7 +317,7 @@ describe('Widget lifecycle and presentation', () => {
     expect((await profile()).version).toBe(layout.version)
   })
   it('purges only trash, removes its history and never resurrects it from old layout revisions', async () => {
-    const { alice, bob, noteId, screenId, request, profile, read } =
+    const { backend, alice, bob, noteId, screenId, request, profile, read } =
       await setup()
     await expect(
       alice.client.mutation(api.gmWidgets.purgeNote, {
@@ -360,6 +361,9 @@ describe('Widget lifecycle and presentation', () => {
     })
     expect((await read()).notes).toHaveLength(0)
     expect((await profile()).placements).toHaveLength(0)
+    const inventory = await widgetInventory(backend)
+    expect(inventory.blocking).toBe(0)
+    expect(inventory.counters.oldLayoutPurgedReferences).toBeGreaterThan(0)
     expect(
       (
         await alice.client.query(api.gm.exportCollection, {
@@ -1274,4 +1278,230 @@ it('restores local counter state under lock while protecting configuration and s
     version: 4,
     state: { value: 0 },
   })
+})
+
+it('returns complete mixed V1/V2 metadata without bodies and retains the paginated contract', async () => {
+  const { backend, alice, bob, screenId, projectId, noteId } = await setup()
+  await backend.run(async (ctx) => {
+    for (let index = 0; index < 11; index++)
+      await ctx.db.insert('gmNotes', {
+        ownerId: alice.userId,
+        projectId,
+        screenId,
+        body: 'PRIVATE BODY',
+        version: 0,
+        updatedAt: 1,
+      })
+  })
+  const metadata = await alice.client.query(
+    api.gmWidgets.getScreenWidgetMetadata,
+    { screenId }
+  )
+  expect(metadata).toHaveLength(12)
+  expect(
+    metadata.every(
+      (widget) => widget.formatVersion === 2 && widget.kind === 'note'
+    )
+  ).toBe(true)
+  expect(metadata.some((widget) => widget._id === noteId)).toBe(true)
+  expect(metadata.every((widget) => !('body' in widget))).toBe(true)
+  const first = await alice.client.query(api.gmWidgets.listScreenWidgets, {
+    screenId,
+    paginationOpts: { cursor: null, numItems: 100 },
+  })
+  expect(first.page).toHaveLength(10)
+  expect(first.isDone).toBe(false)
+  expect(typeof first.continueCursor).toBe('string')
+  const second = await alice.client.query(api.gmWidgets.listScreenWidgets, {
+    screenId,
+    paginationOpts: { cursor: first.continueCursor, numItems: 100 },
+  })
+  expect(second.page).toHaveLength(2)
+  expect(second.isDone).toBe(true)
+  expect([...first.page, ...second.page]).toEqual(metadata)
+  await expect(
+    bob.client.query(api.gmWidgets.getScreenWidgetMetadata, { screenId })
+  ).rejects.toThrow('NOT_FOUND')
+  await expect(
+    backend.query(api.gmWidgets.getScreenWidgetMetadata, { screenId })
+  ).rejects.toThrow()
+  await backend.run((ctx) =>
+    ctx.db.patch('gmNotes', noteId, { ownerId: bob.userId })
+  )
+  await expect(
+    alice.client.query(api.gmWidgets.getScreenWidgetMetadata, { screenId })
+  ).rejects.toThrow('NOT_FOUND')
+})
+
+it('inventories a clean and an empty database with zero blocking counters', async () => {
+  expect((await widgetInventory(createBackendTest())).blocking).toBe(0)
+  const { backend } = await setup()
+  expect((await widgetInventory(backend)).blocking).toBe(0)
+})
+
+it.each(['kind', 'owner', 'project', 'screen'] as const)(
+  'detects incompatible payload %s without reading bodies into the response',
+  async (field) => {
+    const { backend, bob, noteId } = await setup()
+    await backend.run(async (ctx) => {
+      const payload = await ctx.db.query('gmWidgetContents').first()
+      if (!payload) throw new Error('Missing payload')
+      if (field === 'kind') {
+        const note = await ctx.db.get('gmNotes', noteId)
+        if (!note) throw new Error('Missing note')
+        await ctx.db.replace('gmNotes', noteId, {
+          ownerId: note.ownerId,
+          projectId: note.projectId,
+          screenId: note.screenId,
+          version: note.version,
+          updatedAt: note.updatedAt,
+          formatVersion: 2,
+          kind: 'dice',
+          config: { title: 'Dice', expression: '1d20' },
+          state: {},
+        })
+      }
+      if (field === 'owner')
+        await ctx.db.patch('gmWidgetContents', payload._id, {
+          ownerId: bob.userId,
+        })
+      if (field === 'project') {
+        const other = await ctx.db.insert('gmProjects', {
+          ownerId: bob.userId,
+          title: 'Other',
+          updatedAt: 1,
+          archived: false,
+        })
+        await ctx.db.patch('gmWidgetContents', payload._id, {
+          projectId: other,
+        })
+      }
+      if (field === 'screen') {
+        const other = await ctx.db.insert('gmScreens', {
+          ownerId: bob.userId,
+          projectId: payload.projectId,
+          title: 'Other',
+          updatedAt: 1,
+        })
+        await ctx.db.patch('gmWidgetContents', payload._id, { screenId: other })
+      }
+    })
+    const result = await widgetInventory(backend)
+    const names = {
+      kind: 'payloadKindMismatch',
+      owner: 'payloadOwnerMismatch',
+      project: 'payloadProjectMismatch',
+      screen: 'payloadScreenMismatch',
+    }
+    expect(result.counters[names[field]]).toBe(1)
+  }
+)
+
+it.each(['absent', 'owner', 'project', 'screen'] as const)(
+  'detects incompatible current placement %s',
+  async (field) => {
+    const { backend, bob, noteId } = await setup()
+    await backend.run(async (ctx) => {
+      if (field === 'absent') await ctx.db.delete('gmNotes', noteId)
+      if (field === 'owner')
+        await ctx.db.patch('gmNotes', noteId, { ownerId: bob.userId })
+      if (field === 'project') {
+        const projectId = await ctx.db.insert('gmProjects', {
+          ownerId: bob.userId,
+          title: 'Other',
+          updatedAt: 1,
+          archived: false,
+        })
+        await ctx.db.patch('gmNotes', noteId, { projectId })
+      }
+      if (field === 'screen') {
+        const note = await ctx.db.get('gmNotes', noteId)
+        if (!note) throw new Error('Missing note')
+        const screenId = await ctx.db.insert('gmScreens', {
+          ownerId: bob.userId,
+          projectId: note.projectId,
+          title: 'Other',
+          updatedAt: 1,
+        })
+        await ctx.db.patch('gmNotes', noteId, { screenId })
+      }
+    })
+    const result = await widgetInventory(backend)
+    const names = {
+      absent: 'placementAbsent',
+      owner: 'placementOwnerMismatch',
+      project: 'placementProjectMismatch',
+      screen: 'placementScreenMismatch',
+    }
+    expect(result.counters[names[field]]).toBe(2)
+  }
+)
+
+it('counts duplicate and orphan payloads, missing payloads and invalid widget history subjects', async () => {
+  const { backend, alice, bob, noteId, screenId, projectId } = await setup()
+  await alice.client.mutation(api.gm.updateNote, {
+    id: noteId,
+    expectedVersion: 0,
+    body: 'Changed',
+  })
+  await backend.run(async (ctx) => {
+    const payload = await ctx.db.query('gmWidgetContents').first()
+    if (!payload) throw new Error('Missing payload')
+    const { _id, _creationTime: _time, ...value } = payload
+    await ctx.db.insert('gmWidgetContents', value)
+    await ctx.db.insert('gmNotes', {
+      ownerId: alice.userId,
+      projectId,
+      screenId,
+      formatVersion: 2,
+      kind: 'note',
+      config: {},
+      state: {},
+      version: 0,
+      updatedAt: 1,
+    })
+    await ctx.db.patch('gmNotes', noteId, { ownerId: bob.userId })
+  })
+  let result = await widgetInventory(backend)
+  expect(result.counters.duplicatePayloads).toBe(1)
+  expect(result.counters.notesWithoutPayload).toBe(1)
+  expect(result.counters.historySubjectOwnerMismatch).toBe(1)
+  await backend.run((ctx) => ctx.db.delete('gmNotes', noteId))
+  result = await widgetInventory(backend)
+  expect(result.counters.orphanPayloads).toBe(2)
+  expect(result.counters.historySubjectAbsent).toBe(1)
+})
+
+it('returns all 100 metadata records and refuses capacity or size overflow without truncating', async () => {
+  const { backend, alice, projectId, screenId } = await setup()
+  const definition = {
+    ownerId: alice.userId,
+    projectId,
+    screenId,
+    formatVersion: 2 as const,
+    kind: 'dice' as const,
+    config: { title: 'Dice', expression: '1d20' },
+    state: {},
+    version: 0,
+    updatedAt: 1,
+  }
+  await backend.run(async (ctx) => {
+    for (let index = 0; index < 99; index++)
+      await ctx.db.insert('gmNotes', definition)
+  })
+  const metadata = () =>
+    alice.client.query(api.gmWidgets.getScreenWidgetMetadata, { screenId })
+  expect(await metadata()).toHaveLength(100)
+  const extra = await backend.run((ctx) => ctx.db.insert('gmNotes', definition))
+  await expect(metadata()).rejects.toThrow('SCREEN_LIMIT')
+  await backend.run(async (ctx) => {
+    await ctx.db.delete('gmNotes', extra)
+    const widget = await ctx.db.query('gmNotes').order('desc').first()
+    if (!widget || widget.formatVersion !== 2 || widget.kind !== 'dice')
+      throw new Error('Missing dice widget')
+    await ctx.db.patch('gmNotes', widget._id, {
+      config: { ...widget.config, title: 'x'.repeat(20_000) },
+    })
+  })
+  await expect(metadata()).rejects.toThrow()
 })

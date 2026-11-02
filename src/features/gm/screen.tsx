@@ -27,7 +27,7 @@ function ScreenWorkspace({
   screen: Doc<'gmScreens'>
   layouts: Layout[]
 }) {
-  const { widgets: notes, pages } = useScreenWidgets(screen._id, layouts)
+  const notes = useScreenWidgets(screen._id)
   const addNote = useMutation(api.gm.addNote)
   const addWidget = useMutation(api.gmWidgets.addWidget)
   const variables = useQuery(api.gmVariables.listVariables, {
@@ -191,7 +191,6 @@ function ScreenWorkspace({
           {error}
         </p>
       )}
-      {pages}
       {layout && (
         <LayoutEditor
           key={layout._id}

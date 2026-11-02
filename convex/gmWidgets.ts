@@ -339,6 +339,29 @@ export const purgeNote = mutation({
   },
 })
 
+// Complete reactive metadata; retain the paginated API for deployed clients.
+export const getScreenWidgetMetadata = query({
+  args: { screenId: v.id('gmScreens') },
+  returns: v.array(widgetValidator),
+  handler: async (ctx, { screenId }) => {
+    const user = await requireUser(ctx)
+    const screen = await ownedScreen(ctx, screenId, user._id)
+    const notes = await ctx.db
+      .query('gmNotes')
+      .withIndex('by_screen_live', (q) =>
+        q.eq('screenId', screenId).eq('deletedAt', undefined)
+      )
+      .take(GM_MAX_NOTES + 1)
+    if (notes.length > GM_MAX_NOTES)
+      throw new ConvexError({ code: 'SCREEN_LIMIT' })
+    return notes.map((note) => {
+      if (note.ownerId !== user._id || note.projectId !== screen.projectId)
+        throw new ConvexError({ code: 'NOT_FOUND' })
+      return widgetBudget(normalizeWidget(note))
+    })
+  },
+})
+
 export const listScreenWidgets = query({
   args: {
     screenId: v.id('gmScreens'),

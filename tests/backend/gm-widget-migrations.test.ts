@@ -10,6 +10,7 @@ import {
   GM_WIDGET_BYTES,
 } from '../../shared/gm'
 import { readScreen } from '../helpers/gm-screen'
+import { widgetInventory } from '../helpers/widget-inventory'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
 afterEach(() => vi.useRealTimers())
@@ -423,4 +424,24 @@ it('purges a migrated trash note while its history and profiles are still V1', a
     expect(await backend.run((ctx) => ctx.db.query(table).collect())).toEqual(
       []
     )
+})
+
+it('inventories real V1 fixtures across pages without returning content', async () => {
+  const { backend } = await legacyFixture()
+  const result = await widgetInventory(backend)
+  expect(result.counters.v1).toBe(315)
+  expect(result.pages).toBeGreaterThan(315)
+  expect(result.counters.notesWithoutPayload).toBe(0)
+  const page = await backend.query(internal.gmWidgetMigrations.inventory, {
+    table: 'gmNotes',
+    cursor: null,
+  })
+  expect(Object.keys(page).sort()).toEqual([
+    'continueCursor',
+    'counters',
+    'isDone',
+    'offset',
+    'samples',
+  ])
+  expect(JSON.stringify(page)).not.toContain(fullBody)
 })

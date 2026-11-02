@@ -264,19 +264,8 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
       })
       sources.push(...copies.map((copy) => ({ id: copy, version: 0 })))
     }
-    // AUD-28 : 99/100 observé en direct en CI. Hypothèse : latence de la
-    // chaîne loadMore (10 pages de 10), pas une perte. On mesure le temps de
-    // convergence sans faire échouer le test et on l'écrit dans le log CI,
-    // puis on mesure le Screen rechargé, qui est l'objet du test.
-    const liveStart = Date.now()
-    let liveCount = await field.count()
-    while (liveCount < 100 && Date.now() - liveStart < 30_000) {
-      await page.waitForTimeout(250)
-      liveCount = await field.count()
-    }
-    console.log(
-      `AUD-28 live=${liveCount}/100 after ${Date.now() - liveStart}ms`
-    )
+    // AUD-28: the open Screen must converge without a reload.
+    await expect(field).toHaveCount(100, { timeout: 30_000 })
     await page.reload()
     await waitForHydration(page)
     await expect(field).toHaveCount(100)
