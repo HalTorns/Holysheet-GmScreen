@@ -332,3 +332,13 @@ Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/archives **12/12**, navigat
   - Le journal du backend montre de nombreux échecs OCC répétés sur la table `rateLimits` : des mutations rapides du même compte se disputent le même document du limiteur. Cela explique les « Server Error » des mutations `gmVariables:*`.
   - Les erreurs des queries restent à expliquer : seules les 60 dernières lignes étaient conservées.
   - **Suivi** : partitionner (`shards`) les limites `gmEditorWrite` et `resourceWrite` du rate limiter, et garder l'extrait des erreurs complet en CI.
+
+### F7b — revue du plan, 2 novembre 2026
+
+- Round 1 (**Codex**, session neuve) : REVISE, 5 constats, tous acceptés :
+  - F7b-01 : validation WHATWG canonique, avec des cas adverses (IPv4 abrégées, décimales ou octales, IPv6 qui encapsulent une IPv4, points finaux, IDN) ;
+  - F7b-02 : plus de popups dans le bac à sable, et le nom d'hôte est affiché ;
+  - F7b-03 : les cinq voies d'écriture sont contrôlées ;
+  - F7b-04 : état « non configuré » à la création ;
+  - F7b-05 : interception Playwright sur des hôtes HTTPS valides en production, et `frame-src https:` dans tous les environnements.
+- Round 2 : **APPROVED** sur `docs/PLAN-F7b.md` (SHA256 `ab7622b973c0f70c1b246ce6168be5ffe47fb70e13ef3b36919b17836982e0f3`).
