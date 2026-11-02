@@ -47,6 +47,7 @@ function ScreenWorkspace({
     | 'initiative'
     | 'image'
     | 'pdf'
+    | 'embed'
   >('checklist')
   const setLocked = useMutation(api.gmEditor.setLayoutLocked)
   const [selected, setSelected] = useState<Id<'gmLayouts'> | null>(null)

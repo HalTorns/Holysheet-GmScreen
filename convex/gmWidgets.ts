@@ -14,6 +14,7 @@ import {
   recordHistory,
   saveNote,
 } from './lib/gmEditing'
+import { validatedEmbedConfig } from './lib/gmEmbed'
 import type { Widget } from './lib/gmFormats'
 import {
   noteBody,
@@ -23,6 +24,7 @@ import {
   layoutBudget,
 } from './lib/gmFormats'
 import {
+  embedShape,
   widgetValidator,
   widgetKindValidator,
   widgetUpdateValidator,
@@ -253,6 +255,8 @@ export const restoreNote = mutation({
     const screen = await ownedScreen(ctx, note.screenId, user._id)
     if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
     assertVersion(note.version, expectedVersion)
+    const embedConfig =
+      note.kind === 'embed' ? validatedEmbedConfig(note.config) : undefined
     const active = await ctx.db
       .query('gmNotes')
       .withIndex('by_screen_live', (q) =>
@@ -288,6 +292,7 @@ export const restoreNote = mutation({
       ])
     }
     await ctx.db.patch('gmNotes', id, {
+      ...(embedConfig ? { config: embedConfig } : {}),
       deletedAt: undefined,
       trashPlacements: undefined,
       version: note.version + 1,
@@ -403,14 +408,17 @@ export const addWidget = mutation({
   args: {
     screenId: v.id('gmScreens'),
     kind: widgetKindValidator,
+    embedConfig: v.optional(embedShape.config),
     sheetId: v.optional(v.id('gmSheets')),
   },
   returns: v.id('gmNotes'),
-  handler: async (ctx, { screenId, kind, sheetId }) => {
+  handler: async (ctx, { screenId, kind, sheetId, embedConfig }) => {
     const user = await requireUser(ctx)
+    if (embedConfig && kind !== 'embed')
+      throw new ConvexError({ code: 'INVALID_INPUT' })
     if (sheetId && kind !== 'sheet')
       throw new ConvexError({ code: 'INVALID_INPUT' })
-    return createNote(ctx, screenId, user._id, kind, sheetId)
+    return createNote(ctx, screenId, user._id, kind, sheetId, embedConfig)
   },
 })
 export const updateWidget = mutation({
@@ -534,6 +542,12 @@ export const controlClock = mutation({
 })
 
 function widgetDefinition(widget: Widget) {
+  if (widget.kind === 'embed')
+    return {
+      kind: widget.kind,
+      config: validatedEmbedConfig(widget.config),
+      state: widget.state,
+    }
   if (widget.kind === 'image')
     return { kind: widget.kind, config: widget.config, state: widget.state }
   if (widget.kind === 'pdf')

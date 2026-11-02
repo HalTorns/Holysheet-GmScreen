@@ -4,11 +4,13 @@ import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { ownedScreen } from './gmAccess'
 import { assertVersion, recordHistory } from './gmEditing'
+import { validatedEmbedConfig } from './gmEmbed'
 import { widgetBudget } from './gmFormats'
 import type { Widget } from './gmFormats'
 import { limitUserOperation } from './rateLimits'
 
 type Definition =
+  | Pick<Extract<Widget, { kind: 'embed' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'image' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'pdf' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'checklist' }>, 'kind' | 'config' | 'state'>
@@ -57,7 +59,13 @@ export async function saveWidget(
     if (!sameState) throw new ConvexError({ code: 'INVALID_INPUT' })
   }
   let definition: Definition
-  if (input.kind === 'image')
+  if (input.kind === 'embed')
+    definition = {
+      kind: input.kind,
+      config: validatedEmbedConfig(input.config),
+      state: input.state,
+    }
+  else if (input.kind === 'image')
     definition = { kind: input.kind, config: input.config, state: input.state }
   else if (input.kind === 'pdf')
     definition = { kind: input.kind, config: input.config, state: input.state }
@@ -173,7 +181,13 @@ export async function saveWidget(
   )
     return widget.version
   await limitUserOperation(ctx, 'gmEditorWrite', widget.ownerId)
-  if (widget.kind === 'image')
+  if (widget.kind === 'embed')
+    await recordHistory(ctx, widget, {
+      kind: widget.kind,
+      config: widget.config,
+      state: widget.state,
+    })
+  else if (widget.kind === 'image')
     await recordHistory(ctx, widget, {
       kind: widget.kind,
       config: widget.config,

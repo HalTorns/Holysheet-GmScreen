@@ -29,6 +29,7 @@ function securityHeaders(nonce: string, requestId: string) {
       "worker-src 'self'",
       "font-src 'self'",
       `connect-src 'self' ${convexOrigin} ${new URL(env.VITE_CONVEX_SITE_URL).origin} ${convexSocketOrigin} ${telemetryOrigins}${development ? ` ${new URL(env.VITE_SITE_URL).origin.replace(/^http/, 'ws')} ws://127.0.0.1:${new URL(env.VITE_SITE_URL).port || '80'}` : ''}`,
+      'frame-src https:',
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

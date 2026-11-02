@@ -51,6 +51,8 @@ const messages: Record<string, string> = {
     'Ce code est incorrect ou a expiré. Vérifiez-le ou demandez un nouveau code.',
   OTP_NOT_FOUND: 'Ce code est incorrect ou a expiré. Demandez un nouveau code.',
   INVALID_INPUT: 'Vérifiez les informations saisies et réessayez.',
+  INVALID_URL:
+    'Utilisez une adresse HTTPS publique, extérieure à cette application.',
   INVALID_NUMBER: 'Saisissez un nombre fini.',
   OUT_OF_RANGE: 'La valeur sort des bornes autorisées.',
   TRASH_LIMIT:

@@ -342,3 +342,21 @@ Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/archives **12/12**, navigat
   - F7b-04 : état « non configuré » à la création ;
   - F7b-05 : interception Playwright sur des hôtes HTTPS valides en production, et `frame-src https:` dans tous les environnements.
 - Round 2 : **APPROVED** sur `docs/PLAN-F7b.md` (SHA256 `ab7622b973c0f70c1b246ce6168be5ffe47fb70e13ef3b36919b17836982e0f3`).
+
+### F7b — build Codex, 2 novembre 2026
+
+Implémenté sur `codex/f7b-embed` : kind `embed`, création vide par le menu et configuration optionnelle à la création, validation WHATWG partagée/canonique sur les cinq écritures (`INVALID_URL`), lectures/export sans perte, lien/cadre tiers avec attributs exacts, hostname et repli permanent, brouillon/conflit, rendu statique d'impression et `frame-src https:` inconditionnel. ADR widgets, produit et références de l'inventaire actualisés (surface publique inchangée). Spec `embed.spec.ts` ajoutée à la CI : hôtes HTTPS `example.com` interceptés avant réseau, succès/refus XFO, rechargement et impression ; fixture de restauration enrichie.
+
+Correctif F7 demandé : `gmEditorWrite.shards = 4`, sans changer les autres limites ni les totaux (120/minute, capacité 60). README « Scaling rate limiting with shards », types et sources installés de `@convex-dev/rate-limiter` **0.4.2** lus : division interne du débit/capacité, refus anticipé possible selon les shards tirés ; `resetRateLimit` supprime tous les shards du nom/clé. Le reset `resourceWrite` de `tests/e2e/backend-operator.ts` reste inchangé et compatible ; test du reset des quatre shards ajouté. Le test existant du budget éditeur sélectionne désormais les deux paires de shards de façon déterministe et conserve les assertions exactes 60 acceptées/61e refusée. Context7 indisponible : APIs confirmées dans les sources/types installés, sans changement de dépendances. Origines publiques synthétiques dans la configuration Vitest Browser pour les composants qui importent maintenant l'environnement validé.
+
+Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/unitaires **56/56**, navigateur embed **4/4** ; suite complète **313 tests** et **27 tests navigateur**, Knip et build réussis. Types et lint strict réussis ; formatage des 25 fichiers F7b et `git diff --check` exit 0. `pnpm audit:convex` **exit 0**, **91 fonctions publiques / 0 hors inventaire**. Playwright `--list` : **2 specs / 2 tests** (embed/restauration). `pnpm check` **exit 1** sur le seul format du fichier non suivi `docs/PLAN-F8.md`, apparu pendant ce travail et laissé intact hors périmètre ; ses étapes restantes ont été exécutées séparément. Les premiers passages ont signalé du lint, l'ancien test de quota mono-seau et les origines absentes des fixtures navigateur : corrigés sans réduire les contrats. Avertissements upstream de bundling conservés.
+
+Écarts fonctionnels/architecture/dépendances : aucun. E2E et restauration réelle non exécutés localement faute de Docker ; réduction effective des OCC à confirmer sur le backend réel en CI. Limite DNS privé derrière nom public conservée et documentée. Aucun commit, push, déploiement ni écriture GitHub.
+
+- **Inspection Claude** (build Codex F7b) :
+  - validation sur les champs WHATWG : IPv6 développées, IPv4 encapsulées, points finaux, origines de l'application comparées sous forme canonique ;
+  - cadre `allow-scripts allow-same-origin allow-forms`, sans popups ni navigation, avec `no-referrer` et `credentialless` ;
+  - CSP `frame-src https:` ;
+  - `gmEditorWrite` réparti sur 4 shards.
+
+  Limites mineures acceptées : les adresses IPv4-compatibles dépréciées (`::a.b.c.d`) et NAT64 ne sont pas filtrées. Le cadre reste chargé par le navigateur de l'utilisateur, jamais par le serveur.

@@ -366,12 +366,17 @@ describe('Screen editor mutations', () => {
         name: 'Trop',
       })
     ).rejects.toThrow('LAYOUT_LIMIT')
-    for (let version = 0; version < 60; version++)
+    // Shards may reject early with unlucky random samples. Select both pairs
+    // deterministically to retain the exact total-capacity proof (60, never 61).
+    const random = vi.spyOn(Math, 'random')
+    for (let version = 0; version < 60; version++) {
+      random.mockReturnValue(version < 30 ? 0 : 0.75)
       await alice.client.mutation(api.gm.updateNote, {
         id: noteId,
         expectedVersion: version,
         body: `Texte ${version}`,
       })
+    }
     await expect(
       alice.client.mutation(api.gm.updateNote, {
         id: noteId,
@@ -379,6 +384,7 @@ describe('Screen editor mutations', () => {
         body: 'Trop vite',
       })
     ).rejects.toThrow('RATE_LIMITED')
+    random.mockRestore()
     await backend.mutation(internal.cleanup.deletedAccount, {
       userId: alice.userId,
       email: 'alice@example.test',

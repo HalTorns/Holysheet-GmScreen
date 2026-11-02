@@ -71,8 +71,18 @@ export const widgetKindValidator = v.union(
   v.literal('clock'),
   v.literal('initiative'),
   v.literal('image'),
+  v.literal('embed'),
   v.literal('pdf')
 )
+export const embedShape = {
+  kind: v.literal('embed'),
+  config: v.object({
+    url: v.string(),
+    title: v.string(),
+    mode: v.union(v.literal('link'), v.literal('frame')),
+  }),
+  state: v.object({}),
+}
 const imageShape = {
   kind: v.literal('image'),
   config: v.object({
@@ -198,6 +208,7 @@ export const widgetUpdateValidator = v.union(
   v.object(sheetShape),
   v.object(tableShape),
   v.object(clockShape),
+  v.object(embedShape),
   v.object(imageShape),
   v.object(pdfShape),
   v.object(initiativeShape)
@@ -211,6 +222,7 @@ export const noteFields = v.union(
   v.object({ ...v2Common, ...sheetShape }),
   v.object({ ...v2Common, ...tableShape }),
   v.object({ ...v2Common, ...clockShape }),
+  v.object({ ...v2Common, ...embedShape }),
   v.object({ ...v2Common, ...imageShape }),
   v.object({ ...v2Common, ...pdfShape }),
   v.object({ ...v2Common, ...initiativeShape })
@@ -224,12 +236,14 @@ export const widgetValidator = v.union(
   v.object({ ...noteSystem, ...v2Common, ...sheetShape }),
   v.object({ ...noteSystem, ...v2Common, ...tableShape }),
   v.object({ ...noteSystem, ...v2Common, ...clockShape }),
+  v.object({ ...noteSystem, ...v2Common, ...embedShape }),
   v.object({ ...noteSystem, ...v2Common, ...imageShape }),
   v.object({ ...noteSystem, ...v2Common, ...pdfShape }),
   v.object({ ...noteSystem, ...v2Common, ...initiativeShape })
 )
 const noteValidator = widgetValidator
 export const trashWidgetValidator = v.union(
+  v.object({ ...noteSystem, ...v2Common, ...embedShape, preview: v.string() }),
   v.object({ ...noteSystem, ...v2Common, ...imageShape, preview: v.string() }),
   v.object({ ...noteSystem, ...v2Common, ...pdfShape, preview: v.string() }),
   v.object({ ...noteSystem, ...noteV2, preview: v.string() }),
@@ -311,6 +325,7 @@ const historyV2 = {
     v.object(sheetShape),
     v.object(tableShape),
     v.object(clockShape),
+    v.object(embedShape),
     v.object(imageShape),
     v.object(pdfShape),
     v.object(initiativeShape),

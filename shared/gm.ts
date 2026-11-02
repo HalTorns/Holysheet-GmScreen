@@ -123,6 +123,7 @@ export const gmWidgetKinds = [
   'initiative',
   'image',
   'pdf',
+  'embed',
 ] as const
 export const gmWidgetLabels = {
   note: 'Note',
@@ -135,6 +136,7 @@ export const gmWidgetLabels = {
   initiative: 'Initiative',
   image: 'Image',
   pdf: 'PDF',
+  embed: 'Lien web',
 } as const
 const widgetTitle = z.string().max(120)
 const finiteNumber = z.number()
@@ -149,6 +151,19 @@ const localCounterSource = z
 const widgetId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/)
 export const gmWidget = z
   .discriminatedUnion('kind', [
+    z
+      .object({
+        kind: z.literal('embed'),
+        config: z
+          .object({
+            url: z.string(),
+            title: widgetTitle,
+            mode: z.enum(['link', 'frame']),
+          })
+          .strict(),
+        state: z.object({}).strict(),
+      })
+      .strict(),
     z
       .object({
         kind: z.literal('image'),
@@ -413,6 +428,12 @@ export function initialWidget(kind: (typeof gmWidgetKinds)[number]) {
   return createInitialWidget(kind)
 }
 function createInitialWidget(kind: (typeof gmWidgetKinds)[number]) {
+  if (kind === 'embed')
+    return {
+      kind,
+      config: { url: '', title: '', mode: 'link' as const },
+      state: {},
+    }
   if (kind === 'image')
     return {
       kind,

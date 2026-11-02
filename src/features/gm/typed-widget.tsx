@@ -14,6 +14,7 @@ import {
   operationErrorMessage,
 } from '@/features/auth/errors'
 
+import { EmbedWidget } from './embed-widget'
 import { FileWidget } from './file-widget'
 import { ItemCatalogPreview, MerchantStockPreview } from './merchant-stock'
 import { NoteEditor } from './note-editor'
@@ -24,7 +25,9 @@ import { useEditorDraft } from './use-editor-draft'
 type Variables = Doc<'gmVariables'>[]
 type TypedWidget = Exclude<
   Widget,
-  { kind: 'note' | 'table' | 'clock' | 'initiative' | 'image' | 'pdf' }
+  {
+    kind: 'note' | 'table' | 'clock' | 'initiative' | 'image' | 'pdf' | 'embed'
+  }
 >
 type Props = {
   note: Widget
@@ -87,6 +90,7 @@ function WidgetStatic({
 }
 export function WidgetContent(props: Props) {
   const { note, variables } = props
+  if (note.kind === 'embed') return <EmbedWidget {...props} widget={note} />
   if (note.kind === 'image' || note.kind === 'pdf')
     return (
       <FileWidget

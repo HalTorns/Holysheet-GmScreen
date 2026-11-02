@@ -5,6 +5,8 @@ import type { gmWidgetKinds } from '../../shared/gm'
 import type { Id } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { ownedScreen } from './gmAccess'
+import { validatedEmbedConfig } from './gmEmbed'
+import type { Widget } from './gmFormats'
 import { writeContent, layoutBudget, widgetBudget } from './gmFormats'
 import { limitUserOperation } from './rateLimits'
 
@@ -13,7 +15,8 @@ export async function createNote(
   screenId: Id<'gmScreens'>,
   ownerId: string,
   kind: (typeof gmWidgetKinds)[number] = 'note',
-  sheetId?: Id<'gmSheets'>
+  sheetId?: Id<'gmSheets'>,
+  embedConfig?: Extract<Widget, { kind: 'embed' }>['config']
 ) {
   const screen = await ownedScreen(ctx, screenId, ownerId)
   if (sheetId) {
@@ -36,7 +39,14 @@ export async function createNote(
   if (notes.length >= GM_MAX_NOTES)
     throw new ConvexError({ code: 'SCREEN_LIMIT' })
   await limitUserOperation(ctx, 'resourceWrite', ownerId)
-  const definition = initialWidget(kind)
+  const initial = initialWidget(kind)
+  const definition =
+    initial.kind === 'embed'
+      ? {
+          ...initial,
+          config: validatedEmbedConfig(embedConfig ?? initial.config),
+        }
+      : initial
   if (definition.kind === 'sheet' && sheetId)
     Object.assign(definition.config, { sheetId })
   const id = await ctx.db.insert('gmNotes', {

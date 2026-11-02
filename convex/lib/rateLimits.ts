@@ -45,6 +45,8 @@ const limiter = new RateLimiter(components.rateLimiter, {
     capacity: 30,
   },
   gmEditorWrite: {
+    // 0.4.2 divides the total rate/capacity across these transactional shards.
+    shards: 4,
     kind: 'token bucket',
     rate: 120,
     period: MINUTE,

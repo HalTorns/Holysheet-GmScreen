@@ -72,6 +72,15 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
         fileId: file.id,
       })
     }
+    await client.mutation(api.gmWidgets.addWidget, {
+      screenId,
+      kind: 'embed',
+      embedConfig: {
+        title: 'Lien restauré',
+        url: 'https://restore.example.com/reference',
+        mode: 'frame',
+      },
+    })
     await page.goto('/app/security')
     await waitForHydration(page)
     insertAuthFixture('passkey', {
@@ -117,7 +126,7 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
     expect(report.tables.gmMerchantStock).toBeGreaterThanOrEqual(2)
     expect(report.widgetRelations.sharedStockItems).toBeGreaterThanOrEqual(1)
     expect(report.widgetRelations.kinds).toEqual(
-      expect.arrayContaining(['image', 'pdf'])
+      expect.arrayContaining(['image', 'pdf', 'embed'])
     )
     expect(report.tables.gmProjects).toBeGreaterThan(0)
     expect(report.tables['_components/betterAuth/passkey']).toBeGreaterThan(0)
