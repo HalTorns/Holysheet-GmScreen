@@ -256,3 +256,17 @@ Tests retirés avec les outils transitoires : runner B/idempotence, interruption
 Preuves sous Node 26.12.0/pnpm 11.8.0 : tests ciblés (`pnpm exec vitest run tests/backend/gm-widgets.test.ts tests/backend/gm-rich-text.test.ts tests/backend/gm-editor.test.ts tests/backend/gm.test.ts`) **34/34** ; `pnpm check` **exit 0** (types, lint, format, Knip, 246 tests unitaires/backend, 19 navigateur, build ; avertissements upstream de bundling) ; `pnpm audit:convex` **exit 0**, 73 fonctions publiques, zéro hors inventaire. Grep demandé vide (exit 1 normal), aucun traitement de formatVersion 1 dans convex/shared/src ; `git diff --check` **exit 0**.
 
 Écart : formatage du fichier local non suivi `docs/PLAN-F6.md`, qui bloquait `pnpm check` ; aucun ajout Git. Context7 indisponible, refactoring sans nouvelle API/dépendance. E2E et restauration réelle non exécutés faute de Docker ; CI à vérifier séparément.
+
+- Build F3c-2 (**Codex**) : 27 fichiers, −1 300 lignes. Compatibilité V1, garde, index temporaire, passes de migration et inventaire transitoire retirés. Le composant `migrations` et `listScreenWidgets` paginée sont conservés. Code A de restauration : `f4bf0c9`. **Inspection Claude** : schéma et validateurs V2 seuls, grep vide, `pnpm check` vert. CI `41430483273` : **success**.
+
+### F6 (avec F5b) — revue du plan, 2 novembre 2026
+
+- Round 1 (**Codex**, session neuve) : REVISE, 5 constats, tous acceptés :
+  - F6-01 et F6-02 : plus d'URL d'envoi directe ; une seule action HTTP authentifiée, avec octets plafonnés et blob créé et rattaché par le serveur ;
+  - F6-03 : type MIME canonique stocké, preuve sur un polyglotte ;
+  - F6-04 : corbeille par fichier, purge depuis la corbeille ;
+  - F6-05 : restauration non vide et relations validées.
+- Round 2 : REVISE, 2 constats acceptés :
+  - F6-06 : garde `requireUser` complète avant la lecture du corps et dans la mutation finale ;
+  - F6-07 : origine cloud pour `img-src`, cloud et site pour `connect-src`.
+- Round 3 : **APPROVED** sur `docs/PLAN-F6.md` (SHA256 `0c4b9e30c24227d3718436de0bfc64f34ec470834a061dd4b0021a7a4c03bcc8`).
