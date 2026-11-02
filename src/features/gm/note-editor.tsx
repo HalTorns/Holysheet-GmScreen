@@ -1,13 +1,14 @@
 import { api } from '@convex/_generated/api'
 import type { Widget } from '@convex/lib/gmFormats'
 import type { NoteValue } from '@shared/gm'
-import { CatchBoundary } from '@tanstack/react-router'
-import type { ErrorComponentProps } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
-import { ConvexError } from 'convex/values'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 
 import { DraftGuard } from '@/components/draft-guard'
+import {
+  TransientRetryBoundary,
+  useRecoveredWhen,
+} from '@/components/transient-retry'
 import { Button } from '@/components/ui/button'
 import { useRetained } from '@/hooks/use-retained'
 
@@ -140,79 +141,33 @@ function NoteContent(props: {
   autoSave: boolean
   index: number
   onDirtyChange: (id: string, dirty: boolean) => void
-  onLoaded?: () => void
 }) {
   const content = useRetained(
     useQuery(api.gmWidgets.getNoteContent, { id: props.note._id })
   )
-  const { onLoaded } = props
-  // Un contenu reçu clôt l'épisode d'erreur : le budget de réessai repart à zéro.
-  useEffect(() => {
-    if (content) onLoaded?.()
-  }, [content, onLoaded])
+  useRecoveredWhen(content)
   if (!content) return <p role="status">Chargement de la note…</p>
   return <LoadedNoteEditor {...props} note={{ ...props.note, ...content }} />
 }
 
-// AUD-28 : sous charge, le backend peut renvoyer une erreur serveur passagère
-// (non typée) pendant une rafale d'écritures. La souscription reste alors en
-// erreur jusqu'au remontage : on réessaie automatiquement, avec un délai
-// croissant et un plafond. Une ConvexError (droits, intégrité) est définitive.
-const TRANSIENT_RETRIES = 5
-function NoteContentError({
-  error,
-  reset,
-  attempts,
-  onRetry,
-}: ErrorComponentProps & {
-  attempts: number
-  onRetry: (next: number) => void
-}) {
-  const automatic =
-    !(error instanceof ConvexError) && attempts < TRANSIENT_RETRIES
-  useEffect(() => {
-    if (!automatic) return undefined
-    const timer = setTimeout(
-      () => {
-        onRetry(attempts + 1)
-        reset()
-      },
-      500 * 2 ** attempts
-    )
-    return () => clearTimeout(timer)
-  }, [automatic, attempts, onRetry, reset])
-  if (automatic) return <p role="status">Chargement de la note…</p>
+function NoteContentUnavailable({ retry }: { retry: () => void }) {
   return (
     <div role="alert">
       <p>Le contenu de cette note est indisponible.</p>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => {
-          onRetry(0)
-          reset()
-        }}
-      >
+      <Button size="sm" variant="outline" onClick={retry}>
         Réessayer le contenu
       </Button>
     </div>
   )
 }
 export function NoteEditor(props: Parameters<typeof NoteContent>[0]) {
-  const [attempts, setAttempts] = useState(0)
-  const recovered = useCallback(() => setAttempts(0), [])
-  const errorComponent = useCallback(
-    (error: ErrorComponentProps) => (
-      <NoteContentError {...error} attempts={attempts} onRetry={setAttempts} />
-    ),
-    [attempts]
-  )
   return (
-    <CatchBoundary
-      getResetKey={() => props.note._id}
-      errorComponent={errorComponent}
+    <TransientRetryBoundary
+      resetKey={props.note._id}
+      loading={<p role="status">Chargement de la note…</p>}
+      unavailable={NoteContentUnavailable}
     >
-      <NoteContent {...props} onLoaded={recovered} />
-    </CatchBoundary>
+      <NoteContent {...props} />
+    </TransientRetryBoundary>
   )
 }

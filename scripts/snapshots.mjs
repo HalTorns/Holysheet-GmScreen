@@ -131,6 +131,7 @@ export async function archiveInventory(path) {
               'initiative',
               'image',
               'pdf',
+              'embed',
             ].includes(note.kind) &&
             gmWidget.safeParse({
               kind: note.kind,
@@ -161,7 +162,7 @@ export async function archiveInventory(path) {
     return (
       revision.formatVersion === 2 &&
       subject &&
-      (!['table', 'clock', 'initiative', 'image', 'pdf'].includes(
+      (!['table', 'clock', 'initiative', 'image', 'pdf', 'embed'].includes(
         revision.snapshot.kind
       ) ||
         gmWidget.safeParse(revision.snapshot).success) &&

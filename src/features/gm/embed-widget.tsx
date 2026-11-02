@@ -155,6 +155,7 @@ export function EmbedWidget({
             <label>
               Mode du lien
               <select
+                aria-label="Mode du lien"
                 value={current.config.mode}
                 disabled={disabled}
                 onChange={(event) => {

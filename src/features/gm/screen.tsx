@@ -6,6 +6,10 @@ import { Link } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
 import { useCallback, useState } from 'react'
 
+import {
+  TransientRetryBoundary,
+  useRecoveredWhen,
+} from '@/components/transient-retry'
 import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 import { useRetained } from '@/hooks/use-retained'
@@ -15,8 +19,30 @@ import { Files } from './files'
 import { LayoutEditor } from './layout-editor'
 import { useScreenWidgets } from './use-screen-widgets'
 
+function ScreenUnavailable({ retry }: { retry: () => void }) {
+  return (
+    <div role="alert">
+      <p>Ce Screen est momentanément indisponible.</p>
+      <Button size="sm" variant="outline" onClick={retry}>
+        Réessayer
+      </Button>
+    </div>
+  )
+}
 export function Screen({ screenId }: { screenId: string }) {
+  return (
+    <TransientRetryBoundary
+      resetKey={screenId}
+      loading={<p role="status">Chargement du Screen…</p>}
+      unavailable={ScreenUnavailable}
+    >
+      <ScreenContent screenId={screenId} />
+    </TransientRetryBoundary>
+  )
+}
+function ScreenContent({ screenId }: { screenId: string }) {
   const data = useRetained(useQuery(api.gm.getScreen, { id: screenId }))
+  useRecoveredWhen(data)
   if (data === undefined) return <p role="status">Chargement du Screen…</p>
   if (!data) return <p role="alert">Screen introuvable ou inaccessible.</p>
   return <ScreenWorkspace key={data.screen._id} {...data} />
