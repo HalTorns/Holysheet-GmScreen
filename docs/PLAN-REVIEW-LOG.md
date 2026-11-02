@@ -324,3 +324,11 @@ Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/archives **12/12**, navigat
   - les deux tables sont présentes dans `gmCollection` (export), `cleanup` et `snapshots.mjs`.
 
   Construction lancée à 64 % du quota Codex, à la demande de l'utilisateur (« n'attend pas le reset »).
+
+- CI F7 `41447717438` : deux échecs.
+  - Le rapport de restauration de `holysheet.spec` exige toutes les tables GM non vides. Corrigé en alimentant le catalogue et le stock.
+  - AUD-28 à 0/100 : `gm:getScreen` a renvoyé une erreur serveur non typée.
+- Diagnostic ajouté à la CI : extrait filtré des erreurs du backend Convex. Run `41450580488` : **success** (AUD-28 à 100/100 en 2,9 s, 10 E2E).
+  - Le journal du backend montre de nombreux échecs OCC répétés sur la table `rateLimits` : des mutations rapides du même compte se disputent le même document du limiteur. Cela explique les « Server Error » des mutations `gmVariables:*`.
+  - Les erreurs des queries restent à expliquer : seules les 60 dernières lignes étaient conservées.
+  - **Suivi** : partitionner (`shards`) les limites `gmEditorWrite` et `resourceWrite` du rate limiter, et garder l'extrait des erreurs complet en CI.
