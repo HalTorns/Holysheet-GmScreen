@@ -242,3 +242,7 @@ L'inventaire paginé exigé par l'ADR avant la contraction (absence de V1, unici
   - limite connue : en code de transition, un Screen qui contiendrait encore des notes V1 lourdes pourrait dépasser la limite de lecture de `getScreenWidgetMetadata`. Ce n'est pas le cas en prod, où tout est en V2 ; F3c-2 l'interdit.
 - CI F3c-1 : run `41418613390` en échec. L'assertion stricte d'AUD-28 a vu **99/100** en direct (71, puis 91, puis 99, stable), avec la lecture complète, sans pagination. La pagination n'était donc pas la seule cause. Ce run journalise aussi une erreur serveur non typée sur `getNoteContent`, absente du run vert ; corrélation à confirmer. Run `41421751742`, avec diagnostic non bloquant : **100/100 en 3,2 s**, CI verte.
   - **Décision Claude** : F3c-1 est livré avec le diagnostic non bloquant (sections affichées, notes en chargement), qui identifiera le maillon manquant au prochain échec. AUD-28 reste « partiellement corrigé ».
+
+### Inventaire de production avant F3c-2 — 2 novembre 2026
+
+Après le redeploy de F3c-1 (`c52cd34`) et `pnpm backend:deploy`, l'utilisateur a lancé `node scripts/widget-inventory.mjs` dans `operations`. Documents parcourus : `gmNotes` 3, `gmWidgetContents` 3, `gmLayouts` 4, `gmEditorHistory` 0. **Tous les compteurs bloquants et informatifs sont à 0**, aucun échantillon. La contraction F3c-2 est autorisée par le plan.
