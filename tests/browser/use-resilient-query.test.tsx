@@ -81,8 +81,31 @@ test('a persistent transient error stops after five resubscriptions', async () =
       <Probe />
     </CatchBoundary>
   )
+  // Cinq réabonnements, puis abandon 2 s après le dernier ; aucun septième.
   for (let step = 0; step < 6; step += 1)
-    await vi.advanceTimersByTimeAsync(500 * 2 ** step + 50)
-  await expect.element(screen.getByRole('alert')).toBeVisible()
+    await vi.advanceTimersByTimeAsync(500 * 2 ** step + 300)
+  await vi.advanceTimersByTimeAsync(2100)
   expect(scenario.subscriptions).toBe(6)
+  await expect.element(screen.getByRole('alert')).toBeVisible()
+})
+
+test('with a value on screen, exhausted retries never unmount the draft', async () => {
+  vi.useFakeTimers()
+  scenario.responses = ['Version A']
+  const screen = await render(<Probe />)
+  await screen.getByRole('textbox').fill('brouillon')
+  scenario.responses = ['Version A', new Error('Server Error')]
+  scenario.subscriptions = 2
+  await screen.rerender(<Probe />)
+  for (let step = 0; step < 5; step += 1)
+    await vi.advanceTimersByTimeAsync(500 * 2 ** step + 300)
+  await vi.advanceTimersByTimeAsync(31_000)
+  await expect.element(screen.getByRole('textbox')).toHaveValue('brouillon')
+  expect(scenario.subscriptions).toBeGreaterThanOrEqual(7)
+  scenario.responses = [...scenario.responses, 'Version B']
+  scenario.responses.length = scenario.subscriptions + 1
+  scenario.responses.fill('Version B', scenario.subscriptions)
+  await vi.advanceTimersByTimeAsync(31_000)
+  await expect.element(screen.getByText('Version B')).toBeVisible()
+  await expect.element(screen.getByRole('textbox')).toHaveValue('brouillon')
 })
