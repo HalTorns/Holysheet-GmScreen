@@ -140,10 +140,16 @@ function NoteContent(props: {
   autoSave: boolean
   index: number
   onDirtyChange: (id: string, dirty: boolean) => void
+  onLoaded?: () => void
 }) {
   const content = useRetained(
     useQuery(api.gmWidgets.getNoteContent, { id: props.note._id })
   )
+  const { onLoaded } = props
+  // Un contenu reçu clôt l'épisode d'erreur : le budget de réessai repart à zéro.
+  useEffect(() => {
+    if (content) onLoaded?.()
+  }, [content, onLoaded])
   if (!content) return <p role="status">Chargement de la note…</p>
   return <LoadedNoteEditor {...props} note={{ ...props.note, ...content }} />
 }
@@ -194,6 +200,7 @@ function NoteContentError({
 }
 export function NoteEditor(props: Parameters<typeof NoteContent>[0]) {
   const [attempts, setAttempts] = useState(0)
+  const recovered = useCallback(() => setAttempts(0), [])
   const errorComponent = useCallback(
     (error: ErrorComponentProps) => (
       <NoteContentError {...error} attempts={attempts} onRetry={setAttempts} />
@@ -205,7 +212,7 @@ export function NoteEditor(props: Parameters<typeof NoteContent>[0]) {
       getResetKey={() => props.note._id}
       errorComponent={errorComponent}
     >
-      <NoteContent {...props} />
+      <NoteContent {...props} onLoaded={recovered} />
     </CatchBoundary>
   )
 }
