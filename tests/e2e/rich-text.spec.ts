@@ -264,9 +264,9 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
       })
       sources.push(...copies.map((copy) => ({ id: copy, version: 0 })))
     }
-    // AUD-28 (diagnostic temporaire) : on mesure la convergence en direct sans
-    // faire échouer le test, et on note ce qui manque : section absente
-    // (métadonnées ou placement) ou section encore en chargement (corps).
+    // AUD-28 : on mesure la convergence en direct et on note ce qui manque en
+    // cas d'échec : section absente (métadonnées ou placement) ou section
+    // encore en chargement (corps).
     const liveStart = Date.now()
     let liveCount = await field.count()
     while (liveCount < 100 && Date.now() - liveStart < 30_000) {
@@ -281,6 +281,9 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
     console.log(
       `AUD-28 live=${liveCount}/100 sections=${sections} loading=${loading} after ${Date.now() - liveStart}ms`
     )
+    // Les erreurs serveur passagères de getNoteContent sont réessayées
+    // automatiquement : l'écran ouvert doit converger sans rechargement.
+    expect(liveCount).toBe(100)
     await page.reload()
     await waitForHydration(page)
     await expect(field).toHaveCount(100)

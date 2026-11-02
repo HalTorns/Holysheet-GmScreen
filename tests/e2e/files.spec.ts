@@ -103,9 +103,11 @@ test('fichiers privés : MIME réel, image/PDF sous CSP, collage et cycle de cor
       )
       .toBe(true)
     await expect(page.getByText('Page 1 / 2', { exact: true })).toBeVisible()
+    // Les widgets placés par placeFile se superposent : on active le bouton au
+    // clavier, sans dépendre de l'ordre d'empilement.
     await page
       .getByRole('button', { name: 'Page suivante', exact: true })
-      .click()
+      .press('Enter')
     await expect
       .poll(
         async () =>
