@@ -299,3 +299,12 @@ Limites : Context7 indisponible ; sources/types installés et sources officielle
 - Correction **Claude** (`dd881f1`) : réessai automatique des erreurs non typées, avec délai croissant et 5 essais au plus ; une `ConvexError` reste définitive. L'E2E AUD-28 redevient strict.
   - Inspection **Codex** (session neuve) : REVISE R1, le budget de réessai n'était pas remis à zéro après un succès. Corrigé par Claude (`onLoaded`). Cette correction de six lignes n'a pas été réinspectée.
 - CI `41440704431` : **success**. 9 E2E principaux, dont `files.spec` ; AUD-28 à **100/100 en direct en 2,4 s**.
+
+### F7 — revue du plan, 2 novembre 2026
+
+- Round 1 (**Codex**, session neuve) : REVISE, 3 constats, tous acceptés :
+  - F7-01 : `updateSheet` peut changer le kind d'une fiche, il faut donc une garde transactionnelle ;
+  - F7-02 : l'historique existant ne porte que sur les Screens, donc pas d'historique du catalogue ni du stock dans F7, décision consignée ;
+  - F7-03 : chaque ajustement incrémente la version de la ligne, et une édition périmée est refusée en conflit.
+- Round 2 : REVISE, une contradiction de rédaction sur F7-01, corrigée.
+- Round 3 : **APPROVED** sur `docs/PLAN-F7.md` (SHA256 `cd378236d650a051ea8c4a9e0cd0f6200e5d0d209ac0744720109a890859e361`).
