@@ -371,3 +371,14 @@ Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/unitaires **56/56**, naviga
   - **régression** en CI `41464439918` : React #301 sur tous les Screens. `api.x.y` est un proxy neuf à chaque accès, et le `useMemo` dépendait de son identité, ce qui recréait la souscription à chaque rendu. Corrigé (`getFunctionName`), avec un test de régression qui utilise le vrai `useQueries` et échoue sur l'ancien code. Cette correction de dix lignes n'a pas été réinspectée par Codex.
 - CI `41468248611` : **success**. 11 E2E principaux, dont `embed.spec` ; AUD-28 à **100/100 en 3,2 s**.
   - **Suivi** : 27 lignes de journal OCC sur `rateLimits` malgré les shards de `gmEditorWrite` (contre 9 dans un run comparable de F7b). La contention vient probablement d'autres limites (`resourceWrite`, authentification). À mesurer par nom de limite.
+
+### F8 — revue de sécurité du plan, 2 novembre 2026
+
+- Round 1 (**Codex**, session neuve, axé sécurité) : REVISE, 5 constats, tous acceptés :
+  - SEC-01 : la navigation propre du cadre permettait de faire sortir des données. Corrigé par un relais de même origine dont le `frame-src` est limité au runner ;
+  - SEC-02 : messages forgés par des cadres voisins. Corrigé par un `MessageChannel` par génération de cadre ;
+  - SEC-03 : en-têtes écrasés et racine React. Corrigé par des gestionnaires bruts ;
+  - SEC-04 : `'self'` dans `script-src`. Remplacé par une empreinte seule ;
+  - SEC-05 : saturation du quota d'édition. Corrigé par des budgets par message et une persistance regroupée, avec sa propre limite.
+- Round 2 : REVISE, SEC-06 : sortie réseau par WebRTC. Corrigé par `webrtc 'block'`, la suppression des constructeurs RTC et une preuve par serveur STUN local ; risque résiduel documenté.
+- Round 3 : **APPROVED** sur `docs/PLAN-F8.md` (SHA256 `a879810917b26508ac3a253e7446b0c5115592fa33675cf5453ab7304eef7019`).
