@@ -1,4 +1,5 @@
 import { useQueries } from 'convex/react'
+import { getFunctionName } from 'convex/server'
 import type {
   FunctionArgs,
   FunctionReference,
@@ -34,17 +35,19 @@ export function useResilientQuery<Query extends FunctionReference<'query'>>(
   const [attempt, setAttempt] = useState(0)
   const [paused, setPaused] = useState(false)
   const [failed, setFailed] = useState(false)
-  // Les arguments n'ont pas d'identité stable d'un rendu à l'autre : on ne
-  // change la souscription que si leur contenu change (comme useQuery).
-  const key = JSON.stringify(convexToJson(args))
-  const [stable, setStable] = useState({ key, args })
-  if (stable.key !== key) setStable({ key, args })
+  // Ni la référence (`api.x.y` est un proxy recréé à chaque accès) ni les
+  // arguments n'ont d'identité stable d'un rendu à l'autre : on ne change la
+  // souscription que si le nom ou le contenu des arguments change, comme useQuery.
+  // Sinon, chaque rendu recrée la souscription et boucle (React #301).
+  const key = `${getFunctionName(query)}:${JSON.stringify(convexToJson(args))}`
+  const [stable, setStable] = useState({ key, query, args })
+  if (stable.key !== key) setStable({ key, query, args })
   const request = useMemo(
-    () => (paused ? {} : { value: { query, args: stable.args } }),
-    [paused, query, stable]
+    () => (paused ? {} : { value: { query: stable.query, args: stable.args } }),
+    [paused, stable]
   )
   const raw: unknown = useQueries(request).value
-  const result = isResultOf(raw, query) ? raw : undefined
+  const result = isResultOf(raw, stable.query) ? raw : undefined
   const error = raw instanceof Error ? raw : null
   const transient = error !== null && !(error instanceof ConvexError)
   const kept = useRetained(result)

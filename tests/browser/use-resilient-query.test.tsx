@@ -31,12 +31,14 @@ vi.mock('convex/react', () => ({
 
 const { useResilientQuery } =
   await import('../../src/hooks/use-resilient-query')
-const query = makeFunctionReference<'query', { id: string }, string>(
-  'probe:get'
-)
 
+// Comme `api.x.y`, une référence neuve à chaque rendu ne doit pas recréer la
+// souscription (sinon boucle de rendus, React #301).
 function Probe() {
-  const value = useResilientQuery(query, { id: 'a' })
+  const value = useResilientQuery(
+    makeFunctionReference<'query', { id: string }, string>('probe:get'),
+    { id: 'a' }
+  )
   const [draft, setDraft] = useState('')
   if (value === undefined) return <p>Chargement</p>
   return (
