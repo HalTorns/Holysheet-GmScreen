@@ -10,6 +10,7 @@ import {
   insertAuthFixture,
 } from './backend-operator'
 import { verifyLocalRestore } from './backup'
+import { uploadFixture } from './files-fixtures'
 import {
   deleteAccountWithClient,
   exportAccountData,
@@ -36,7 +37,21 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
     const owner = await client.query(api.auth.getCurrentUser, {})
     if (!owner) throw new Error('Missing resource fixture owner')
     insertResourceFixture(owner.id, title)
-    await client.mutation(api.gm.createProject, { title: 'Projet restauré C2' })
+    const projectId = await client.mutation(api.gm.createProject, {
+      title: 'Projet restauré C2',
+    })
+    const screenId = await client.mutation(api.gm.createScreen, {
+      projectId,
+      title: 'Fichiers restaurés',
+      format: 'digital',
+    })
+    for (const name of ['pixel.png', 'two-pages.pdf'] as const) {
+      const file = await uploadFixture(page.context(), projectId, name)
+      await client.mutation(api.gmFiles.placeFile, {
+        screenId,
+        fileId: file.id,
+      })
+    }
     await page.goto('/app/security')
     await waitForHydration(page)
     insertAuthFixture('passkey', {
@@ -76,6 +91,11 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
     expect((await admin.query(api.auth.getAccessState, {}))?.isAdmin).toBe(true)
     const report = await verifyLocalRestore()
     expect(report.tables.resources).toBeGreaterThan(0)
+    expect(report.tables.gmFiles).toBeGreaterThanOrEqual(2)
+    expect(report.widgetRelations.valid).toBe(true)
+    expect(report.widgetRelations.kinds).toEqual(
+      expect.arrayContaining(['image', 'pdf'])
+    )
     expect(report.tables.gmProjects).toBeGreaterThan(0)
     expect(report.tables['_components/betterAuth/passkey']).toBeGreaterThan(0)
     expect(report.tables['_components/betterAuth/user']).toBeGreaterThan(0)

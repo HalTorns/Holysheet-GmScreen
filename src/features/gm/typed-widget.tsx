@@ -14,6 +14,7 @@ import {
   operationErrorMessage,
 } from '@/features/auth/errors'
 
+import { FileWidget } from './file-widget'
 import { NoteEditor } from './note-editor'
 import { RevisionHistory } from './revision-history'
 import { SessionWidget } from './session-widget'
@@ -22,7 +23,7 @@ import { useEditorDraft } from './use-editor-draft'
 type Variables = Doc<'gmVariables'>[]
 type TypedWidget = Exclude<
   Widget,
-  { kind: 'note' | 'table' | 'clock' | 'initiative' }
+  { kind: 'note' | 'table' | 'clock' | 'initiative' | 'image' | 'pdf' }
 >
 type Props = {
   note: Widget
@@ -84,6 +85,14 @@ function WidgetStatic({
 }
 export function WidgetContent(props: Props) {
   const { note, variables } = props
+  if (note.kind === 'image' || note.kind === 'pdf')
+    return (
+      <FileWidget
+        widget={note}
+        readOnly={props.readOnly}
+        locked={props.locked}
+      />
+    )
   if (note.kind === 'note') return <NoteEditor {...props} />
   if (
     note.kind === 'table' ||

@@ -15,4 +15,10 @@ crons.daily(
   internal.cleanup.expiredData,
   {}
 )
+crons.interval(
+  'Remove orphan file blobs',
+  { hours: 1 },
+  internal.gmFiles.purgeOrphans,
+  { cursor: null }
+)
 export default crons

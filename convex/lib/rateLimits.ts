@@ -37,6 +37,7 @@ const limiter = new RateLimiter(components.rateLimiter, {
     period: 5 * MINUTE,
     capacity: 5,
   },
+  fileUpload: { kind: 'token bucket', rate: 10, period: MINUTE, capacity: 10 },
   resourceWrite: {
     kind: 'token bucket',
     rate: 30,
@@ -73,6 +74,7 @@ const limiter = new RateLimiter(components.rateLimiter, {
 export async function limitUserOperation(
   ctx: MutationCtx,
   operation:
+    | 'fileUpload'
     | 'resourceWrite'
     | 'gmEditorWrite'
     | 'accountSensitive'
@@ -135,9 +137,10 @@ export async function limitIdentityEmail(ctx: MutationCtx, userId: string) {
 }
 
 export async function clearUserRateLimits(ctx: MutationCtx, userId: string) {
-  // Every configured bucket has one shard; eleven user-scoped rows at most.
+  // Every configured bucket has one shard; twelve user-scoped rows at most.
   // Keep recipient/global anti-abuse limits independent of account recreation.
   for (const operation of [
+    'fileUpload',
     'resourceWrite',
     'gmEditorWrite',
     'accountSensitive',

@@ -41,6 +41,21 @@ function runLocalOperator(arguments_: string[]) {
   )
 }
 
+export function fileStorageIds() {
+  const output = runLocalOperator([
+    'data',
+    '_storage',
+    '--format',
+    'json',
+    '--limit',
+    '10000',
+  ])
+  const rows = z.array(z.object({ _id: z.string() })).parse(JSON.parse(output))
+  if (rows.length >= 10_000)
+    throw new Error('Storage inventory exceeded its test bound')
+  return rows.map((row) => row._id)
+}
+
 export function allowSupportUser(userId: string) {
   runLocalOperator([
     'env',

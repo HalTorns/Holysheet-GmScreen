@@ -13,9 +13,16 @@ import {
   sheetContentFields,
   sheetLinkFields,
   variableFields,
+  fileFields,
+  fileUsageFields,
 } from './lib/gmValidators'
 
 export default defineSchema({
+  gmFiles: defineTable(fileFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_project_live', ['projectId', 'deletedAt'])
+    .index('by_storage', ['storageId']),
+  gmFileUsage: defineTable(fileUsageFields).index('by_owner', ['ownerId']),
   gmEditorHistory: defineTable(historyFields)
     .index('by_owner', ['ownerId'])
     .index('by_subject', ['subjectId', 'version']),
@@ -32,7 +39,8 @@ export default defineSchema({
   gmNotes: defineTable(noteFields)
     .index('by_owner', ['ownerId'])
     .index('by_screen_live', ['screenId', 'deletedAt'])
-    .index('by_screen', ['screenId']),
+    .index('by_screen', ['screenId'])
+    .index('by_project', ['projectId']),
   gmLayouts: defineTable(layoutFields)
     .index('by_owner', ['ownerId'])
     .index('by_screen', ['screenId']),

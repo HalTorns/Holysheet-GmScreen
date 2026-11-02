@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test'
 import { api } from '../../convex/_generated/api'
 import { gmTables } from '../../shared/gm'
 import { verifyLocalRestore } from './backup'
+import { uploadFixture } from './files-fixtures'
 import {
   completeProfile,
   createEmail,
@@ -209,6 +210,17 @@ test('password registration, project, folder and Screen survive reload, synchron
       body: '**riche restauré**',
       bodyFormat: 'markdown-v1',
     })
+    for (const name of ['pixel.png', 'two-pages.pdf'] as const) {
+      const file = await uploadFixture(
+        context,
+        restoreSource.screen.projectId,
+        name
+      )
+      await client.mutation(api.gmFiles.placeFile, {
+        screenId: richScreen,
+        fileId: file.id,
+      })
+    }
     const report = await verifyLocalRestore()
     expect(report.widgetRelations).toMatchObject({
       valid: true,
@@ -217,8 +229,10 @@ test('password registration, project, folder and Screen survive reload, synchron
         'clock',
         'counter',
         'dice',
+        'image',
         'initiative',
         'note',
+        'pdf',
         'sheet',
         'table',
       ],

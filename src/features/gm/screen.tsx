@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 import { useRetained } from '@/hooks/use-retained'
 
+import { useFileUpload } from './file-upload'
+import { Files } from './files'
 import { LayoutEditor } from './layout-editor'
 import { useScreenWidgets } from './use-screen-widgets'
 
@@ -29,6 +31,8 @@ function ScreenWorkspace({
 }) {
   const notes = useScreenWidgets(screen._id)
   const addNote = useMutation(api.gm.addNote)
+  const upload = useFileUpload(screen.projectId)
+  const placeFile = useMutation(api.gmFiles.placeFile)
   const addWidget = useMutation(api.gmWidgets.addWidget)
   const variables = useQuery(api.gmVariables.listVariables, {
     projectId: screen.projectId,
@@ -41,6 +45,8 @@ function ScreenWorkspace({
     | 'table'
     | 'clock'
     | 'initiative'
+    | 'image'
+    | 'pdf'
   >('checklist')
   const setLocked = useMutation(api.gmEditor.setLayoutLocked)
   const [selected, setSelected] = useState<Id<'gmLayouts'> | null>(null)
@@ -64,8 +70,43 @@ function ScreenWorkspace({
       setPending(false)
     }
   }
+  async function importImage(file: File) {
+    if (readOnly || locked || pending || dirty || upload.pending) return
+    await perform(async () => {
+      const result = await upload.upload(file)
+      await placeFile({ screenId: screen._id, fileId: result.id })
+    })
+  }
   return (
-    <>
+    <div
+      onPaste={(event) => {
+        const target = event.target
+        if (
+          target instanceof HTMLElement &&
+          target.closest('input, textarea, [contenteditable="true"]')
+        )
+          return
+        const file = [...event.clipboardData.files].find((entry) =>
+          entry.type.startsWith('image/')
+        )
+        if (file) {
+          event.preventDefault()
+          void importImage(file)
+        }
+      }}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes('Files')) event.preventDefault()
+      }}
+      onDrop={(event) => {
+        const file = [...event.dataTransfer.files].find((entry) =>
+          entry.type.startsWith('image/')
+        )
+        if (file) {
+          event.preventDefault()
+          void importImage(file)
+        }
+      }}
+    >
       <Link
         to="/app/projects/$projectId"
         params={{ projectId: screen.projectId }}
@@ -150,6 +191,16 @@ function ScreenWorkspace({
           Ajouter un widget
         </Button>
       </div>
+      <Files
+        projectId={screen.projectId}
+        onChoose={
+          readOnly || locked || dirty || pending
+            ? undefined
+            : (file) => placeFile({ screenId: screen._id, fileId: file._id })
+        }
+      />
+      {upload.pending && <p role="status">Envoi en cours…</p>}
+      {upload.error && <p role="alert">{upload.error}</p>}
       <div className="mb-4 flex flex-wrap items-end gap-4 rounded-xl border bg-background p-3">
         <label className="grid gap-1 text-sm">
           Profil de disposition
@@ -204,6 +255,6 @@ function ScreenWorkspace({
           onProfileCreated={setSelected}
         />
       )}
-    </>
+    </div>
   )
 }

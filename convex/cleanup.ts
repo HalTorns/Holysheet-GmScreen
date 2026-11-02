@@ -90,13 +90,37 @@ async function cleanDeletedAccount(
   { userId, email }: Extract<Doc<'cleanupJobs'>, { kind: 'account' }>
 ) {
   await clearUserRateLimits(ctx, userId)
+  // Finish file cleanup before deleting its projects. A snapshot between batches
+  // must retain valid file/project relations and an accurate quota counter.
+  const files = await ctx.db
+    .query('gmFiles')
+    .withIndex('by_owner', (q) => q.eq('ownerId', userId))
+    .take(20)
+  let removedBytes = 0
+  for (const file of files) {
+    await ctx.storage.delete(file.storageId)
+    await ctx.db.delete('gmFiles', file._id)
+    removedBytes += file.size
+  }
+  const fileUsage = await ctx.db
+    .query('gmFileUsage')
+    .withIndex('by_owner', (q) => q.eq('ownerId', userId))
+    .unique()
+  if (fileUsage)
+    await ctx.db.patch('gmFileUsage', fileUsage._id, {
+      bytes: Math.max(0, fileUsage.bytes - removedBytes),
+    })
+  if (files.length === 20) return true
   let gmDataRemain = false
   for (const table of gmTables) {
+    if (table === 'gmFiles') continue
     const documents = await ctx.db
       .query(table)
       .withIndex('by_owner', (q) => q.eq('ownerId', userId))
       .take(gmBatchSize(table))
-    for (const document of documents) await ctx.db.delete(table, document._id)
+    for (const document of documents) {
+      await ctx.db.delete(table, document._id)
+    }
     gmDataRemain ||= documents.length === gmBatchSize(table)
   }
   const resources = await ctx.db

@@ -190,6 +190,8 @@ async function verifyRestore() {
   )
   await chmod(sourceArchive, 0o600)
   const source = await archiveInventory(sourceArchive)
+  if (!source.widgetRelations.valid)
+    throw new Error('Invalid source widget/file relations.')
   if (
     Object.keys(source.tables).length === 0 ||
     !Object.keys(source.tables).some((name) =>
@@ -332,6 +334,8 @@ async function verifyRestore() {
     )
     await chmod(restoredArchive, 0o600)
     const restored = await archiveInventory(restoredArchive)
+    if (!restored.widgetRelations.valid)
+      throw new Error('Invalid restored widget/file relations.')
     compareInventories(source, restored)
     report = {
       result: 'passed',

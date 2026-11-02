@@ -72,3 +72,7 @@ Preuves locales C2 : `pnpm check` réussi (246 tests backend/unitaires et 19 tes
 ## F3c-2 — contraction des widgets
 
 Le code ne lit et n'écrit plus que V2 (`formatVersion: 2` obligatoire) pour widgets, dispositions et historique. Les outils et protections de transition sont retirés après inventaire de production propre ; les états du composant migrations sont conservés. La lecture complète des métadonnées reste en place et `listScreenWidgets` conserve son contrat paginé. Restaurer une ancienne archive exige A (`f4bf0c9`), B, puis C, selon [le runbook](decisions/migrations.md). AUD-28 conserve son suivi CI distinct ; cette tranche ne prouve pas sa résolution ni un déploiement distant.
+
+### F6 — Fichiers du projet
+
+La section « Fichiers » du projet et du Screen importe PNG, JPEG, WebP, GIF et PDF, renomme les fichiers et gère leur corbeille/restauration/purge. Limites serveur : 10 Mio/image, 16 Mio/PDF, 500 Mio/compte, 200 fichiers/projet (corbeille comprise). SVG est refusé. Le type réel détermine le widget, même si le client annonce une image pour un PDF. Coller ou déposer une image hors d’un champ texte sur un Screen importe un seul fichier et le place par défaut. Les widgets image proposent zoom et déplacement ; les PDF proposent navigation et ajustement à la largeur. L’état est sauvegardé ; les copies partagent le fichier. Supprimer un fichier utilisé rend les widgets indisponibles jusqu’à restauration. Voir [la décision fichiers](decisions/files.md), dont le risque accepté des URL à capacité et les limites de l’export de compte.

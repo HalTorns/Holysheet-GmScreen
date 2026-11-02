@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useRetained } from '@/hooks/use-retained'
 
+import { Files } from './files'
 import { TitleForm } from './title-form'
 
 export function Project({ projectId }: { projectId: string }) {
@@ -64,6 +65,7 @@ function ProjectContent({ project }: { project: Doc<'gmProjects'> }) {
           Variables →
         </Link>
       </div>
+      <Files projectId={projectId} />
       <nav
         aria-label="Dossier courant"
         className="mb-6 flex flex-wrap items-center gap-2"

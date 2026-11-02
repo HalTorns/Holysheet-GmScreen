@@ -65,6 +65,7 @@
     "convex": "1.46.0",
     "lucide-react": "1.55.0",
     "nodemailer": "10.2.1",
+    "pdfjs-dist": "5.4.624",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "10.1.0",

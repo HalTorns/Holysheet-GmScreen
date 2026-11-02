@@ -5,7 +5,10 @@ import { gmTables } from '../../shared/gm'
 import { readScreen } from '../helpers/gm-screen'
 import { createAuthenticatedUser, createBackendTest } from './fixtures'
 
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllEnvs()
+})
 
 describe('Holysheet personal workspace', () => {
   it('persists a project, nested folders, Screen and versioned note while isolating another account', async () => {
@@ -110,6 +113,16 @@ describe('Holysheet personal workspace', () => {
       label: 'Force',
       definition: { type: 'number', value: 3 },
     })
+    vi.stubEnv('SITE_URL', 'http://localhost:3000')
+    const importedFile = await alice.client.fetch(
+      `/files/upload?projectId=${projectId}&name=fixture.png`,
+      {
+        method: 'POST',
+        headers: { Origin: 'http://localhost:3000', 'Content-Length': '8' },
+        body: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+      }
+    )
+    expect(importedFile.status).toBe(200)
     for (const collection of gmTables) {
       const exported = await alice.client.query(api.gm.exportCollection, {
         collection,

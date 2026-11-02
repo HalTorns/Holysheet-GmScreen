@@ -16,6 +16,8 @@ import type * as capabilities from "../capabilities.js";
 import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
+import type * as gmFiles from "../gmFiles.js";
+import type * as fileUpload from "../fileUpload.js";
 import type * as gm from "../gm.js";
 import type * as lib_gmWidgetState from "../lib/gmWidgetState.js";
 import type * as lib_gmWidgetWriting from "../lib/gmWidgetWriting.js";
@@ -65,6 +67,8 @@ declare const fullApi: ApiFromModules<{
   cleanup: typeof cleanup;
   crons: typeof crons;
   emails: typeof emails;
+  gmFiles: typeof gmFiles;
+  fileUpload: typeof fileUpload;
   gm: typeof gm;
   "lib/gmWidgetState": typeof lib_gmWidgetState;
   "lib/gmWidgetWriting": typeof lib_gmWidgetWriting;

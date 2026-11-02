@@ -17,15 +17,35 @@ import { Button } from '@/components/ui/button'
 import { authClient } from './auth-client'
 
 const tokenSchema = z.object({ token: z.string().min(1) })
+type AccessTokenGetter = (options: {
+  forceRefreshToken: boolean
+}) => Promise<string | null>
 type TransportState = {
   unavailable: boolean
   dialogCount: number
   registerDialog: () => () => void
   setUnavailable: (value: boolean) => void
   initialToken: string | null
+  registerAccessToken: (getter: AccessTokenGetter) => () => void
+  accessToken: {
+    current:
+      | ((options: { forceRefreshToken: boolean }) => Promise<string | null>)
+      | null
+  }
   retry: { current: (() => void) | null }
 }
 const TransportContext = createContext<TransportState | null>(null)
+
+export function useConvexAccessToken() {
+  const transport = useContext(TransportContext)
+  return useCallback(async () => {
+    const token = await transport?.accessToken.current?.({
+      forceRefreshToken: true,
+    })
+    if (!token) throw new Error('Session indisponible. Reconnectez-vous.')
+    return token
+  }, [transport])
+}
 
 function useCookieAuth() {
   const transport = useContext(TransportContext)
@@ -108,6 +128,11 @@ function useCookieAuth() {
     },
     [sessionId, absent, setUnavailable, retry]
   )
+  const registerAccessToken = transport.registerAccessToken
+  useEffect(
+    () => registerAccessToken(fetchAccessToken),
+    [registerAccessToken, fetchAccessToken]
+  )
   // Attendre la session Better Auth avant d'authentifier Convex : sa résolution
   // change l'identité de fetchAccessToken, et un premier cycle lancé avec le
   // seul jeton SSR était aussitôt relancé, désactivant la page une seconde fois.
@@ -136,17 +161,34 @@ export function AppAuthProvider({
     setDialogCount((count) => count + 1)
     return () => setDialogCount((count) => count - 1)
   }, [])
+  const accessToken = useRef<
+    ((options: { forceRefreshToken: boolean }) => Promise<string | null>) | null
+  >(null)
+  const registerAccessToken = useCallback((getter: AccessTokenGetter) => {
+    accessToken.current = getter
+    return () => {
+      if (accessToken.current === getter) accessToken.current = null
+    }
+  }, [])
   const retry = useRef<(() => void) | null>(null)
   const transport = useMemo(
     () => ({
       unavailable,
+      accessToken,
+      registerAccessToken,
       setUnavailable,
       initialToken,
       retry,
       dialogCount,
       registerDialog,
     }),
-    [unavailable, initialToken, dialogCount, registerDialog]
+    [
+      unavailable,
+      initialToken,
+      dialogCount,
+      registerDialog,
+      registerAccessToken,
+    ]
   )
   return (
     <TransportContext value={transport}>

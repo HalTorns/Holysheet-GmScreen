@@ -69,8 +69,24 @@ export const widgetKindValidator = v.union(
   v.literal('sheet'),
   v.literal('table'),
   v.literal('clock'),
-  v.literal('initiative')
+  v.literal('initiative'),
+  v.literal('image'),
+  v.literal('pdf')
 )
+const imageShape = {
+  kind: v.literal('image'),
+  config: v.object({
+    fileId: v.optional(v.id('gmFiles')),
+    alt: v.string(),
+    fit: v.union(v.literal('contain'), v.literal('cover')),
+  }),
+  state: v.object({ zoom: v.number(), x: v.number(), y: v.number() }),
+}
+const pdfShape = {
+  kind: v.literal('pdf'),
+  config: v.object({ fileId: v.optional(v.id('gmFiles')) }),
+  state: v.object({ page: v.number() }),
+}
 const checklistShape = {
   kind: v.literal('checklist'),
   config: v.object({
@@ -182,6 +198,8 @@ export const widgetUpdateValidator = v.union(
   v.object(sheetShape),
   v.object(tableShape),
   v.object(clockShape),
+  v.object(imageShape),
+  v.object(pdfShape),
   v.object(initiativeShape)
 )
 const v2Common = { ...noteCommon, formatVersion: v.literal(2) }
@@ -193,6 +211,8 @@ export const noteFields = v.union(
   v.object({ ...v2Common, ...sheetShape }),
   v.object({ ...v2Common, ...tableShape }),
   v.object({ ...v2Common, ...clockShape }),
+  v.object({ ...v2Common, ...imageShape }),
+  v.object({ ...v2Common, ...pdfShape }),
   v.object({ ...v2Common, ...initiativeShape })
 )
 const noteSystem = { _id: v.id('gmNotes'), _creationTime: v.number() }
@@ -204,10 +224,14 @@ export const widgetValidator = v.union(
   v.object({ ...noteSystem, ...v2Common, ...sheetShape }),
   v.object({ ...noteSystem, ...v2Common, ...tableShape }),
   v.object({ ...noteSystem, ...v2Common, ...clockShape }),
+  v.object({ ...noteSystem, ...v2Common, ...imageShape }),
+  v.object({ ...noteSystem, ...v2Common, ...pdfShape }),
   v.object({ ...noteSystem, ...v2Common, ...initiativeShape })
 )
 const noteValidator = widgetValidator
 export const trashWidgetValidator = v.union(
+  v.object({ ...noteSystem, ...v2Common, ...imageShape, preview: v.string() }),
+  v.object({ ...noteSystem, ...v2Common, ...pdfShape, preview: v.string() }),
   v.object({ ...noteSystem, ...noteV2, preview: v.string() }),
   v.object({
     ...noteSystem,
@@ -287,6 +311,8 @@ const historyV2 = {
     v.object(sheetShape),
     v.object(tableShape),
     v.object(clockShape),
+    v.object(imageShape),
+    v.object(pdfShape),
     v.object(initiativeShape),
     v.object({ kind: v.literal('layout'), ...digitalV2 })
   ),
@@ -426,6 +452,34 @@ export const variableDefinitionValidator = v.union(
   v.object(variableShapes.boolean),
   v.object({ type: v.literal('formula'), expression: v.string() })
 )
+export const fileMime = v.union(
+  v.literal('image/png'),
+  v.literal('image/jpeg'),
+  v.literal('image/webp'),
+  v.literal('image/gif'),
+  v.literal('application/pdf')
+)
+export const fileFields = {
+  ownerId: v.string(),
+  projectId: v.id('gmProjects'),
+  storageId: v.id('_storage'),
+  name: v.string(),
+  mimeType: fileMime,
+  size: v.number(),
+  createdAt: v.number(),
+  deletedAt: v.optional(v.number()),
+}
+export const fileValidator = v.object({
+  _id: v.id('gmFiles'),
+  _creationTime: v.number(),
+  ...fileFields,
+})
+export const fileUsageFields = { ownerId: v.string(), bytes: v.number() }
+const fileUsageValidator = v.object({
+  _id: v.id('gmFileUsage'),
+  _creationTime: v.number(),
+  ...fileUsageFields,
+})
 export const gmCollection = v.union(
   v.literal('gmProjects'),
   v.literal('gmFolders'),
@@ -437,7 +491,9 @@ export const gmCollection = v.union(
   v.literal('gmSheets'),
   v.literal('gmSheetContents'),
   v.literal('gmSheetLinks'),
-  v.literal('gmVariables')
+  v.literal('gmVariables'),
+  v.literal('gmFiles'),
+  v.literal('gmFileUsage')
 )
 export const gmDocument = v.union(
   projectValidator,
@@ -450,5 +506,7 @@ export const gmDocument = v.union(
   sheetValidator,
   sheetContentValidator,
   sheetLinkValidator,
-  variableValidator
+  variableValidator,
+  fileValidator,
+  fileUsageValidator
 )

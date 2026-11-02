@@ -53,6 +53,8 @@ export const gmTables = [
   'gmSheetContents',
   'gmSheetLinks',
   'gmVariables',
+  'gmFiles',
+  'gmFileUsage',
 ] as const
 
 // Bibliothèque de fiches (F1). Les métadonnées légères (gmSheets) sont
@@ -117,6 +119,8 @@ export const gmWidgetKinds = [
   'table',
   'clock',
   'initiative',
+  'image',
+  'pdf',
 ] as const
 export const gmWidgetLabels = {
   note: 'Note',
@@ -127,6 +131,8 @@ export const gmWidgetLabels = {
   table: 'Tableau',
   clock: 'Horloge',
   initiative: 'Initiative',
+  image: 'Image',
+  pdf: 'PDF',
 } as const
 const widgetTitle = z.string().max(120)
 const finiteNumber = z.number()
@@ -141,6 +147,34 @@ const localCounterSource = z
 const widgetId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/)
 export const gmWidget = z
   .discriminatedUnion('kind', [
+    z
+      .object({
+        kind: z.literal('image'),
+        config: z
+          .object({
+            fileId: z.string().min(1).optional(),
+            alt: z.string().max(500),
+            fit: z.enum(['contain', 'cover']),
+          })
+          .strict(),
+        state: z
+          .object({
+            zoom: z.number().min(0.1).max(10),
+            x: z.number().min(-16_384).max(16_384),
+            y: z.number().min(-16_384).max(16_384),
+          })
+          .strict(),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('pdf'),
+        config: z.object({ fileId: z.string().min(1).optional() }).strict(),
+        state: z
+          .object({ page: z.number().int().min(1).max(100_000) })
+          .strict(),
+      })
+      .strict(),
     z
       .object({
         kind: z.literal('table'),
@@ -377,6 +411,16 @@ export function initialWidget(kind: (typeof gmWidgetKinds)[number]) {
   return createInitialWidget(kind)
 }
 function createInitialWidget(kind: (typeof gmWidgetKinds)[number]) {
+  if (kind === 'image')
+    return {
+      kind,
+      config: { alt: '', fit: 'contain' as const },
+      state: { zoom: 1, x: 0, y: 0 },
+    }
+  if (kind === 'pdf') {
+    const config: { fileId?: never } = {}
+    return { kind, config, state: { page: 1 } }
+  }
   if (kind === 'table')
     return {
       kind,

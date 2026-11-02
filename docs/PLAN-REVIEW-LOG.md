@@ -270,3 +270,25 @@ Preuves sous Node 26.12.0/pnpm 11.8.0 : tests ciblés (`pnpm exec vitest run tes
   - F6-06 : garde `requireUser` complète avant la lecture du corps et dans la mutation finale ;
   - F6-07 : origine cloud pour `img-src`, cloud et site pour `connect-src`.
 - Round 3 : **APPROVED** sur `docs/PLAN-F6.md` (SHA256 `0c4b9e30c24227d3718436de0bfc64f34ec470834a061dd4b0021a7a4c03bcc8`).
+
+### F6 — Build Codex, 2 novembre 2026
+
+Implémentation de `PLAN-F6.md` sur `codex/f6-files` : une route HTTP d’import et son préflight, garde complète avant lecture et dans l’insertion finale, MIME canonique par signatures, plafond lu et quotas transactionnels ; fichiers/corbeille/purge, cron des orphelins, widgets image/PDF et import par collage/dépôt. PDF.js 5.4.624 est chargé à la demande avec worker local et `isEvalSupported: false`. CSP cloud/site, export/nettoyage/restauration, fixtures non vides, ADR et inventaire Convex complétés. Les E2E fichiers sont inclus dans la commande CI ; les parcours Holysheet et restauration existants ont aussi leurs fichiers de fixture.
+
+Détails d’implémentation par rapport au plan : `gmFileUsage`, compteur par compte, évite un scan global non borné et arbitre la concurrence ; intégré à l’export/nettoyage et vérifié par somme à la restauration. `fileId` est optionnel uniquement avant sélection dans un widget vide (affiché indisponible). Le garde `requireUser` transforme aussi l’absence de session de l’adaptateur en `ConvexError.data.code = UNAUTHENTICATED`, sans réduire ses vérifications. Le nettoyage termine les fichiers et ajuste le quota avant de supprimer les projets, pour garder les relations valides entre lots.
+
+Preuves Node 26.12.0 / pnpm 11.8.0 : tests ciblés backend/archives **11/11**, dont flux anonyme non lu, révocation pendant lecture avec suppression du blob, quota concurrent et nettoyage multi-lots ; navigateur ciblé **2/2** avec vrai PDF/worker et image décodée ; audit Convex **exit 0**, 82 fonctions publiques et zéro hors inventaire ; audit production au seuil high **exit 0**, exceptions Better Auth T0 conservées, aucun nouvel avis high/critical non ignoré. **`pnpm check` exit 0** : types, lint strict, formatage, Knip, **257 tests** backend/unitaires/scripts et **21 tests navigateur**, build réussi avec les avertissements upstream de directives `use client`. Le build émet PDF.js et son worker local dans des assets séparés. `git diff --check` **exit 0**.
+
+Limites : Context7 indisponible ; sources/types installés et sources officielles vérifiés. E2E, en-têtes servis réels et restauration réelle non exécutés localement faute de Docker ; à prouver dans la CI. Aucun commit, push, déploiement ni écriture GitHub.
+
+- **Inspection Claude** (build Codex F6) :
+  - authentification complète (`requireUser`) avant la lecture du corps, puis dans la mutation finale ;
+  - corps plafonné en streaming, type canonique stocké, blob supprimé quand l'enregistrement est refusé ;
+  - CORS limité à `SITE_URL`, variable déjà présente sur le backend ;
+  - CSP : origine cloud en `img-src`, cloud et site en `connect-src`, worker local.
+
+  Écarts acceptés :
+  - compteur transactionnel `gmFileUsage`, qui évite de relire tous les fichiers à chaque envoi ;
+  - `fileId` optionnel, pour un widget pas encore relié à un fichier.
+
+  Preuves E2E et en-têtes réels : en CI.

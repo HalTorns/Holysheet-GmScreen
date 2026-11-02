@@ -110,7 +110,9 @@ function RevisionList({
               ? revision.snapshot.body.slice(0, 240) || 'Note vide'
               : revision.snapshot.kind === 'layout'
                 ? `${revision.snapshot.name} · ${revision.snapshot.width} × ${revision.snapshot.height} px`
-                : revision.snapshot.config.title || revision.snapshot.kind}
+                : ('title' in revision.snapshot.config
+                    ? revision.snapshot.config.title
+                    : '') || revision.snapshot.kind}
           </p>
           <Button
             size="sm"

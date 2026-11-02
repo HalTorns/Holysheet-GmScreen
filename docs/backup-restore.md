@@ -74,3 +74,11 @@ Si le [stockage S3 optionnel](deployment.md#stockage-objet-optionnel--garage--s3
 Une copie à froid des volumes Docker complète les exports logiques. Pour cette copie physique, arrêter proprement le backend **et PostgreSQL** avec `pnpm services:down`, copier les deux volumes ainsi que leur configuration privée, puis redémarrer avec `pnpm services:up`. Ne pas copier un volume PostgreSQL en cours d’écriture sans protocole de sauvegarde adapté. Un ancien volume SQLite conservé après migration se sauvegarde séparément à froid. Tester la récupération des volumes avec les mêmes versions avant toute montée de version.
 
 Ne jamais utiliser `docker compose down -v` comme arrêt courant : cette option supprime les volumes persistants. Le socle ne programme pas encore de sauvegarde de production ; fréquence, rétention et objectifs de perte/durée de récupération appartiennent à l’environnement déployé.
+
+### Fichiers F6
+
+L’export de compte inclut `gmFiles` (métadonnées uniquement) et `gmFileUsage` (compteur transactionnel), sans les blobs ni leurs URL à capacité. Il ne constitue pas une sauvegarde des octets. La sauvegarde opérateur et l’exercice `backup:verify` utilisent `--include-file-storage` : conserver les documents `_storage` et leur contenu avec les tables métier.
+
+`snapshots.mjs` et `verify-restore.mjs` refusent une relation fichier/propriétaire/projet invalide, un blob absent, une taille ou un MIME non canonique/incohérent et un compteur de quota différent de la somme des fichiers, corbeille comprise. Ils valident les widgets image/PDF et comparent les sommes des tables et blobs entre export source et réexport restauré. Une référence de widget vers un fichier purgé reste valide et indisponible. `restore.spec.ts` importe réellement une image et un PDF non vides et les place sur un Screen avant l’exercice isolé.
+
+Le cron des orphelins ne reconnaît actuellement que `gmFiles`. Toute nouvelle table utilisant `_storage` doit être ajoutée à sa liste de références avant activation. Le nettoyage de compte supprime ses fichiers et blobs dans les lots `cleanupJobs` existants.

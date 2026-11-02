@@ -35,12 +35,14 @@ export function checksum(value) {
 export async function archiveInventory(path) {
   // Load application validation only after the caller has admitted its target.
   const { gmWidget } = await import('../shared/gm.ts')
+  const { detectFileMime } = await import('../shared/files.ts')
   const names = (await command('unzip', ['-Z1', path]))
     .split('\n')
     .filter((name) => name && !name.endsWith('/'))
   const tables = {}
   const files = {}
   const widgets = {}
+  const blobTypes = {}
   for (const name of names) {
     if (name.endsWith('/documents.jsonl')) {
       // Table-number metadata belongs to each backend. Application IDs and
@@ -64,6 +66,10 @@ export async function archiveInventory(path) {
       const tableName = name.slice(0, -'/documents.jsonl'.length)
       if (
         [
+          'gmFiles',
+          'gmFileUsage',
+          'gmProjects',
+          '_storage',
           'gmNotes',
           'gmWidgetContents',
           'gmLayouts',
@@ -82,6 +88,7 @@ export async function archiveInventory(path) {
         encoding: 'buffer',
       })
       files[name] = { bytes: payload.length, checksum: checksum(payload) }
+      blobTypes[name] = detectFileMime(new Uint8Array(payload))
     }
   }
   // Only aggregate evidence leaves this function; no bodies, IDs or auth data
@@ -120,6 +127,8 @@ export async function archiveInventory(path) {
               'table',
               'clock',
               'initiative',
+              'image',
+              'pdf',
             ].includes(note.kind) &&
             gmWidget.safeParse({
               kind: note.kind,
@@ -150,7 +159,9 @@ export async function archiveInventory(path) {
     return (
       revision.formatVersion === 2 &&
       subject &&
-      (!['table', 'clock', 'initiative'].includes(revision.snapshot.kind) ||
+      (!['table', 'clock', 'initiative', 'image', 'pdf'].includes(
+        revision.snapshot.kind
+      ) ||
         gmWidget.safeParse(revision.snapshot).success) &&
       (revision.snapshot.kind === 'layout' ||
         revision.snapshot.kind === subject.kind) &&
@@ -186,8 +197,77 @@ export async function archiveInventory(path) {
         (sheet.ownerId === note.ownerId && sheet.projectId === note.projectId)
       )
     })
+  const projectById = new Map(
+    (widgets.gmProjects ?? []).map((project) => [project._id, project])
+  )
+  const fileById = new Map(
+    (widgets.gmFiles ?? []).map((file) => [file._id, file])
+  )
+  const storageById = new Map(
+    (widgets._storage ?? []).map((blob) => [blob._id, blob])
+  )
+  const storageIds = new Set()
+  const bytesByOwner = new Map()
+  const validFiles = (widgets.gmFiles ?? []).every((file) => {
+    const project = projectById.get(file.projectId)
+    const storage = storageById.get(file.storageId)
+    const name = Object.keys(files).find(
+      (name) => name.split('/').at(-1)?.split('.')[0] === file.storageId
+    )
+    const duplicate = storageIds.has(file.storageId)
+    storageIds.add(file.storageId)
+    bytesByOwner.set(
+      file.ownerId,
+      (bytesByOwner.get(file.ownerId) ?? 0) + file.size
+    )
+    return (
+      !duplicate &&
+      project?.ownerId === file.ownerId &&
+      storage &&
+      name &&
+      files[name].bytes === file.size &&
+      storage.size === file.size &&
+      storage.contentType === file.mimeType &&
+      blobTypes[name] === file.mimeType
+    )
+  })
+  const validFileWidgets = notes
+    .filter((note) => ['image', 'pdf'].includes(note.kind))
+    .every((note) => {
+      const file = fileById.get(note.config.fileId)
+      // Purged or unselected references deliberately render as unavailable.
+      return (
+        !file ||
+        (file.ownerId === note.ownerId &&
+          file.projectId === note.projectId &&
+          (note.kind === 'pdf') === (file.mimeType === 'application/pdf'))
+      )
+    })
+  const usageByOwner = new Map(
+    (widgets.gmFileUsage ?? []).map((usage) => [usage.ownerId, usage.bytes])
+  )
+  const validUsage =
+    usageByOwner.size === (widgets.gmFileUsage ?? []).length &&
+    [...bytesByOwner].every(
+      ([ownerId, bytes]) => usageByOwner.get(ownerId) === bytes
+    ) &&
+    [...usageByOwner].every(
+      ([ownerId, bytes]) => (bytesByOwner.get(ownerId) ?? 0) === bytes
+    )
+  if (!validFiles || !validFileWidgets || !validUsage)
+    throw new Error(
+      'Snapshot file relations, MIME, storage bytes or quota counters are invalid.'
+    )
   const widgetRelations = {
-    valid: valid && validHistory && validLinks && validSheets,
+    valid:
+      valid &&
+      validHistory &&
+      validLinks &&
+      validSheets &&
+      validFiles &&
+      validFileWidgets &&
+      validUsage,
+    fileCount: fileById.size,
     linkedCounters: linkedCounters.length,
     availableCounters: linkedCounters.filter((note) => {
       const source = variablesById.get(note.config.source.variableId)
@@ -219,6 +299,8 @@ export async function archiveInventory(path) {
     trashed: notes.filter((note) => note.deletedAt !== undefined).length,
     revisions: (widgets.gmEditorHistory ?? []).length,
   }
+  if (!widgetRelations.valid)
+    throw new Error('Snapshot widget relations are invalid.')
   return { tables, files, widgetRelations }
 }
 

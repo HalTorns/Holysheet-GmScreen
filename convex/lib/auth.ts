@@ -13,8 +13,9 @@ export async function requireUser(ctx: GenericCtx<DataModel>) {
   if (!identity || typeof identity.sessionId !== 'string') {
     throw new ConvexError({ code: 'UNAUTHENTICATED' })
   }
-  const user = await authComponent.getAuthUser(ctx)
-  if (!user.emailVerified) throw new ConvexError({ code: 'UNAUTHENTICATED' })
+  const user = await authComponent.safeGetAuthUser(ctx)
+  if (!user || !user.emailVerified)
+    throw new ConvexError({ code: 'UNAUTHENTICATED' })
   const session = await getSessionAccess(ctx, identity.sessionId, user._id)
   if (!session) throw new ConvexError({ code: 'UNAUTHENTICATED' })
   if (!session.mfaVerified) throw new ConvexError({ code: 'MFA_REQUIRED' })

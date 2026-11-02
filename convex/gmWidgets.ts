@@ -534,6 +534,10 @@ export const controlClock = mutation({
 })
 
 function widgetDefinition(widget: Widget) {
+  if (widget.kind === 'image')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
+  if (widget.kind === 'pdf')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
   if (widget.kind === 'table')
     return { kind: widget.kind, config: widget.config, state: widget.state }
   if (widget.kind === 'clock')
@@ -552,7 +556,7 @@ function widgetDefinition(widget: Widget) {
 }
 function widgetPreview(widget: Widget) {
   if (widget.kind === 'note') return ''
-  return widget.config.title || widget.kind
+  return ('title' in widget.config ? widget.config.title : '') || widget.kind
 }
 
 export const getSheetPreview = query({

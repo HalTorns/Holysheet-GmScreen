@@ -9,6 +9,8 @@ import type { Widget } from './gmFormats'
 import { limitUserOperation } from './rateLimits'
 
 type Definition =
+  | Pick<Extract<Widget, { kind: 'image' }>, 'kind' | 'config' | 'state'>
+  | Pick<Extract<Widget, { kind: 'pdf' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'checklist' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'counter' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'dice' }>, 'kind' | 'config' | 'state'>
@@ -55,7 +57,11 @@ export async function saveWidget(
     if (!sameState) throw new ConvexError({ code: 'INVALID_INPUT' })
   }
   let definition: Definition
-  if (input.kind === 'checklist')
+  if (input.kind === 'image')
+    definition = { kind: input.kind, config: input.config, state: input.state }
+  else if (input.kind === 'pdf')
+    definition = { kind: input.kind, config: input.config, state: input.state }
+  else if (input.kind === 'checklist')
     definition = { kind: input.kind, config: input.config, state: input.state }
   else if (input.kind === 'counter')
     definition = { kind: input.kind, config: input.config, state: input.state }
@@ -136,6 +142,22 @@ export async function saveWidget(
     )
       throw new ConvexError({ code: 'NOT_FOUND' })
   }
+  if (
+    (input.kind === 'image' || input.kind === 'pdf') &&
+    input.config.fileId &&
+    input.config.fileId !==
+      ('fileId' in widget.config ? widget.config.fileId : undefined)
+  ) {
+    const file = await ctx.db.get('gmFiles', input.config.fileId)
+    if (
+      !file ||
+      file.ownerId !== widget.ownerId ||
+      file.projectId !== widget.projectId ||
+      file.deletedAt !== undefined ||
+      (input.kind === 'pdf') !== (file.mimeType === 'application/pdf')
+    )
+      throw new ConvexError({ code: 'NOT_FOUND' })
+  }
   const updated = widgetBudget({
     ...widget,
     ...definition,
@@ -151,7 +173,19 @@ export async function saveWidget(
   )
     return widget.version
   await limitUserOperation(ctx, 'gmEditorWrite', widget.ownerId)
-  if (widget.kind === 'checklist')
+  if (widget.kind === 'image')
+    await recordHistory(ctx, widget, {
+      kind: widget.kind,
+      config: widget.config,
+      state: widget.state,
+    })
+  else if (widget.kind === 'pdf')
+    await recordHistory(ctx, widget, {
+      kind: widget.kind,
+      config: widget.config,
+      state: widget.state,
+    })
+  else if (widget.kind === 'checklist')
     await recordHistory(ctx, widget, {
       kind: widget.kind,
       config: widget.config,
