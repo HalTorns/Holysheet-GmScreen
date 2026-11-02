@@ -360,3 +360,14 @@ Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/unitaires **56/56**, naviga
   - `gmEditorWrite` réparti sur 4 shards.
 
   Limites mineures acceptées : les adresses IPv4-compatibles dépréciées (`::a.b.c.d`) et NAT64 ne sont pas filtrées. Le cadre reste chargé par le navigateur de l'utilisateur, jamais par le serveur.
+
+- CI F7b `41456936905` : trois échecs.
+  - Le `select` du mode était imbriqué dans son `label`, donc son nom accessible était faux. Corrigé par un `aria-label`.
+  - Le kind `embed` manquait dans `snapshots.mjs`. Corrigé.
+  - AUD-28 à 0/100 : erreurs serveur passagères sur `getScreenWidgetMetadata` et `getScreen`.
+- AUD-28, **corrections Claude** successives :
+  - frontière de réessai (`91019b5`) : rejetée par l'inspection **Codex**, car elle remontait le Screen et perdait les brouillons ;
+  - hook `useResilientQuery` (`42a9681`, puis `cd0a399`) : il garde la dernière valeur, se réabonne avec un délai croissant et ne lève jamais d'erreur quand une valeur est affichée. L'inspection **Codex** a donné RQ-01 et RQ-02, corrigés, puis **APPROVED** ;
+  - **régression** en CI `41464439918` : React #301 sur tous les Screens. `api.x.y` est un proxy neuf à chaque accès, et le `useMemo` dépendait de son identité, ce qui recréait la souscription à chaque rendu. Corrigé (`getFunctionName`), avec un test de régression qui utilise le vrai `useQueries` et échoue sur l'ancien code. Cette correction de dix lignes n'a pas été réinspectée par Codex.
+- CI `41468248611` : **success**. 11 E2E principaux, dont `embed.spec` ; AUD-28 à **100/100 en 3,2 s**.
+  - **Suivi** : 27 lignes de journal OCC sur `rateLimits` malgré les shards de `gmEditorWrite` (contre 9 dans un run comparable de F7b). La contention vient probablement d'autres limites (`resourceWrite`, authentification). À mesurer par nom de limite.
