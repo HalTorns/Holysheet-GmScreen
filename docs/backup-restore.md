@@ -30,6 +30,12 @@ Utiliser les snapshots du dashboard, ou l’export CLI en sélectionnant explici
 
 ## Exercice de restauration
 
+### Archives antérieures à la contraction des widgets
+
+Le schéma C (F3c-2) exige `formatVersion: 2` pour `gmNotes`, `gmLayouts` et `gmEditorHistory`. Une archive pré-contraction se restaure avec **A, commit `f4bf0c9`** (avant F3c-2, schéma élargi et lecteurs V1/V2), puis se migre avec **B du même commit** (`gmWidgetMigrations:run`, `{}`). Vérifier les trois passes terminées et l'inventaire complet sans compteur bloquant avec `scripts/widget-inventory.mjs` de cette révision avant de redéployer **C, F3c-2**, frontend et backend ensemble. Recharger ensuite les vues. Voir [la procédure détaillée](decisions/migrations.md#restaurer-une-archive-antérieure-à-c), y compris le cas d'un état de migration déjà terminé dans l'archive.
+
+L'import direct dans C et `pnpm backup:verify` avec le code C ne migrent pas une archive V1. Conserver la révision A et son lockfile ; les passes et l'inventaire transitoires ont été retirés de C. Le composant `migrations` et ses tables d'état restent enregistrés. Convex refusera au déploiement tout document incompatible avec le schéma contracté.
+
 ### Vérification locale automatisée
 
 Après `pnpm setup`, avec Docker démarré, pnpm et `unzip` disponibles :

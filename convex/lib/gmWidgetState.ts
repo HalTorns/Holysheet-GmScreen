@@ -4,7 +4,7 @@ import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { ownedScreen } from './gmAccess'
 import { assertVersion, recordHistory } from './gmEditing'
-import { normalizeWidget, widgetBudget } from './gmFormats'
+import { widgetBudget } from './gmFormats'
 import type { Widget } from './gmFormats'
 import { limitUserOperation } from './rateLimits'
 
@@ -24,7 +24,7 @@ export async function saveWidget(
   input: Definition,
   intent: 'edit' | 'restore' | 'control' = 'edit'
 ) {
-  const widget = normalizeWidget(raw)
+  const widget = raw
   assertVersion(widget.version, expectedVersion)
   if (widget.kind !== input.kind)
     throw new ConvexError({ code: 'INVALID_INPUT' })

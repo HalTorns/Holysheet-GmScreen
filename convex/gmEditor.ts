@@ -6,11 +6,7 @@ import { mutation, query } from './_generated/server'
 import { requireUser } from './lib/auth'
 import { ownedLayout, ownedNote, ownedScreen } from './lib/gmAccess'
 import { layoutState, saveLayout, saveNote } from './lib/gmEditing'
-import {
-  normalizeSnapshot,
-  requireMigratedScreen,
-  layoutBudget,
-} from './lib/gmFormats'
+import { layoutBudget } from './lib/gmFormats'
 import {
   digitalLayoutFields,
   historyTarget,
@@ -40,7 +36,6 @@ export const createProfile = mutation({
     const user = await requireUser(ctx)
     const source = await ownedLayout(ctx, sourceId, user._id)
     const screen = await ownedScreen(ctx, source.screenId, user._id)
-    await requireMigratedScreen(ctx, screen._id)
     if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
     const title = gmTitle.safeParse(name)
     if (source.kind !== 'digital' || !title.success)
@@ -117,14 +112,7 @@ export const listHistory = query({
         ...paginationOpts,
         numItems: Math.min(10, Math.max(1, paginationOpts.numItems)),
       })
-    return {
-      ...result,
-      page: result.page.map((revision) => ({
-        ...revision,
-        formatVersion: 2 as const,
-        snapshot: normalizeSnapshot(revision.snapshot),
-      })),
-    }
+    return result
   },
 })
 
@@ -136,7 +124,7 @@ export const restoreRevision = mutation({
     const revision = await ctx.db.get('gmEditorHistory', id)
     if (!revision || revision.ownerId !== user._id)
       throw new ConvexError({ code: 'NOT_FOUND' })
-    const snapshot = normalizeSnapshot(revision.snapshot)
+    const snapshot = revision.snapshot
     if (snapshot.kind !== 'layout') {
       const noteId = ctx.db.normalizeId('gmNotes', revision.subjectId)
       if (!noteId) throw new ConvexError({ code: 'NOT_FOUND' })
@@ -149,7 +137,7 @@ export const restoreRevision = mutation({
           note,
           expectedVersion,
           snapshot.body,
-          snapshot.bodyFormat
+          snapshot.bodyFormat ?? 'plain'
         )
       if (
         snapshot.kind === 'clock' &&

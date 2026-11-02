@@ -19,13 +19,8 @@ import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { ownedScreen } from './gmAccess'
 import {
-  normalizeLayout,
-  normalizePlacement,
-  normalizeSnapshot,
-  convertNote,
   noteValue,
   writeContent,
-  requireMigratedScreen,
   assertBudget,
   layoutBudget,
 } from './gmFormats'
@@ -41,7 +36,7 @@ export function layoutState(
     name: layout.name,
     width: layout.width,
     height: layout.height,
-    placements: layout.placements.map(normalizePlacement),
+    placements: layout.placements,
   }
 }
 
@@ -56,7 +51,6 @@ export async function recordHistory(
   document: Doc<'gmNotes'> | Doc<'gmLayouts'>,
   snapshot: Doc<'gmEditorHistory'>['snapshot']
 ) {
-  const normalizedSnapshot = normalizeSnapshot(snapshot)
   assertBudget(
     {
       ownerId: document.ownerId,
@@ -66,7 +60,7 @@ export async function recordHistory(
       version: document.version,
       updatedAt: Date.now(),
       formatVersion: 2,
-      snapshot: normalizedSnapshot,
+      snapshot,
     },
     snapshot.kind === 'note'
       ? GM_CONTENT_BYTES
@@ -81,7 +75,7 @@ export async function recordHistory(
     screenId: document.screenId,
     subjectId: document._id,
     version: document.version,
-    snapshot: normalizedSnapshot,
+    snapshot,
     updatedAt: Date.now(),
   })
   const revisions = await ctx.db
@@ -107,17 +101,16 @@ export async function saveNote(
     throw new ConvexError({ code: 'INVALID_INPUT' })
   const previous = await noteValue(ctx, note)
   const format = bodyFormat ?? previous.bodyFormat
-  const normalized = await convertNote(ctx, note)
   if (body === previous.body && format === previous.bodyFormat)
     return note.version
   await limitUserOperation(ctx, 'gmEditorWrite', note.ownerId)
-  await recordHistory(ctx, note, { kind: 'note', ...previous })
-  await writeContent(
-    ctx,
-    { ...normalized, updatedAt: Date.now() },
-    body,
-    format
-  )
+  await recordHistory(ctx, note, {
+    kind: 'note',
+    config: {},
+    state: {},
+    ...previous,
+  })
+  await writeContent(ctx, { ...note, updatedAt: Date.now() }, body, format)
   await ctx.db.patch('gmNotes', note._id, {
     version: note.version + 1,
     updatedAt: Date.now(),
@@ -133,15 +126,7 @@ export async function saveLayout(
     placements: Doc<'gmLayouts'>['placements'][number][]
   }
 ) {
-  await requireMigratedScreen(ctx, layout.screenId)
-  const forms = new Set(
-    input.placements.map((p) => ('widgetId' in p ? 'v2' : 'v1'))
-  )
-  if (forms.size > 1) throw new ConvexError({ code: 'INVALID_INPUT' })
-  const value = {
-    ...input,
-    placements: input.placements.map(normalizePlacement),
-  }
+  const value = input
   assertVersion(layout.version, expectedVersion)
   const screen = await ownedScreen(ctx, layout.screenId, layout.ownerId)
   if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
@@ -210,7 +195,7 @@ export async function saveLayout(
     return layout.version
   await limitUserOperation(ctx, 'gmEditorWrite', layout.ownerId)
   await recordHistory(ctx, layout, { kind: 'layout', ...layoutState(layout) })
-  layoutBudget(normalizeLayout({ ...layout, ...state }))
+  layoutBudget({ ...layout, ...state })
   await ctx.db.patch('gmLayouts', layout._id, {
     formatVersion: 2,
     ...state,

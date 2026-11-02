@@ -6,7 +6,6 @@ import { mutation, query } from './_generated/server'
 import { requireUser, requireAccountUser } from './lib/auth'
 import { ownedProject, ownedNote } from './lib/gmAccess'
 import { saveNote } from './lib/gmEditing'
-import { normalizeLayout } from './lib/gmFormats'
 import {
   folderValidator,
   gmCollection,
@@ -241,7 +240,7 @@ export const getScreen = query({
       .query('gmLayouts')
       .withIndex('by_screen', (q) => q.eq('screenId', normalizedId))
       .take(GM_MAX_LAYOUTS)
-    return { screen, layouts: layouts.map(normalizeLayout) }
+    return { screen, layouts }
   },
 })
 

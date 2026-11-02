@@ -32,7 +32,6 @@ export default defineSchema({
   gmNotes: defineTable(noteFields)
     .index('by_owner', ['ownerId'])
     .index('by_screen_live', ['screenId', 'deletedAt'])
-    .index('by_screen_format', ['screenId', 'formatVersion'])
     .index('by_screen', ['screenId']),
   gmLayouts: defineTable(layoutFields)
     .index('by_owner', ['ownerId'])

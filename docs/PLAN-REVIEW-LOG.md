@@ -246,3 +246,13 @@ L'inventaire paginé exigé par l'ADR avant la contraction (absence de V1, unici
 ### Inventaire de production avant F3c-2 — 2 novembre 2026
 
 Après le redeploy de F3c-1 (`c52cd34`) et `pnpm backend:deploy`, l'utilisateur a lancé `node scripts/widget-inventory.mjs` dans `operations`. Documents parcourus : `gmNotes` 3, `gmWidgetContents` 3, `gmLayouts` 4, `gmEditorHistory` 0. **Tous les compteurs bloquants et informatifs sont à 0**, aucun échantillon. La contraction F3c-2 est autorisée par le plan.
+
+## F3c-2 — build de contraction (2 novembre 2026)
+
+V2 obligatoire pour widgets, dispositions et historique. Adaptateurs V1, première conversion, garde/message de maintenance, index temporaire et module `gmWidgetMigrations` retirés ; composant migrations et états conservés. `listScreenWidgets` reste paginée, test de contrat conservé. AUDIT et ADR/produit actualisés ; restauration pré-C : **A `f4bf0c9`**, B et inventaire depuis ce commit, puis C. Aucun déploiement distant revendiqué.
+
+Tests retirés avec les outils transitoires : runner B/idempotence, interruption/reprise, édition entre passes, export/nettoyage mixtes, purge avec historique V1, inventaire V1/anomalies/pagination et script/helper d'inventaire. Ils n'ont de sens que pendant la transition et restent disponibles dans A. Le cycle purge/restauration d'ancien layout reste testé, sans assertion d'inventaire. Fixtures de nettoyage >100 notes et métadonnées >10 notes converties en V2 avec payloads. Le test rich-text conserve le défaut `plain` sans `bodyFormat` ; sa première exécution a révélé une régression à la restauration, corrigée dans `restoreRevision`. Deux cas supplémentaires refusent les formes V1 réelles (version absente/1) dans les trois tables.
+
+Preuves sous Node 26.12.0/pnpm 11.8.0 : tests ciblés (`pnpm exec vitest run tests/backend/gm-widgets.test.ts tests/backend/gm-rich-text.test.ts tests/backend/gm-editor.test.ts tests/backend/gm.test.ts`) **34/34** ; `pnpm check` **exit 0** (types, lint, format, Knip, 246 tests unitaires/backend, 19 navigateur, build ; avertissements upstream de bundling) ; `pnpm audit:convex` **exit 0**, 73 fonctions publiques, zéro hors inventaire. Grep demandé vide (exit 1 normal), aucun traitement de formatVersion 1 dans convex/shared/src ; `git diff --check` **exit 0**.
+
+Écart : formatage du fichier local non suivi `docs/PLAN-F6.md`, qui bloquait `pnpm check` ; aucun ajout Git. Context7 indisponible, refactoring sans nouvelle API/dépendance. E2E et restauration réelle non exécutés faute de Docker ; CI à vérifier séparément.

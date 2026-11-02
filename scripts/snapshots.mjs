@@ -99,6 +99,7 @@ export async function archiveInventory(path) {
     contents.every((content) => {
       const parent = noteById.get(content.widgetId)
       return (
+        content.formatVersion === 2 &&
         parent?.formatVersion === 2 &&
         parent.kind === 'note' &&
         parent.ownerId === content.ownerId &&
@@ -108,7 +109,7 @@ export async function archiveInventory(path) {
     }) &&
     notes.every(
       (note) =>
-        note.formatVersion !== 2 ||
+        note.formatVersion === 2 &&
         (note.kind === 'note'
           ? contentByWidget.has(note._id)
           : [
@@ -127,17 +128,19 @@ export async function archiveInventory(path) {
             }).success &&
             !contentByWidget.has(note._id))
     ) &&
-    (widgets.gmLayouts ?? []).every((layout) =>
-      layout.placements.every((placement) => {
-        const parent = noteById.get(placement.widgetId ?? placement.noteId)
-        return (
-          parent &&
-          parent.deletedAt === undefined &&
-          parent.screenId === layout.screenId &&
-          parent.ownerId === layout.ownerId &&
-          parent.projectId === layout.projectId
-        )
-      })
+    (widgets.gmLayouts ?? []).every(
+      (layout) =>
+        layout.formatVersion === 2 &&
+        layout.placements.every((placement) => {
+          const parent = noteById.get(placement.widgetId)
+          return (
+            parent &&
+            parent.deletedAt === undefined &&
+            parent.screenId === layout.screenId &&
+            parent.ownerId === layout.ownerId &&
+            parent.projectId === layout.projectId
+          )
+        })
     )
   const validHistory = (widgets.gmEditorHistory ?? []).every((revision) => {
     const subject =
@@ -145,11 +148,12 @@ export async function archiveInventory(path) {
         ? layoutById.get(revision.subjectId)
         : noteById.get(revision.subjectId)
     return (
+      revision.formatVersion === 2 &&
       subject &&
       (!['table', 'clock', 'initiative'].includes(revision.snapshot.kind) ||
         gmWidget.safeParse(revision.snapshot).success) &&
       (revision.snapshot.kind === 'layout' ||
-        revision.snapshot.kind === (subject.kind ?? 'note')) &&
+        revision.snapshot.kind === subject.kind) &&
       subject.ownerId === revision.ownerId &&
       subject.projectId === revision.projectId &&
       subject.screenId === revision.screenId

@@ -16,16 +16,11 @@ import {
 } from './lib/gmEditing'
 import type { Widget } from './lib/gmFormats'
 import {
-  normalizeWidget,
-  normalizeLayout,
-  normalizePlacement,
   noteBody,
   noteValue,
   writeContent,
-  requireMigratedScreen,
   widgetBudget,
   layoutBudget,
-  convertNote,
 } from './lib/gmFormats'
 import {
   widgetValidator,
@@ -49,13 +44,12 @@ async function writePlacements(
   placements: Doc<'gmLayouts'>['placements']
 ) {
   await recordHistory(ctx, layout, { kind: 'layout', ...layoutState(layout) })
-  const normalized = placements.map(normalizePlacement)
-  const order = [...normalized].sort((a, b) => a.layer - b.layer)
+  const order = [...placements].sort((a, b) => a.layer - b.layer)
   const ranks = new Map(order.map((p, index) => [p.widgetId, index]))
-  layoutBudget(normalizeLayout({ ...layout, placements: normalized }))
+  layoutBudget({ ...layout, placements })
   await ctx.db.patch('gmLayouts', layout._id, {
     formatVersion: 2,
-    placements: normalized.map((p) => ({
+    placements: placements.map((p) => ({
       ...p,
       layer: ranks.get(p.widgetId) ?? 0,
     })),
@@ -77,7 +71,6 @@ export const changeNotes = mutation({
     const user = await requireUser(ctx)
     const layout = await ownedLayout(ctx, args.layoutId, user._id)
     const screen = await ownedScreen(ctx, layout.screenId, user._id)
-    await requireMigratedScreen(ctx, screen._id)
     if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
     if (layout.kind !== 'digital')
       throw new ConvexError({ code: 'INVALID_INPUT' })
@@ -122,7 +115,7 @@ export const changeNotes = mutation({
       .query('gmLayouts')
       .withIndex('by_screen', (q) => q.eq('screenId', screen._id))
       .take(GM_MAX_LAYOUTS)
-    const profiles = layouts.map(normalizeLayout)
+    const profiles = layouts
     const created = new Map<string, Doc<'gmNotes'>['_id']>()
     for (const note of sources) {
       if (args.operation === 'duplicate') {
@@ -131,17 +124,17 @@ export const changeNotes = mutation({
           projectId: note.projectId,
           screenId: note.screenId,
           formatVersion: 2,
-          ...widgetDefinition(normalizeWidget(note)),
+          ...widgetDefinition(note),
           version: 0,
           updatedAt: Date.now(),
         })
         const copy = await ctx.db.get('gmNotes', id)
         if (!copy) throw new ConvexError({ code: 'NOT_FOUND' })
-        if (normalizeWidget(note).kind === 'note') {
+        if (note.kind === 'note') {
           const content = await noteValue(ctx, note)
           await writeContent(
             ctx,
-            widgetBudget(normalizeWidget(copy)),
+            widgetBudget(copy),
             content.body,
             content.bodyFormat
           )
@@ -157,7 +150,7 @@ export const changeNotes = mutation({
             }))
         )
         widgetBudget({
-          ...normalizeWidget(note),
+          ...note,
           deletedAt: Date.now(),
           trashPlacements,
         })
@@ -238,11 +231,11 @@ export const listTrash = query({
       ...result,
       page: await Promise.all(
         result.page.map(async (note) => ({
-          ...normalizeWidget(note),
+          ...note,
           preview:
-            normalizeWidget(note).kind === 'note'
+            note.kind === 'note'
               ? (await noteBody(ctx, note)).slice(0, 240)
-              : widgetPreview(normalizeWidget(note)),
+              : widgetPreview(note),
         }))
       ),
     }
@@ -258,10 +251,8 @@ export const restoreNote = mutation({
     if (!note || note.ownerId !== user._id || note.deletedAt === undefined)
       throw new ConvexError({ code: 'NOT_FOUND' })
     const screen = await ownedScreen(ctx, note.screenId, user._id)
-    await requireMigratedScreen(ctx, screen._id)
     if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
     assertVersion(note.version, expectedVersion)
-    await convertNote(ctx, note)
     const active = await ctx.db
       .query('gmNotes')
       .withIndex('by_screen_live', (q) =>
@@ -275,7 +266,7 @@ export const restoreNote = mutation({
       .query('gmLayouts')
       .withIndex('by_screen', (q) => q.eq('screenId', note.screenId))
       .take(GM_MAX_LAYOUTS)
-    const profiles = layouts.map(normalizeLayout)
+    const profiles = layouts
     for (const layout of profiles) {
       const saved = note.trashPlacements?.find((p) => p.layoutId === layout._id)
       const factor = layout.unit === 'mm' ? 0.2 : 1
@@ -319,7 +310,6 @@ export const purgeNote = mutation({
     if (!note || note.ownerId !== user._id || note.deletedAt === undefined)
       throw new ConvexError({ code: 'NOT_FOUND' })
     const screen = await ownedScreen(ctx, note.screenId, user._id)
-    await requireMigratedScreen(ctx, screen._id)
     if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
     assertVersion(note.version, expectedVersion)
     await limitUserOperation(ctx, 'resourceWrite', user._id)
@@ -357,7 +347,7 @@ export const getScreenWidgetMetadata = query({
     return notes.map((note) => {
       if (note.ownerId !== user._id || note.projectId !== screen.projectId)
         throw new ConvexError({ code: 'NOT_FOUND' })
-      return widgetBudget(normalizeWidget(note))
+      return widgetBudget(note)
     })
   },
 })
@@ -392,7 +382,7 @@ export const listScreenWidgets = query({
         ...paginationOpts,
         numItems: Math.min(10, Math.max(1, paginationOpts.numItems)),
       })
-    return { ...result, page: result.page.map(normalizeWidget) }
+    return result
   },
 })
 export const getNoteContent = query({
@@ -434,7 +424,7 @@ export const updateWidget = mutation({
     const user = await requireUser(ctx)
     const widget = await ownedNote(ctx, id, user._id)
     if (input.kind === 'note') {
-      if (normalizeWidget(widget).kind !== 'note')
+      if (widget.kind !== 'note')
         throw new ConvexError({ code: 'INVALID_INPUT' })
       return saveNote(
         ctx,
@@ -457,7 +447,7 @@ export const setChecklistItem = mutation({
   returns: v.number(),
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const widget = normalizeWidget(await ownedNote(ctx, args.id, user._id))
+    const widget = await ownedNote(ctx, args.id, user._id)
     if (
       widget.kind !== 'checklist' ||
       !widget.config.items.some((item) => item.id === args.itemId)
@@ -478,7 +468,7 @@ export const setCounterValue = mutation({
   returns: v.number(),
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const widget = normalizeWidget(await ownedNote(ctx, args.id, user._id))
+    const widget = await ownedNote(ctx, args.id, user._id)
     if (widget.kind !== 'counter' || widget.config.source.type !== 'local')
       throw new ConvexError({ code: 'INVALID_INPUT' })
     return saveWidget(ctx, widget, args.expectedVersion, {
@@ -503,7 +493,7 @@ export const controlClock = mutation({
   returns: v.object({ version: v.number(), serverNow: v.number() }),
   handler: async (ctx, { id, expectedVersion, action }) => {
     const user = await requireUser(ctx)
-    const widget = normalizeWidget(await ownedNote(ctx, id, user._id))
+    const widget = await ownedNote(ctx, id, user._id)
     if (widget.kind !== 'clock')
       throw new ConvexError({ code: 'INVALID_INPUT' })
     const serverNow = Date.now()
@@ -583,7 +573,7 @@ export const getSheetPreview = query({
   ),
   handler: async (ctx, { widgetId }) => {
     const user = await requireUser(ctx)
-    const widget = normalizeWidget(await ownedNote(ctx, widgetId, user._id))
+    const widget = await ownedNote(ctx, widgetId, user._id)
     if (widget.kind !== 'sheet')
       throw new ConvexError({ code: 'INVALID_INPUT' })
     const sheet = widget.config.sheetId

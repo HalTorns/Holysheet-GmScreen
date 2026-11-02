@@ -5,14 +5,7 @@ import type { gmWidgetKinds } from '../../shared/gm'
 import type { Id } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { ownedScreen } from './gmAccess'
-import {
-  normalizeLayout,
-  normalizeWidget,
-  writeContent,
-  requireMigratedScreen,
-  layoutBudget,
-  widgetBudget,
-} from './gmFormats'
+import { writeContent, layoutBudget, widgetBudget } from './gmFormats'
 import { limitUserOperation } from './rateLimits'
 
 export async function createNote(
@@ -33,7 +26,6 @@ export async function createNote(
     )
       throw new ConvexError({ code: 'NOT_FOUND' })
   }
-  await requireMigratedScreen(ctx, screenId)
   if (screen.layoutLocked) throw new ConvexError({ code: 'LAYOUT_LOCKED' })
   const notes = await ctx.db
     .query('gmNotes')
@@ -62,10 +54,10 @@ export async function createNote(
     .take(GM_MAX_LAYOUTS)
   const note = await ctx.db.get('gmNotes', id)
   if (!note) throw new ConvexError({ code: 'NOT_FOUND' })
-  widgetBudget(normalizeWidget(note))
-  if (kind === 'note') await writeContent(ctx, normalizeWidget(note), '')
+  widgetBudget(note)
+  if (kind === 'note') await writeContent(ctx, note, '')
   for (const rawLayout of layouts) {
-    const layout = normalizeLayout(rawLayout)
+    const layout = rawLayout
     const factor = layout.unit === 'mm' ? 0.2 : 1
     const width = Math.min(400 * factor, layout.width - 24 * factor)
     const height = Math.min(240 * factor, layout.height - 24 * factor)

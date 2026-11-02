@@ -73,20 +73,19 @@ it('versions the complete body/format pair through both public writers and resto
   ).toMatchObject({ bodyFormat: 'markdown-v1', version: 4 })
 })
 
-it('normalizes V1 and absent V2 formats and restores old snapshots without inheriting rich format', async () => {
+it('normalizes absent V2 body formats and restores old snapshots without inheriting rich format', async () => {
   const { backend, alice, id } = await setup()
   await backend.run(async (ctx) => {
     const note = await ctx.db.get('gmNotes', id)
     if (!note) throw new Error('Missing note')
-    const { formatVersion: _format, ...common } = note
-    if (!('kind' in common)) throw new Error('Missing V2')
-    const { kind: _kind, config: _config, state: _state, ...legacy } = common
-    await ctx.db.replace('gmNotes', id, { ...legacy, body: '# **littéral**' })
     const content = await ctx.db
       .query('gmWidgetContents')
       .withIndex('by_widget', (q) => q.eq('widgetId', id))
       .unique()
-    if (content) await ctx.db.delete('gmWidgetContents', content._id)
+    if (!content) throw new Error('Missing content')
+    await ctx.db.patch('gmWidgetContents', content._id, {
+      body: '# **littéral**',
+    })
     await ctx.db.insert('gmEditorHistory', {
       ownerId: note.ownerId,
       projectId: note.projectId,
@@ -94,7 +93,8 @@ it('normalizes V1 and absent V2 formats and restores old snapshots without inher
       subjectId: id,
       version: 0,
       updatedAt: 1,
-      snapshot: { kind: 'note', body: '# ancien' },
+      formatVersion: 2,
+      snapshot: { kind: 'note', config: {}, state: {}, body: '# ancien' },
     })
   })
   expect(

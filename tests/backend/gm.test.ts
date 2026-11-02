@@ -225,15 +225,28 @@ describe('Holysheet personal workspace', () => {
       title: 'À conserver',
     })
     await backend.run(async (ctx) => {
-      for (let index = 0; index < 101; index++)
-        await ctx.db.insert('gmNotes', {
+      for (let index = 0; index < 101; index++) {
+        const widgetId = await ctx.db.insert('gmNotes', {
           ownerId: alice.userId,
           projectId,
           screenId,
-          body: 'À supprimer',
+          formatVersion: 2,
+          kind: 'note',
+          config: {},
+          state: {},
           version: 0,
           updatedAt: Date.now(),
         })
+        await ctx.db.insert('gmWidgetContents', {
+          ownerId: alice.userId,
+          projectId,
+          screenId,
+          widgetId,
+          formatVersion: 2,
+          body: 'À supprimer',
+          updatedAt: Date.now(),
+        })
+      }
     })
     await backend.mutation(internal.cleanup.deletedAccount, {
       userId: alice.userId,

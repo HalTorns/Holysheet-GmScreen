@@ -54,11 +54,6 @@ const noteCommon = {
     v.array(v.object({ layoutId: v.id('gmLayouts'), ...geometryFields }))
   ),
 }
-const noteV1 = {
-  ...noteCommon,
-  body: v.string(),
-  formatVersion: v.optional(v.literal(1)),
-}
 const noteV2 = {
   ...noteCommon,
   formatVersion: v.literal(2),
@@ -191,7 +186,6 @@ export const widgetUpdateValidator = v.union(
 )
 const v2Common = { ...noteCommon, formatVersion: v.literal(2) }
 export const noteFields = v.union(
-  v.object(noteV1),
   v.object(noteV2),
   v.object({ ...v2Common, ...checklistShape }),
   v.object({ ...v2Common, ...counterShape }),
@@ -212,10 +206,7 @@ export const widgetValidator = v.union(
   v.object({ ...noteSystem, ...v2Common, ...clockShape }),
   v.object({ ...noteSystem, ...v2Common, ...initiativeShape })
 )
-const noteValidator = v.union(
-  v.object({ ...noteSystem, ...noteV1 }),
-  widgetValidator
-)
+const noteValidator = widgetValidator
 export const trashWidgetValidator = v.union(
   v.object({ ...noteSystem, ...noteV2, preview: v.string() }),
   v.object({
@@ -255,10 +246,6 @@ const widgetContentValidator = v.object({
   _creationTime: v.number(),
   ...widgetContentFields,
 })
-const legacyPlacementValidator = v.object({
-  noteId: v.id('gmNotes'),
-  ...geometryFields,
-})
 const placementValidator = v.object({
   widgetId: v.id('gmNotes'),
   ...geometryFields,
@@ -267,7 +254,7 @@ export const digitalLayoutFields = {
   name: v.string(),
   width: v.number(),
   height: v.number(),
-  placements: v.array(v.union(legacyPlacementValidator, placementValidator)),
+  placements: v.array(placementValidator),
 }
 const digitalV2 = {
   ...digitalLayoutFields,
@@ -289,18 +276,6 @@ const historyCommon = {
   subjectId: v.union(v.id('gmNotes'), v.id('gmLayouts')),
   version: v.number(),
 }
-const digitalV1 = {
-  ...digitalLayoutFields,
-  placements: v.array(legacyPlacementValidator),
-}
-const historyV1 = {
-  ...historyCommon,
-  formatVersion: v.optional(v.literal(1)),
-  snapshot: v.union(
-    v.object(noteSnapshot),
-    v.object({ kind: v.literal('layout'), ...digitalV1 })
-  ),
-}
 const historyV2 = {
   ...historyCommon,
   formatVersion: v.literal(2),
@@ -316,15 +291,12 @@ const historyV2 = {
     v.object({ kind: v.literal('layout'), ...digitalV2 })
   ),
 }
-export const historyFields = v.union(v.object(historyV1), v.object(historyV2))
+export const historyFields = v.object(historyV2)
 const historySystem = {
   _id: v.id('gmEditorHistory'),
   _creationTime: v.number(),
 }
-export const historyValidator = v.union(
-  v.object({ ...historySystem, ...historyV1 }),
-  v.object({ ...historySystem, ...historyV2 })
-)
+export const historyValidator = v.object({ ...historySystem, ...historyV2 })
 const layoutCommon = {
   ...owned,
   projectId: v.id('gmProjects'),
@@ -333,22 +305,14 @@ const layoutCommon = {
   unit: v.union(v.literal('px'), v.literal('mm')),
   version: v.number(),
 }
-const layoutV1 = {
-  ...layoutCommon,
-  ...digitalV1,
-  formatVersion: v.optional(v.literal(1)),
-}
 const layoutV2 = { ...layoutCommon, ...digitalV2, formatVersion: v.literal(2) }
-export const layoutFields = v.union(v.object(layoutV1), v.object(layoutV2))
+export const layoutFields = v.object(layoutV2)
 const layoutSystem = { _id: v.id('gmLayouts'), _creationTime: v.number() }
 export const normalizedLayoutValidator = v.object({
   ...layoutSystem,
   ...layoutV2,
 })
-const layoutValidator = v.union(
-  v.object({ ...layoutSystem, ...layoutV1 }),
-  v.object({ ...layoutSystem, ...layoutV2 })
-)
+const layoutValidator = normalizedLayoutValidator
 export const projectValidator = v.object({
   _id: v.id('gmProjects'),
   _creationTime: v.number(),

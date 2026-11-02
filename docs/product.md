@@ -68,3 +68,7 @@ L’impersonation est retirée de l’interface et sa création refusée ; les s
 La CI prévoit restauration, contrats des organisations historiques et modules auth via leurs lanceurs protégés. Les preuves E2E et CI restent à exécuter : aucun Docker disponible dans l’environnement de construction C2. Voir le rapport de livraison pour les vérifications locales réellement exécutées.
 
 Preuves locales C2 : `pnpm check` réussi (246 tests backend/unitaires et 19 tests navigateur, build inclus), audits Convex et production high à 0, `git diff --check` sans erreur. Les trois exceptions Better Auth approuvées en T0 restent inchangées.
+
+## F3c-2 — contraction des widgets
+
+Le code ne lit et n'écrit plus que V2 (`formatVersion: 2` obligatoire) pour widgets, dispositions et historique. Les outils et protections de transition sont retirés après inventaire de production propre ; les états du composant migrations sont conservés. La lecture complète des métadonnées reste en place et `listScreenWidgets` conserve son contrat paginé. Restaurer une ancienne archive exige A (`f4bf0c9`), B, puis C, selon [le runbook](decisions/migrations.md). AUD-28 conserve son suivi CI distinct ; cette tranche ne prouve pas sa résolution ni un déploiement distant.

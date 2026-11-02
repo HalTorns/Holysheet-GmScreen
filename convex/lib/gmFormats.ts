@@ -8,53 +8,11 @@ import {
   GM_WIDGET_BYTES,
   gmWidget,
 } from '../../shared/gm'
-import type { Doc, Id } from '../_generated/dataModel'
+import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 
-type Placement = Doc<'gmLayouts'>['placements'][number]
-export function normalizePlacement(placement: Placement) {
-  if ('widgetId' in placement) return placement
-  const { noteId, ...geometry } = placement
-  return { ...geometry, widgetId: noteId }
-}
-export function normalizeLayout(
-  layout: Omit<Doc<'gmLayouts'>, 'placements'> & { placements: Placement[] }
-) {
-  return {
-    ...layout,
-    formatVersion: 2 as const,
-    placements: layout.placements.map(normalizePlacement),
-  }
-}
-export type Widget = ReturnType<typeof normalizeWidget>
-export type Layout = ReturnType<typeof normalizeLayout>
-export function normalizeWidget(note: Doc<'gmNotes'>) {
-  if (note.formatVersion === 2) return note
-  const { body: _body, formatVersion: _formatVersion, ...metadata } = note
-  return {
-    ...metadata,
-    formatVersion: 2 as const,
-    kind: 'note' as const,
-    config: {},
-    state: {},
-  }
-}
-export function normalizeSnapshot(
-  snapshot: Doc<'gmEditorHistory'>['snapshot']
-) {
-  if (snapshot.kind !== 'layout' && snapshot.kind !== 'note') return snapshot
-  if (snapshot.kind === 'note')
-    return {
-      ...snapshot,
-      bodyFormat: snapshot.bodyFormat ?? 'plain',
-      config: {},
-      state: {},
-    }
-  return {
-    ...snapshot,
-    placements: snapshot.placements.map(normalizePlacement),
-  }
-}
+export type Widget = Doc<'gmNotes'>
+export type Layout = Doc<'gmLayouts'>
 // Include system fields and a conservative reserve for IDs allocated on insert.
 export function assertBudget(value: Record<string, Value>, limit: number) {
   if (getDocumentSize(value) + 128 > limit)
@@ -85,7 +43,6 @@ export async function noteValue(
   ctx: QueryCtx,
   note: Doc<'gmNotes'>
 ): Promise<NoteValue> {
-  if (note.formatVersion !== 2) return { body: note.body, bodyFormat: 'plain' }
   if (note.kind !== 'note') throw new ConvexError({ code: 'NOT_FOUND' })
   const content = await ctx.db
     .query('gmWidgetContents')
@@ -130,32 +87,4 @@ export async function writeContent(
     throw new ConvexError({ code: 'CONTENT_INTEGRITY' })
   if (content) await ctx.db.replace('gmWidgetContents', content._id, value)
   else await ctx.db.insert('gmWidgetContents', value)
-}
-export async function convertNote(ctx: MutationCtx, note: Doc<'gmNotes'>) {
-  if (note.formatVersion === 2) return note
-  const normalized = widgetBudget(normalizeWidget(note))
-  await writeContent(ctx, normalized, note.body)
-  const { _id, _creationTime: _time, ...value } = normalized
-  await ctx.db.replace('gmNotes', _id, value)
-  return normalized
-}
-export async function requireMigratedScreen(
-  ctx: QueryCtx,
-  screenId: Id<'gmScreens'>
-) {
-  const legacy = await ctx.db
-    .query('gmNotes')
-    .withIndex('by_screen_format', (q) =>
-      q.eq('screenId', screenId).eq('formatVersion', undefined)
-    )
-    .first()
-  const explicitLegacy =
-    legacy ??
-    (await ctx.db
-      .query('gmNotes')
-      .withIndex('by_screen_format', (q) =>
-        q.eq('screenId', screenId).eq('formatVersion', 1)
-      )
-      .first())
-  if (explicitLegacy) throw new ConvexError({ code: 'MIGRATION_REQUIRED' })
 }

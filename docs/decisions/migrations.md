@@ -55,42 +55,18 @@ Une interruption conserve le code A, qui lit les deux formats. Les opérations s
 
 Les tests backend prouvent le cycle de vie et les tailles de documents, pas les octets réellement débités par le service. La copie maximale et le nettoyage lourd sont préparés dans `tests/e2e/widget-budgets.spec.ts` sur backend réel jetable, avec quotas actifs, compte dédié et nettoyage `finally`. Leur exécution et la restauration réelle sont réservées à la CI faute de Docker local ; une réussite Vitest ne vaut pas réussite de ces preuves. Les rapports de restauration ajoutent seulement des agrégats de relations widgets/payloads, sans corps ni identifiants, à la comparaison canonique existante.
 
-## F3c-1 — inventaire avant contraction (2 novembre 2026)
+## F3c-2 — contraction C (2 novembre 2026)
 
-Livraison additive : A/B, unions V1/V2, adaptateurs, `MIGRATION_REQUIRED`, index temporaire et passes B restent en place. La production a terminé B ; F3c-2 ne sera publiée qu'après inventaire propre. Sur la cible explicitement choisie selon [deployment](../deployment.md), première page (lecture seule) :
+La contraction est implémentée : widgets, dispositions et historique exigent `formatVersion: 2`. Les adaptateurs, conversions à la première écriture, garde de maintenance, index temporaire, passes B et inventaire transitoire sont retirés. Le composant `migrations` reste enregistré : ses tables d'état sont conservées. L'inventaire de production propre est consigné dans [le journal](../PLAN-REVIEW-LOG.md). Au déploiement, Convex valide les documents existants contre le schéma et refuse le push si une forme V1 subsiste ; c'est la seconde barrière après inventaire.
 
-```sh
-pnpm exec convex run gmWidgetMigrations:inventory '{"table":"gmNotes","cursor":null,"offset":0}'
-```
+### Restaurer une archive antérieure à C
 
-Pour une page suivante, garder `table` et recopier **ensemble** `continueCursor` dans `cursor` et `offset`, jusqu'à `isDone: true`. Recommencer pour `gmWidgetContents`, `gmLayouts`, `gmEditorHistory`. Additionner les `counters` de toutes les pages, par table ; ne pas additionner les IDs. Le script fait exactement cette boucle, conserve au plus trois IDs d'anomalies par table et imprime uniquement l'agrégat :
+Ne pas importer directement une archive pré-contraction dans C. Sur une cible isolée explicitement choisie selon [deployment](../deployment.md), sans écritures concurrentes :
 
-```sh
-node scripts/widget-inventory.mjs
-# Cible Convex Cloud de production choisie explicitement :
-node scripts/widget-inventory.mjs --prod
-```
+1. Déployer **A : commit `f4bf0c9`**, dernier état avant F3c-2, frontend et backend ensemble. Il contient le schéma élargi, les lecteurs V1/V2, le runner B et l'inventaire F3c-1. Reprendre le lockfile et les instructions de cette révision, ainsi que la configuration privée de l'archive.
+2. Importer l'archive avec A suivant [backup-restore](../backup-restore.md). Réconcilier les nettoyages et tâches planifiées ; l'import ne les rejoue pas.
+3. Exécuter **B depuis ce même commit** : `gmWidgetMigrations:run` avec `{}` sur la cible explicite. Vérifier `lib:getStatus` du composant : les trois passes `notes`, `layouts`, `history` doivent être terminées. Si l'archive conserve un état « terminé » alors qu'elle contient V1, utiliser le runner B avec `reset` pour relancer les passes après diagnostic ; ne pas se fier au seul état restauré.
+4. Toujours sous A, lancer `scripts/widget-inventory.mjs` jusqu'au parcours complet des quatre tables : tous les compteurs bloquants doivent être nuls. Vérifier relations, export et lecture fonctionnelle, puis sauvegarder l'état V2.
+5. Redéployer **C : F3c-2**, frontend et backend ensemble, puis recharger les vues et vérifier les données. Ne jamais revenir à du code antérieur à A. Le retour arrière applicatif vers `f4bf0c9` lit déjà V2 et n'annule pas les transformations de B.
 
-Pour une instance autohébergée, utiliser son environnement opérateur dédié ; ne jamais mettre une clé dans la ligne de commande. Les options de cible de `convex run` sont transmises telles quelles. Le script sort à 1 si un compteur bloquant est positif, ou si un appel échoue ; 0 seulement après les quatre parcours complets sans anomalie bloquante. Exécuter pendant une période sans écritures (notamment purge/migration) : ces queries successives ne constituent pas un snapshot atomique. Après toute correction ou activité concurrente, recommencer depuis les curseurs nuls.
-
-Contrat des compteurs :
-
-| Compteur | Sens |
-| --- | --- |
-| `scanned` | Documents inspectés dans cette table (une fois, même avec plusieurs sous-pages) ; informatif |
-| `v1` | Documents à version absente ou différente de 2 ; bloquant |
-| `duplicatePayloads` | Payloads excédentaires par widget (N − 1, même entre pages) ; bloquant |
-| `orphanPayloads` | Payloads sans widget ; bloquant |
-| `notesWithoutPayload` | Notes V2 sans payload ; bloquant. Une note V1 porte encore son corps et est déjà comptée par `v1` |
-| `payloadKindMismatch` | Payload rattaché à un widget autre qu'une note V2 ; bloquant |
-| `payloadOwnerMismatch`, `payloadProjectMismatch`, `payloadScreenMismatch` | Correspondances payload/widget incompatibles ; bloquants |
-| `placementAbsent` | Placement courant vers un widget absent ; bloquant |
-| `placementOwnerMismatch`, `placementProjectMismatch`, `placementScreenMismatch` | Correspondances placement courant/widget incompatibles ; bloquants |
-| `historySubjectAbsent`, `historySubjectOwnerMismatch` | Sujet d'historique de widget absent ou d'un autre propriétaire ; bloquants |
-| `oldLayoutPurgedReferences` | Références absentes dans les anciens snapshots de disposition ; **informatif seulement**, légitime après purge |
-
-Un appel lit un document principal, puis au plus cinq widgets référencés ; les placements sont sous-paginés par `offset`, en conservant le curseur précédent tant que le document n'est pas terminé. Les recherches de payload utilisent `by_widget.first()`, jamais une collecte non bornée. Cela borne les lectures même avec des notes V1 de 200 Kio. La réponse ne contient ni corps, ni titre, ni snapshot, seulement compteurs, curseurs et au plus trois IDs. Les correspondances suivent `scripts/snapshots.mjs` ; son algorithme sur des Maps d'archive complète ne se partage pas avec une query transactionnelle paginée. Les anciens snapshots ne sont jamais réécrits.
-
-Après inventaire propre seulement, F3c-2 pourra contracter. La validation de tous les documents par Convex au déploiement reste la seconde barrière, pas un remplacement de cet inventaire. Retour arrière : redéployer F3c-1, frontend et backend ensemble, puis recharger les vues ; jamais du code antérieur à A.
-
-Context7 indisponible : API vérifiées dans Convex 1.46.0 installé (`server/pagination.ts`, `react/client.ts`, `cli/lib/run.ts`) et les [docs officielles de pagination](https://docs.convex.dev/database/pagination) et [React](https://docs.convex.dev/client/react/overview), non versionnées. Aucune mise à jour de dépendance.
+Le runner, l'inventaire et leurs tests n'ont de sens que pendant la transition ; pour restaurer une ancienne archive, ils restent disponibles dans `f4bf0c9`, pas dans le code contracté. L'exercice réel de restauration et le déploiement distant restent opérateur/CI (Docker absent localement).
