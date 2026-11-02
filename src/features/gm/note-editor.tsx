@@ -1,16 +1,13 @@
 import { api } from '@convex/_generated/api'
 import type { Widget } from '@convex/lib/gmFormats'
 import type { NoteValue } from '@shared/gm'
-import { useMutation, useQuery } from 'convex/react'
+import { CatchBoundary } from '@tanstack/react-router'
+import { useMutation } from 'convex/react'
 import { useCallback, useEffect, useMemo } from 'react'
 
 import { DraftGuard } from '@/components/draft-guard'
-import {
-  TransientRetryBoundary,
-  useRecoveredWhen,
-} from '@/components/transient-retry'
 import { Button } from '@/components/ui/button'
-import { useRetained } from '@/hooks/use-retained'
+import { useResilientQuery } from '@/hooks/use-resilient-query'
 
 import { RevisionHistory } from './revision-history'
 import { NoteInput } from './rich-text/input'
@@ -142,19 +139,18 @@ function NoteContent(props: {
   index: number
   onDirtyChange: (id: string, dirty: boolean) => void
 }) {
-  const content = useRetained(
-    useQuery(api.gmWidgets.getNoteContent, { id: props.note._id })
-  )
-  useRecoveredWhen(content)
+  const content = useResilientQuery(api.gmWidgets.getNoteContent, {
+    id: props.note._id,
+  })
   if (!content) return <p role="status">Chargement de la note…</p>
   return <LoadedNoteEditor {...props} note={{ ...props.note, ...content }} />
 }
 
-function NoteContentUnavailable({ retry }: { retry: () => void }) {
+function NoteContentError({ reset }: { reset?: () => void }) {
   return (
     <div role="alert">
       <p>Le contenu de cette note est indisponible.</p>
-      <Button size="sm" variant="outline" onClick={retry}>
+      <Button size="sm" variant="outline" onClick={reset}>
         Réessayer le contenu
       </Button>
     </div>
@@ -162,12 +158,11 @@ function NoteContentUnavailable({ retry }: { retry: () => void }) {
 }
 export function NoteEditor(props: Parameters<typeof NoteContent>[0]) {
   return (
-    <TransientRetryBoundary
-      resetKey={props.note._id}
-      loading={<p role="status">Chargement de la note…</p>}
-      unavailable={NoteContentUnavailable}
+    <CatchBoundary
+      getResetKey={() => props.note._id}
+      errorComponent={NoteContentError}
     >
       <NoteContent {...props} />
-    </TransientRetryBoundary>
+    </CatchBoundary>
   )
 }
