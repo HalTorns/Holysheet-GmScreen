@@ -2,6 +2,7 @@ import { ConvexError } from 'convex/values'
 
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
+import { validateCustomReference } from './customWidgets'
 import { ownedScreen } from './gmAccess'
 import { assertVersion, recordHistory } from './gmEditing'
 import { validatedEmbedConfig } from './gmEmbed'
@@ -10,6 +11,7 @@ import type { Widget } from './gmFormats'
 import { limitUserOperation } from './rateLimits'
 
 type Definition =
+  | Pick<Extract<Widget, { kind: 'custom' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'embed' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'image' }>, 'kind' | 'config' | 'state'>
   | Pick<Extract<Widget, { kind: 'pdf' }>, 'kind' | 'config' | 'state'>
@@ -59,7 +61,9 @@ export async function saveWidget(
     if (!sameState) throw new ConvexError({ code: 'INVALID_INPUT' })
   }
   let definition: Definition
-  if (input.kind === 'embed')
+  if (input.kind === 'custom')
+    definition = { kind: input.kind, config: input.config, state: input.state }
+  else if (input.kind === 'embed')
     definition = {
       kind: input.kind,
       config: validatedEmbedConfig(input.config),
@@ -166,6 +170,17 @@ export async function saveWidget(
     )
       throw new ConvexError({ code: 'NOT_FOUND' })
   }
+  if (
+    definition.kind === 'custom' &&
+    definition.config.definitionId !==
+      ('definitionId' in widget.config ? widget.config.definitionId : undefined)
+  )
+    await validateCustomReference(
+      ctx,
+      definition.config.definitionId,
+      widget.projectId,
+      widget.ownerId
+    )
   const updated = widgetBudget({
     ...widget,
     ...definition,
@@ -181,7 +196,13 @@ export async function saveWidget(
   )
     return widget.version
   await limitUserOperation(ctx, 'gmEditorWrite', widget.ownerId)
-  if (widget.kind === 'embed')
+  if (widget.kind === 'custom')
+    await recordHistory(ctx, widget, {
+      kind: widget.kind,
+      config: widget.config,
+      state: widget.state,
+    })
+  else if (widget.kind === 'embed')
     await recordHistory(ctx, widget, {
       kind: widget.kind,
       config: widget.config,

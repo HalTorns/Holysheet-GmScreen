@@ -383,6 +383,26 @@ Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/unitaires **56/56**, naviga
 - Round 2 : REVISE, SEC-06 : sortie réseau par WebRTC. Corrigé par `webrtc 'block'`, la suppression des constructeurs RTC et une preuve par serveur STUN local ; risque résiduel documenté.
 - Round 3 : **APPROVED** sur `docs/PLAN-F8.md` (SHA256 `a879810917b26508ac3a253e7446b0c5115592fa33675cf5453ab7304eef7019`).
 
+### F8 — build Codex, 2 novembre 2026
+
+Implémenté sur `codex/f8-custom` : définitions `gmCustomWidgets`, instances `custom` avec référence obligatoire, bibliothèque/éditeur HTML-CSS-JS/TS et aperçu interactif, Sucrase 3.35.1 chargé à la demande, réglages, état local et sauvegardes regroupées/sérialisées sans historique sur quota dédié partitionné. Deux documents bruts sans hydratation, CSP calculées sur les bootstraps réellement servis, sélection finale des en-têtes limitée aux GET réussis des deux chemins exacts, port privé par génération, budgets et watchdog. Corbeille/purge, export/nettoyage, archives et fixtures de restauration non vides, rendu statique d’impression et ADR intégrés. Specs E2E ajoutées à la commande CI ; aucun commit, push, déploiement ou écriture GitHub.
+
+Preuves Node 26.12.0 / pnpm 11.8.0 : `pnpm check` **exit 0**, **321 tests** backend/unitaires/scripts et **34 tests navigateur**, types/lint/format/Knip/build réussis. Après durcissement de la référence obligatoire : types et lint ciblé réussis, **12/12** tests ciblés backend/protocole/documents/archives/export. Une passe antérieure avait rencontré le timeout de 5 s d’un setup lancé pendant deux suites concurrentes ; relance complète seule réussie, sans augmentation du timeout. `pnpm audit:convex` : **98 fonctions publiques / 0 hors inventaire**. `pnpm audit --prod --audit-level=high` : **exit 0**, trois exceptions Better Auth T0 conservées ; aucun nouveau chemin vulnérable Sucrase (3.35.1 remplace glob par tinyglobby). Playwright `--list` collecte **5 tests / 2 specs** custom/restauration.
+
+Sondes Chromium locales sans backend, sur les documents du serveur construit (relais/runner interceptés sous l’origine canonique pour ne pas utiliser le service déjà présent au port 3000) : HTTP 200 et hash des deux bootstraps conforme à leur CSP ; exécution du runner ; permissions effectives vides ; fetch refusé, zéro requête interdite et zéro paquet UDP STUN après tentative via `about:blank` et observation de plus de 5 s ; navigations location/lien/meta/data refusées par `frame-src`, chaque génération suspendue. Chromium signale `webrtc` comme directive inconnue : défense par suppression des constructeurs et sandbox/permissions indispensable, limite documentée. Une navigation bloquée devient parfois `chrome-error://chromewebdata/` ; les E2E utilisent donc une génération neuve par tentative et vérifient suspension et absence de requête, sans supposer la conservation de son URL. Sonde de boucle infinie : parent utilisable, mais aucune suspension du relais après 12 s ; comportement consigné, la spec exige l’alternative prévue au plan (Screen utilisable ou suspension).
+
+`git diff --check` : **exit 0**. Le test navigateur distinct du watchdog passe avec un cadre sans réponse (3/3 tests F8 navigateur).
+
+Écarts fonctionnels/architecture : aucun. Context7 indisponible ; types/README Sucrase installés et changelog officiel consultés. Les E2E authentifiés complets, attaques F7b/custom et restauration réelle restent à exécuter en CI faute de Docker local ; les sondes locales ne les remplacent pas. Limites CPU/processus et navigateurs ignorant `webrtc` consignées dans l’ADR.
+
+- **Inspection Claude** (build Codex F8) :
+  - en-têtes du relais et du runner appliqués seulement aux réponses 200 en GET sur les deux chemins exacts ;
+  - runner : `init` unique, avec la source égale à `parent`, l'origine de l'application et un seul port ; constructeurs RTC supprimés ;
+  - relais : n'écoute que `parent` et l'origine de l'application, et transfère le port au runner opaque ;
+  - le `frame-src` de l'application ajoute seulement `/sandbox/host`.
+
+  Limites déclarées par le builder : Chromium ignore la directive `webrtc`, donc la protection repose sur la suppression des constructeurs, et zéro paquet STUN a été observé localement ; une boucle infinie laisse le parent utilisable, mais la suspension n'est pas garantie.
+
 ### Chantier 3a — architecture d'interaction de l'éditeur, 3 novembre 2026
 
 Demande utilisateur : réduire la densité de boutons de l'éditeur de Screen grâce à des sous-menus (roue crantée). Le chantier 3 est découpé en 3a (interaction, sans changement serveur) et 3b (identité visuelle). Plan : `docs/PLAN-UX3a.md`. Revue par **Codex** (`gpt-6.1-sol`, medium), sans bac à sable, avec garde d'empreinte du checkout ; la tentative via le runner sandboxé a été BLOCKED par bwrap.

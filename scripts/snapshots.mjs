@@ -35,6 +35,8 @@ export function checksum(value) {
 export async function archiveInventory(path) {
   // Load application validation only after the caller has admitted its target.
   const { gmWidget } = await import('../shared/gm.ts')
+  const { customDefinition } =
+    await import('../shared/custom-widget-protocol.ts')
   const { detectFileMime } = await import('../shared/files.ts')
   const names = (await command('unzip', ['-Z1', path]))
     .split('\n')
@@ -66,6 +68,7 @@ export async function archiveInventory(path) {
       const tableName = name.slice(0, -'/documents.jsonl'.length)
       if (
         [
+          'gmCustomWidgets',
           'gmFiles',
           'gmFileUsage',
           'gmProjects',
@@ -132,6 +135,7 @@ export async function archiveInventory(path) {
               'image',
               'pdf',
               'embed',
+              'custom',
             ].includes(note.kind) &&
             gmWidget.safeParse({
               kind: note.kind,
@@ -162,9 +166,15 @@ export async function archiveInventory(path) {
     return (
       revision.formatVersion === 2 &&
       subject &&
-      (!['table', 'clock', 'initiative', 'image', 'pdf', 'embed'].includes(
-        revision.snapshot.kind
-      ) ||
+      (![
+        'table',
+        'clock',
+        'initiative',
+        'image',
+        'pdf',
+        'embed',
+        'custom',
+      ].includes(revision.snapshot.kind) ||
         gmWidget.safeParse(revision.snapshot).success) &&
       (revision.snapshot.kind === 'layout' ||
         revision.snapshot.kind === subject.kind) &&
@@ -296,6 +306,45 @@ export async function archiveInventory(path) {
     throw new Error(
       'Snapshot file relations, MIME, storage bytes or quota counters are invalid.'
     )
+  const customById = new Map(
+    (widgets.gmCustomWidgets ?? []).map((definition) => [
+      definition._id,
+      definition,
+    ])
+  )
+  const validCustom =
+    (widgets.gmCustomWidgets ?? []).every((definition) => {
+      const project = (widgets.gmProjects ?? []).find(
+        (entry) => entry._id === definition.projectId
+      )
+      const {
+        ownerId: _owner,
+        projectId: _project,
+        _id: _definitionId,
+        _creationTime: _created,
+        version: _version,
+        deletedAt: _deleted,
+        ...input
+      } = definition
+      return (
+        project?.ownerId === definition.ownerId &&
+        customDefinition.safeParse(input).success
+      )
+    }) &&
+    notes
+      .filter((note) => note.kind === 'custom')
+      .every((note) => {
+        if (!note.config.definitionId) return true
+        const definition = customById.get(note.config.definitionId)
+        // Purged definitions are deliberately allowed; retained references must share scope.
+        return (
+          !definition ||
+          (definition.ownerId === note.ownerId &&
+            definition.projectId === note.projectId)
+        )
+      })
+  if (!validCustom)
+    throw new Error('Snapshot custom widget relations are invalid.')
   const widgetRelations = {
     valid:
       valid &&
@@ -306,7 +355,10 @@ export async function archiveInventory(path) {
       validStock &&
       validFiles &&
       validFileWidgets &&
-      validUsage,
+      validUsage &&
+      validCustom,
+    customDefinitions: customById.size,
+    customInstances: notes.filter((note) => note.kind === 'custom').length,
     itemProfiles: profiles.length,
     stockLines: stocks.length,
     sharedStockItems: [...sellersPerItem.values()].filter((count) => count >= 2)

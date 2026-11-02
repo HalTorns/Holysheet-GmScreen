@@ -210,6 +210,25 @@ test('password registration, project, folder and Screen survive reload, synchron
       body: '**riche restauré**',
       bodyFormat: 'markdown-v1',
     })
+    const customDefinitionId = await client.mutation(api.customWidgets.save, {
+      projectId: restoreSource.screen.projectId,
+      expectedVersion: 0,
+      name: 'Compteur restauré F8',
+      html: '<output>Restauré</output>',
+      css: 'output { color: green; }',
+      source: 'widget.setState({count:1})',
+      compiled: 'widget.setState({count:1})',
+      language: 'js',
+    })
+    const customInstanceId = await client.mutation(api.customWidgets.place, {
+      screenId: richScreen,
+      definitionId: customDefinitionId,
+    })
+    await client.mutation(api.customWidgets.saveState, {
+      id: customInstanceId,
+      expectedVersion: 0,
+      state: { count: 7 },
+    })
     for (const name of ['pixel.png', 'two-pages.pdf'] as const) {
       const file = await uploadFixture(
         context,

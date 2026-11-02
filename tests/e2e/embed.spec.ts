@@ -43,7 +43,7 @@ test('embed: menu, canonical persistence, HTTPS frame, denied frame fallback and
     const response = await page.goto(`/app/screens/${screenId}`)
     await waitForHydration(page)
     expect(response?.headers()['content-security-policy']).toMatch(
-      /(?:^|;\s*)frame-src https:(?:;|$)/
+      /(?:^|;\s*)frame-src https: https?:\/\/[^;]+\/sandbox\/host(?:;|$)/
     )
     await page
       .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })

@@ -4,6 +4,7 @@ import { GM_MAX_NOTES, GM_MAX_LAYOUTS, initialWidget } from '../../shared/gm'
 import type { gmWidgetKinds } from '../../shared/gm'
 import type { Id } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
+import { validateCustomReference } from './customWidgets'
 import { ownedScreen } from './gmAccess'
 import { validatedEmbedConfig } from './gmEmbed'
 import type { Widget } from './gmFormats'
@@ -16,7 +17,8 @@ export async function createNote(
   ownerId: string,
   kind: (typeof gmWidgetKinds)[number] = 'note',
   sheetId?: Id<'gmSheets'>,
-  embedConfig?: Extract<Widget, { kind: 'embed' }>['config']
+  embedConfig?: Extract<Widget, { kind: 'embed' }>['config'],
+  definitionId?: Id<'gmCustomWidgets'>
 ) {
   const screen = await ownedScreen(ctx, screenId, ownerId)
   if (sheetId) {
@@ -40,13 +42,26 @@ export async function createNote(
     throw new ConvexError({ code: 'SCREEN_LIMIT' })
   await limitUserOperation(ctx, 'resourceWrite', ownerId)
   const initial = initialWidget(kind)
+  if (kind === 'custom' && !definitionId)
+    throw new ConvexError({ code: 'INVALID_INPUT' })
+  if (definitionId)
+    await validateCustomReference(ctx, definitionId, screen.projectId, ownerId)
   const definition =
-    initial.kind === 'embed'
+    initial.kind === 'custom'
       ? {
-          ...initial,
-          config: validatedEmbedConfig(embedConfig ?? initial.config),
+          kind: initial.kind,
+          config: {
+            definitionId: requiredCustomId(definitionId),
+            settings: {},
+          },
+          state: {},
         }
-      : initial
+      : initial.kind === 'embed'
+        ? {
+            ...initial,
+            config: validatedEmbedConfig(embedConfig ?? initial.config),
+          }
+        : initial
   if (definition.kind === 'sheet' && sheetId)
     Object.assign(definition.config, { sheetId })
   const id = await ctx.db.insert('gmNotes', {
@@ -93,5 +108,10 @@ export async function createNote(
       updatedAt: Date.now(),
     })
   }
+  return id
+}
+
+function requiredCustomId(id: Id<'gmCustomWidgets'> | undefined) {
+  if (!id) throw new ConvexError({ code: 'INVALID_INPUT' })
   return id
 }

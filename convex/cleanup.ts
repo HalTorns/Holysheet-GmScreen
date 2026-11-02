@@ -11,6 +11,7 @@ const BATCH_SIZE = 100
 // Notes and revisions can each hold 50,000 characters. Bound their joint read.
 function gmBatchSize(table: (typeof gmTables)[number]) {
   if (
+    table === 'gmCustomWidgets' ||
     table === 'gmNotes' ||
     table === 'gmWidgetContents' ||
     table === 'gmSheetContents'

@@ -65,6 +65,25 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
       title: 'Fichiers restaurés',
       format: 'digital',
     })
+    const customDefinitionId = await client.mutation(api.customWidgets.save, {
+      projectId,
+      expectedVersion: 0,
+      name: 'Compteur restauré F8',
+      html: '<output>Restauré</output>',
+      css: 'output { color: green; }',
+      source: 'widget.setState({count:1})',
+      compiled: 'widget.setState({count:1})',
+      language: 'js',
+    })
+    const customInstanceId = await client.mutation(api.customWidgets.place, {
+      screenId,
+      definitionId: customDefinitionId,
+    })
+    await client.mutation(api.customWidgets.saveState, {
+      id: customInstanceId,
+      expectedVersion: 0,
+      state: { count: 7 },
+    })
     for (const name of ['pixel.png', 'two-pages.pdf'] as const) {
       const file = await uploadFixture(page.context(), projectId, name)
       await client.mutation(api.gmFiles.placeFile, {
@@ -122,11 +141,12 @@ test('un export restaure réellement ressources et passkeys dans un backend isol
     expect(report.tables.resources).toBeGreaterThan(0)
     expect(report.tables.gmFiles).toBeGreaterThanOrEqual(2)
     expect(report.widgetRelations.valid).toBe(true)
+    expect(report.tables.gmCustomWidgets).toBeGreaterThanOrEqual(1)
     expect(report.tables.gmItemProfiles).toBeGreaterThanOrEqual(1)
     expect(report.tables.gmMerchantStock).toBeGreaterThanOrEqual(2)
     expect(report.widgetRelations.sharedStockItems).toBeGreaterThanOrEqual(1)
     expect(report.widgetRelations.kinds).toEqual(
-      expect.arrayContaining(['image', 'pdf', 'embed'])
+      expect.arrayContaining(['image', 'pdf', 'embed', 'custom'])
     )
     expect(report.tables.gmProjects).toBeGreaterThan(0)
     expect(report.tables['_components/betterAuth/passkey']).toBeGreaterThan(0)

@@ -1,0 +1,41 @@
+const appOrigin = __APP_ORIGIN__;
+let initialized = false;
+addEventListener('message', event => {
+  if (initialized || event.source !== parent || event.origin !== appOrigin || event.ports.length !== 1 || !init(event.data)) return;
+  initialized = true;
+  const value = event.data;
+  const port = event.ports[0];
+  // Capture the transport before user code runs; never publish the port.
+  const post = port.postMessage.bind(port);
+  const send = reply => post(reply);
+  for (const name of ['RTCPeerConnection','webkitRTCPeerConnection','RTCDataChannel','RTCIceTransport']) {
+    try { Object.defineProperty(globalThis, name, { value: undefined, writable: false, configurable: false }); } catch { /* CSP remains authoritative. */ }
+  }
+  const callbacks = new Set();
+  const widget = {
+    settings: value.settings, state: value.state, mode: value.mode,
+    setState(state) { widget.state = state; send({ type: 'setState', state }); },
+    onUpdate(callback) { if (typeof callback === 'function') callbacks.add(callback); return () => callbacks.delete(callback); }
+  };
+  port.onmessage = message => {
+    const incoming = message.data;
+    if (exact(incoming, 'type') && incoming.type === 'ping') { send({ type: 'pong' }); return; }
+    if (!exact(incoming, 'type,settings,state') || incoming.type !== 'update' || !update(incoming)) return;
+    widget.settings = incoming.settings;
+    widget.state = incoming.state;
+    for (const callback of callbacks) { try { callback(widget); } catch (error) { send({ type: 'error', message: String(error).slice(0, 500) }); } }
+  };
+  addEventListener('pagehide', () => port.close());
+  addEventListener('error', error => send({ type: 'error', message: String(error.message).slice(0, 500) }));
+  const style = document.createElement('style');
+  style.textContent = value.css;
+  document.head.append(style);
+  document.documentElement.dataset.theme = value.theme;
+  const root = document.createElement('main');
+  root.innerHTML = value.html;
+  document.body.append(root);
+  send({ type: 'ready' });
+  try { new Function('widget', '"use strict";\n' + value.js)(widget); }
+  catch (error) { send({ type: 'error', message: String(error).slice(0, 500) }); }
+  new ResizeObserver(() => send({ type: 'resize', height: Math.min(4096, Math.ceil(document.body.scrollHeight)) })).observe(root);
+});

@@ -16,6 +16,8 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as VerifyMfaRouteImport } from './routes/verify-mfa'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as SandboxHostRouteImport } from './routes/sandbox/host'
+import { Route as SandboxRunnerRouteImport } from './routes/sandbox/runner'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
 import { Route as AuthenticatedAppAdminRouteImport } from './routes/_authenticated/app/admin'
 import { Route as AuthenticatedAppSecurityRouteImport } from './routes/_authenticated/app/security'
@@ -60,6 +62,16 @@ const VerifyMfaRoute = VerifyMfaRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SandboxHostRoute = SandboxHostRouteImport.update({
+  id: '/sandbox/host',
+  path: '/sandbox/host',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SandboxRunnerRoute = SandboxRunnerRouteImport.update({
+  id: '/sandbox/runner',
+  path: '/sandbox/runner',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
@@ -133,6 +145,8 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verify-mfa': typeof VerifyMfaRoute
   '/api/health': typeof ApiHealthRoute
+  '/sandbox/host': typeof SandboxHostRoute
+  '/sandbox/runner': typeof SandboxRunnerRoute
   '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -152,6 +166,8 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verify-mfa': typeof VerifyMfaRoute
   '/api/health': typeof ApiHealthRoute
+  '/sandbox/host': typeof SandboxHostRoute
+  '/sandbox/runner': typeof SandboxRunnerRoute
   '/app/admin': typeof AuthenticatedAppAdminRoute
   '/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -173,6 +189,8 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verify-mfa': typeof VerifyMfaRoute
   '/api/health': typeof ApiHealthRoute
+  '/sandbox/host': typeof SandboxHostRoute
+  '/sandbox/runner': typeof SandboxRunnerRoute
   '/_authenticated/app/admin': typeof AuthenticatedAppAdminRoute
   '/_authenticated/app/security': typeof AuthenticatedAppSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -194,6 +212,8 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/verify-mfa'
     | '/api/health'
+    | '/sandbox/host'
+    | '/sandbox/runner'
     | '/app/admin'
     | '/app/security'
     | '/api/auth/$'
@@ -213,6 +233,8 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/verify-mfa'
     | '/api/health'
+    | '/sandbox/host'
+    | '/sandbox/runner'
     | '/app/admin'
     | '/app/security'
     | '/api/auth/$'
@@ -233,6 +255,8 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/verify-mfa'
     | '/api/health'
+    | '/sandbox/host'
+    | '/sandbox/runner'
     | '/_authenticated/app/admin'
     | '/_authenticated/app/security'
     | '/api/auth/$'
@@ -254,6 +278,8 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VerifyMfaRoute: typeof VerifyMfaRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  SandboxHostRoute: typeof SandboxHostRoute
+  SandboxRunnerRoute: typeof SandboxRunnerRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -306,6 +332,20 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sandbox/host': {
+      id: '/sandbox/host'
+      path: '/sandbox/host'
+      fullPath: '/sandbox/host'
+      preLoaderRoute: typeof SandboxHostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sandbox/runner': {
+      id: '/sandbox/runner'
+      path: '/sandbox/runner'
+      fullPath: '/sandbox/runner'
+      preLoaderRoute: typeof SandboxRunnerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/app/': {
@@ -429,6 +469,8 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VerifyMfaRoute: VerifyMfaRoute,
   ApiHealthRoute: ApiHealthRoute,
+  SandboxHostRoute: SandboxHostRoute,
+  SandboxRunnerRoute: SandboxRunnerRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

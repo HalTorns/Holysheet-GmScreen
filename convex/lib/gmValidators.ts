@@ -1,4 +1,9 @@
 import { v } from 'convex/values'
+import type { Validator } from 'convex/values'
+
+import type { CustomJson } from '../../shared/custom-widget-protocol'
+
+const jsonValidator: Validator<CustomJson> = v.any()
 
 export const bodyFormatValidator = v.union(
   v.literal('plain'),
@@ -72,8 +77,34 @@ export const widgetKindValidator = v.union(
   v.literal('initiative'),
   v.literal('image'),
   v.literal('embed'),
+  v.literal('custom'),
   v.literal('pdf')
 )
+export const customShape = {
+  kind: v.literal('custom'),
+  config: v.object({
+    definitionId: v.id('gmCustomWidgets'),
+    settings: v.record(v.string(), jsonValidator),
+  }),
+  state: jsonValidator,
+}
+export const customDefinitionFields = {
+  ownerId: v.string(),
+  projectId: v.id('gmProjects'),
+  name: v.string(),
+  html: v.string(),
+  css: v.string(),
+  source: v.string(),
+  compiled: v.string(),
+  language: v.union(v.literal('js'), v.literal('ts')),
+  version: v.number(),
+  deletedAt: v.optional(v.number()),
+}
+export const customDefinitionValidator = v.object({
+  _id: v.id('gmCustomWidgets'),
+  _creationTime: v.number(),
+  ...customDefinitionFields,
+})
 export const embedShape = {
   kind: v.literal('embed'),
   config: v.object({
@@ -209,6 +240,7 @@ export const widgetUpdateValidator = v.union(
   v.object(tableShape),
   v.object(clockShape),
   v.object(embedShape),
+  v.object(customShape),
   v.object(imageShape),
   v.object(pdfShape),
   v.object(initiativeShape)
@@ -223,6 +255,7 @@ export const noteFields = v.union(
   v.object({ ...v2Common, ...tableShape }),
   v.object({ ...v2Common, ...clockShape }),
   v.object({ ...v2Common, ...embedShape }),
+  v.object({ ...v2Common, ...customShape }),
   v.object({ ...v2Common, ...imageShape }),
   v.object({ ...v2Common, ...pdfShape }),
   v.object({ ...v2Common, ...initiativeShape })
@@ -237,6 +270,7 @@ export const widgetValidator = v.union(
   v.object({ ...noteSystem, ...v2Common, ...tableShape }),
   v.object({ ...noteSystem, ...v2Common, ...clockShape }),
   v.object({ ...noteSystem, ...v2Common, ...embedShape }),
+  v.object({ ...noteSystem, ...v2Common, ...customShape }),
   v.object({ ...noteSystem, ...v2Common, ...imageShape }),
   v.object({ ...noteSystem, ...v2Common, ...pdfShape }),
   v.object({ ...noteSystem, ...v2Common, ...initiativeShape })
@@ -244,6 +278,7 @@ export const widgetValidator = v.union(
 const noteValidator = widgetValidator
 export const trashWidgetValidator = v.union(
   v.object({ ...noteSystem, ...v2Common, ...embedShape, preview: v.string() }),
+  v.object({ ...noteSystem, ...v2Common, ...customShape, preview: v.string() }),
   v.object({ ...noteSystem, ...v2Common, ...imageShape, preview: v.string() }),
   v.object({ ...noteSystem, ...v2Common, ...pdfShape, preview: v.string() }),
   v.object({ ...noteSystem, ...noteV2, preview: v.string() }),
@@ -326,6 +361,7 @@ const historyV2 = {
     v.object(tableShape),
     v.object(clockShape),
     v.object(embedShape),
+    v.object(customShape),
     v.object(imageShape),
     v.object(pdfShape),
     v.object(initiativeShape),
@@ -526,6 +562,7 @@ export const stockValidator = v.object({
   ...stockFields,
 })
 export const gmCollection = v.union(
+  v.literal('gmCustomWidgets'),
   v.literal('gmItemProfiles'),
   v.literal('gmMerchantStock'),
   v.literal('gmProjects'),
@@ -543,6 +580,7 @@ export const gmCollection = v.union(
   v.literal('gmFileUsage')
 )
 export const gmDocument = v.union(
+  customDefinitionValidator,
   itemProfileValidator,
   stockValidator,
   projectValidator,

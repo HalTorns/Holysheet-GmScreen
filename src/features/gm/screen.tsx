@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 import { useResilientQuery } from '@/hooks/use-resilient-query'
 
+import { CustomWidgets } from './custom-widgets'
 import { useFileUpload } from './file-upload'
 import { Files } from './files'
 import { LayoutEditor } from './layout-editor'
@@ -33,6 +34,7 @@ function ScreenWorkspace({
   const addNote = useMutation(api.gm.addNote)
   const upload = useFileUpload(screen.projectId)
   const placeFile = useMutation(api.gmFiles.placeFile)
+  const placeCustom = useMutation(api.customWidgets.place)
   const addWidget = useMutation(api.gmWidgets.addWidget)
   const variables = useQuery(api.gmVariables.listVariables, {
     projectId: screen.projectId,
@@ -169,11 +171,12 @@ function ScreenWorkspace({
               const kind = gmWidgetKinds.find(
                 (entry) => entry === event.target.value
               )
-              if (kind && kind !== 'note') setWidgetKind(kind)
+              if (kind && kind !== 'note' && kind !== 'custom')
+                setWidgetKind(kind)
             }}
           >
             {gmWidgetKinds
-              .filter((kind) => kind !== 'note')
+              .filter((kind) => kind !== 'note' && kind !== 'custom')
               .map((kind) => (
                 <option key={kind} value={kind}>
                   {gmWidgetLabels[kind]}
@@ -198,6 +201,15 @@ function ScreenWorkspace({
           readOnly || locked || dirty || pending
             ? undefined
             : (file) => placeFile({ screenId: screen._id, fileId: file._id })
+        }
+      />
+      <CustomWidgets
+        projectId={screen.projectId}
+        onChoose={
+          readOnly || locked || dirty || pending
+            ? undefined
+            : (definitionId) =>
+                placeCustom({ screenId: screen._id, definitionId })
         }
       />
       {upload.pending && <p role="status">Envoi en cours…</p>}

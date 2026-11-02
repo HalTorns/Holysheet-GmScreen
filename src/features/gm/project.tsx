@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useRetained } from '@/hooks/use-retained'
 
+import { CustomWidgets } from './custom-widgets'
 import { Files } from './files'
 import { TitleForm } from './title-form'
 
@@ -66,6 +67,7 @@ function ProjectContent({ project }: { project: Doc<'gmProjects'> }) {
         </Link>
       </div>
       <Files projectId={projectId} />
+      <CustomWidgets projectId={projectId} />
       <nav
         aria-label="Dossier courant"
         className="mb-6 flex flex-wrap items-center gap-2"

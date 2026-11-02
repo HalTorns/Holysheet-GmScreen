@@ -1,3 +1,4 @@
+import { customSettings, customState } from './custom-widget-protocol.ts'
 import { parseDice } from './dice.ts'
 import { z } from './zod.ts'
 
@@ -42,6 +43,7 @@ export const gmLayoutSize = z.object({
   height: z.number().int().min(240).max(GM_MAX_DIMENSION),
 })
 export const gmTables = [
+  'gmCustomWidgets',
   'gmItemProfiles',
   'gmMerchantStock',
   'gmProjects',
@@ -124,6 +126,7 @@ export const gmWidgetKinds = [
   'image',
   'pdf',
   'embed',
+  'custom',
 ] as const
 export const gmWidgetLabels = {
   note: 'Note',
@@ -137,6 +140,7 @@ export const gmWidgetLabels = {
   image: 'Image',
   pdf: 'PDF',
   embed: 'Lien web',
+  custom: 'Personnalisé',
 } as const
 const widgetTitle = z.string().max(120)
 const finiteNumber = z.number()
@@ -151,6 +155,18 @@ const localCounterSource = z
 const widgetId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/)
 export const gmWidget = z
   .discriminatedUnion('kind', [
+    z
+      .object({
+        kind: z.literal('custom'),
+        config: z
+          .object({
+            definitionId: z.string().min(1),
+            settings: customSettings,
+          })
+          .strict(),
+        state: customState,
+      })
+      .strict(),
     z
       .object({
         kind: z.literal('embed'),
@@ -428,6 +444,12 @@ export function initialWidget(kind: (typeof gmWidgetKinds)[number]) {
   return createInitialWidget(kind)
 }
 function createInitialWidget(kind: (typeof gmWidgetKinds)[number]) {
+  if (kind === 'custom') {
+    const config: { definitionId?: never; settings: Record<string, never> } = {
+      settings: {},
+    }
+    return { kind, config, state: {} }
+  }
   if (kind === 'embed')
     return {
       kind,

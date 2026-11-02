@@ -14,6 +14,7 @@ import {
   operationErrorMessage,
 } from '@/features/auth/errors'
 
+import { CustomWidget } from './custom-widget'
 import { EmbedWidget } from './embed-widget'
 import { FileWidget } from './file-widget'
 import { ItemCatalogPreview, MerchantStockPreview } from './merchant-stock'
@@ -26,7 +27,15 @@ type Variables = Doc<'gmVariables'>[]
 type TypedWidget = Exclude<
   Widget,
   {
-    kind: 'note' | 'table' | 'clock' | 'initiative' | 'image' | 'pdf' | 'embed'
+    kind:
+      | 'note'
+      | 'table'
+      | 'clock'
+      | 'initiative'
+      | 'image'
+      | 'pdf'
+      | 'embed'
+      | 'custom'
   }
 >
 type Props = {
@@ -90,6 +99,14 @@ function WidgetStatic({
 }
 export function WidgetContent(props: Props) {
   const { note, variables } = props
+  if (note.kind === 'custom')
+    return (
+      <CustomWidget
+        widget={note}
+        readOnly={props.readOnly}
+        locked={props.locked}
+      />
+    )
   if (note.kind === 'embed') return <EmbedWidget {...props} widget={note} />
   if (note.kind === 'image' || note.kind === 'pdf')
     return (

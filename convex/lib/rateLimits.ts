@@ -44,6 +44,13 @@ const limiter = new RateLimiter(components.rateLimiter, {
     period: MINUTE,
     capacity: 30,
   },
+  customWidgetWrite: {
+    shards: 4,
+    kind: 'token bucket',
+    rate: 30,
+    period: MINUTE,
+    capacity: 30,
+  },
   gmEditorWrite: {
     // 0.4.2 divides the total rate/capacity across these transactional shards.
     shards: 4,
@@ -79,6 +86,7 @@ export async function limitUserOperation(
     | 'fileUpload'
     | 'resourceWrite'
     | 'gmEditorWrite'
+    | 'customWidgetWrite'
     | 'accountSensitive'
     | 'organizationWrite'
     | 'mfaVerification'
@@ -145,6 +153,7 @@ export async function clearUserRateLimits(ctx: MutationCtx, userId: string) {
     'fileUpload',
     'resourceWrite',
     'gmEditorWrite',
+    'customWidgetWrite',
     'accountSensitive',
     'organizationWrite',
     'mfaVerification',

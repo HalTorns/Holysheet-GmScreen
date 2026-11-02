@@ -1,0 +1,37 @@
+const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const exact = (value, keys) => object(value) && Object.keys(value).sort().join(',') === keys.split(',').sort().join(',');
+const bytes = value => new TextEncoder().encode(value).length;
+const json = (value, limit, maxDepth = 8) => {
+  let nodes = 0;
+  const valid = (entry, depth) => {
+    if (++nodes > 2048 || depth > maxDepth) return false;
+    if (entry === null || typeof entry === 'string' || typeof entry === 'boolean') return true;
+    if (typeof entry === 'number') return Number.isFinite(entry);
+    if (Array.isArray(entry)) return entry.every(item => valid(item, depth + 1));
+    return object(entry) && Object.values(entry).every(item => valid(item, depth + 1));
+  };
+  try { return valid(value, 0) && bytes(JSON.stringify(value)) <= limit; } catch { return false; }
+};
+const settings = value => object(value) && Object.keys(value).every(key => key.length <= 80) && json(value, 4096, 2) && Object.values(value).every(entry => {
+  const scalar = item => item === null || ['string', 'number', 'boolean'].includes(typeof item);
+  return scalar(entry) || (Array.isArray(entry) && entry.every(scalar));
+});
+const update = value => settings(value.settings) && json(value.state, 8192);
+const init = value => exact(value, 'type,html,css,js,settings,state,mode,theme') && value.type === 'init' && ['html','css','js'].every(key => typeof value[key] === 'string' && bytes(value[key]) <= 65536) && update(value) && ['live','static','preview'].includes(value.mode) && ['light','dark'].includes(value.theme);
+const output = value => {
+  if (!object(value)) return false;
+  if (['ready','pong','suspended'].includes(value.type)) return exact(value, 'type');
+  if (value.type === 'setState') return exact(value, 'type,state') && json(value.state, 8192);
+  if (value.type === 'resize') return exact(value, 'type,height') && Number.isInteger(value.height) && value.height >= 0 && value.height <= 4096;
+  return value.type === 'error' && exact(value, 'type,message') && typeof value.message === 'string' && value.message.length <= 500;
+};
+const budget = () => {
+  let start = 0, total = 0;
+  let counts = Object.create(null);
+  return type => {
+    const now = Date.now();
+    if (now - start >= 1000) { start = now; total = 0; counts = Object.create(null); }
+    counts[type] = (counts[type] || 0) + 1;
+    return ++total <= 30 && counts[type] <= (type === 'setState' ? 10 : ['resize','error'].includes(type) ? 5 : 30);
+  };
+};

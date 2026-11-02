@@ -542,6 +542,8 @@ export const controlClock = mutation({
 })
 
 function widgetDefinition(widget: Widget) {
+  if (widget.kind === 'custom')
+    return { kind: widget.kind, config: widget.config, state: widget.state }
   if (widget.kind === 'embed')
     return {
       kind: widget.kind,

@@ -32,6 +32,7 @@ const pagination = { paginationOpts: paginationOptsValidator }
 // gardent l'export sous 4 Mo, loin du budget de 16 Mio par transaction.
 function exportPageLimit(collection: string) {
   return [
+    'gmCustomWidgets',
     'gmNotes',
     'gmWidgetContents',
     'gmEditorHistory',

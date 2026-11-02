@@ -1,0 +1,50 @@
+const appOrigin = location.origin;
+let initialized = false, port, frame, timer;
+const send = value => parent.postMessage(value, appOrigin);
+const allowed = budget();
+const suspend = () => {
+  clearInterval(timer);
+  port?.close();
+  frame?.remove();
+  send({ type: 'suspended' });
+};
+addEventListener('pagehide', () => { clearInterval(timer); port?.close(); });
+addEventListener('message', event => {
+  if (event.source !== parent || event.origin !== appOrigin) return;
+  const value = event.data;
+  if (!initialized) {
+    if (!init(value)) return;
+    initialized = true;
+    frame = document.createElement('iframe');
+    frame.src = '/sandbox/runner';
+    frame.sandbox = 'allow-scripts';
+    frame.allow = '';
+    frame.referrerPolicy = 'no-referrer';
+    frame.title = 'Code du widget';
+    frame.style.cssText = 'border:0;width:100%;height:100%;';
+    let loaded = false;
+    let lastPong = Date.now();
+    frame.addEventListener('load', () => {
+      if (loaded) { suspend(); return; }
+      loaded = true;
+      const channel = new MessageChannel();
+      port = channel.port1;
+      port.onmessage = message => {
+        const reply = message.data;
+        // Invalid messages also spend the total budget.
+        if (!allowed(object(reply) ? reply.type : 'invalid')) { suspend(); return; }
+        if (!output(reply)) return;
+        if (reply.type === 'pong') lastPong = Date.now();
+        else send(reply);
+      };
+      frame.contentWindow.postMessage(value, '*', [channel.port2]);
+    });
+    document.body.append(frame);
+    timer = setInterval(() => {
+      if (Date.now() - lastPong > 5000) { suspend(); return; }
+      port?.postMessage({ type: 'ping' });
+    }, 2000);
+    return;
+  }
+  if (exact(value, 'type,settings,state') && value.type === 'update' && update(value)) port?.postMessage(value);
+});

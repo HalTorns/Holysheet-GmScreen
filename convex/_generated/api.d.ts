@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as customWidgets from "../customWidgets.js";
 import type * as account from "../account.js";
 import type * as auth from "../auth.js";
 import type * as authOptions from "../authOptions.js";
@@ -62,6 +63,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  customWidgets: typeof customWidgets;
   account: typeof account;
   auth: typeof auth;
   authOptions: typeof authOptions;

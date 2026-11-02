@@ -3,6 +3,8 @@ type Inventory = {
   files: Record<string, { bytes: number; checksum: string }>
   widgetRelations: {
     valid: boolean
+    customDefinitions: number
+    customInstances: number
     fileCount: number
     kinds: string[]
     linkedCounters: number

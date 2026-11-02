@@ -5,6 +5,7 @@ import {
 
 import { env } from '@/env'
 import { serverMonitoring } from '@/features/observability/sentry.server'
+import { sandboxPermissionsPolicy } from '@/lib/sandbox/documents'
 import { protectAuthRequest } from '@/lib/security/arcjet'
 
 const handleRequest = createStartHandler(defaultStreamHandler)
@@ -29,7 +30,7 @@ function securityHeaders(nonce: string, requestId: string) {
       "worker-src 'self'",
       "font-src 'self'",
       `connect-src 'self' ${convexOrigin} ${new URL(env.VITE_CONVEX_SITE_URL).origin} ${convexSocketOrigin} ${telemetryOrigins}${development ? ` ${new URL(env.VITE_SITE_URL).origin.replace(/^http/, 'ws')} ws://127.0.0.1:${new URL(env.VITE_SITE_URL).port || '80'}` : ''}`,
-      'frame-src https:',
+      `frame-src https: ${new URL(env.VITE_SITE_URL).origin}/sandbox/host`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -68,6 +69,19 @@ export default {
         securityHeaders(nonce, requestId)
       ))
         headers.set(name, value)
+      const path = new URL(request.url).pathname
+      if (
+        request.method === 'GET' &&
+        response.status === 200 &&
+        (path === '/sandbox/host' || path === '/sandbox/runner')
+      ) {
+        const sandboxCsp = response.headers.get('Content-Security-Policy')
+        if (!sandboxCsp) throw new Error('Missing sandbox CSP')
+        headers.set('Content-Security-Policy', sandboxCsp)
+        headers.set('X-Frame-Options', 'SAMEORIGIN')
+        headers.set('Referrer-Policy', 'no-referrer')
+        headers.set('Permissions-Policy', sandboxPermissionsPolicy)
+      }
       // Do not log URLs: auth callbacks may contain secrets in query parameters.
       if (response.status >= 500)
         console.error(

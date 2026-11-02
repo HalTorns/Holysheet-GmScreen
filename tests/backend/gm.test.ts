@@ -141,6 +141,16 @@ describe('Holysheet personal workspace', () => {
       }
     )
     expect(importedFile.status).toBe(200)
+    await alice.client.mutation(api.customWidgets.save, {
+      projectId,
+      expectedVersion: 0,
+      name: 'Fixture F8',
+      html: '<output>1</output>',
+      css: '',
+      source: '',
+      compiled: '',
+      language: 'js',
+    })
     for (const collection of gmTables) {
       const exported = await alice.client.query(api.gm.exportCollection, {
         collection,

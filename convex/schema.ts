@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
 import {
+  customDefinitionFields,
   itemProfileFields,
   stockFields,
   projectFields,
@@ -20,6 +21,9 @@ import {
 } from './lib/gmValidators'
 
 export default defineSchema({
+  gmCustomWidgets: defineTable(customDefinitionFields)
+    .index('by_owner', ['ownerId'])
+    .index('by_project_live', ['projectId', 'deletedAt']),
   gmItemProfiles: defineTable(itemProfileFields)
     .index('by_sheet', ['sheetId'])
     .index('by_owner', ['ownerId'])
@@ -48,6 +52,7 @@ export default defineSchema({
     .index('by_owner', ['ownerId'])
     .index('by_widget', ['widgetId']),
   gmNotes: defineTable(noteFields)
+    .index('by_custom_definition', ['config.definitionId', 'deletedAt'])
     .index('by_owner', ['ownerId'])
     .index('by_screen_live', ['screenId', 'deletedAt'])
     .index('by_screen', ['screenId'])

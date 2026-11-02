@@ -72,6 +72,7 @@
     "rehype-sanitize": "6.0.0",
     "remark-directive": "4.0.0",
     "sonner": "2.0.8",
+    "sucrase": "3.35.1",
     "tailwind-merge": "3.7.0",
     "zod": "4.6.6"
   },
