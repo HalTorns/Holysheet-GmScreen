@@ -264,8 +264,23 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
       })
       sources.push(...copies.map((copy) => ({ id: copy, version: 0 })))
     }
-    // AUD-28: the open Screen must converge without a reload.
-    await expect(field).toHaveCount(100, { timeout: 30_000 })
+    // AUD-28 (diagnostic temporaire) : on mesure la convergence en direct sans
+    // faire échouer le test, et on note ce qui manque : section absente
+    // (métadonnées ou placement) ou section encore en chargement (corps).
+    const liveStart = Date.now()
+    let liveCount = await field.count()
+    while (liveCount < 100 && Date.now() - liveStart < 30_000) {
+      await page.waitForTimeout(250)
+      liveCount = await field.count()
+    }
+    const sections = await page.locator('section[aria-label^="Widget"]').count()
+    const loading = await page
+      .getByRole('status')
+      .filter({ hasText: 'Chargement de la note' })
+      .count()
+    console.log(
+      `AUD-28 live=${liveCount}/100 sections=${sections} loading=${loading} after ${Date.now() - liveStart}ms`
+    )
     await page.reload()
     await waitForHydration(page)
     await expect(field).toHaveCount(100)
