@@ -382,3 +382,14 @@ Preuves Node 26.12.0 / pnpm 11.8.0 : ciblés backend/unitaires **56/56**, naviga
   - SEC-05 : saturation du quota d'édition. Corrigé par des budgets par message et une persistance regroupée, avec sa propre limite.
 - Round 2 : REVISE, SEC-06 : sortie réseau par WebRTC. Corrigé par `webrtc 'block'`, la suppression des constructeurs RTC et une preuve par serveur STUN local ; risque résiduel documenté.
 - Round 3 : **APPROVED** sur `docs/PLAN-F8.md` (SHA256 `a879810917b26508ac3a253e7446b0c5115592fa33675cf5453ab7304eef7019`).
+
+### Chantier 3a — architecture d'interaction de l'éditeur, 3 novembre 2026
+
+Demande utilisateur : réduire la densité de boutons de l'éditeur de Screen grâce à des sous-menus (roue crantée). Le chantier 3 est découpé en 3a (interaction, sans changement serveur) et 3b (identité visuelle). Plan : `docs/PLAN-UX3a.md`. Revue par **Codex** (`gpt-6.1-sol`, medium), sans bac à sable, avec garde d'empreinte du checkout ; la tentative via le runner sandboxé a été BLOCKED par bwrap.
+
+- Round 1 : REVISE, 3 constats, tous acceptés :
+  - UX3A-01 : un widget hors cadre devenait irrécupérable. « Aller au widget… » passe dans ⚙, sans sélection préalable ;
+  - UX3A-02 : la consultation sans écriture était perdue. Trois modes : Édition, Jeu (nouveau) et Lecture (`readOnly` actuel) ;
+  - UX3A-03 : aucune relance visible après l'échec d'une sauvegarde automatique. Ajout de « Réessayer l'enregistrement ».
+- Round 2 : REVISE, UX3A-04 : Enregistrer ne doit pas être actif en conflit, puisque le hook et le serveur refusent les versions périmées. En conflit, le bouton est désactivé avec une explication, et « Charger la version enregistrée » reste affiché.
+- Round 3 : **APPROVED** sur `docs/PLAN-UX3a.md` (SHA256 `4f06ade3266ba4c19b4d40333d543716142cf3e1a45e18991915821e25e930bd`). Le build n'est pas lancé et attend l'accord de l'utilisateur. Prérequis : la fusion de F8.
