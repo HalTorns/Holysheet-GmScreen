@@ -3,7 +3,9 @@ import type { Page } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
+import { gmSheetKindLabels, gmSheetKindOf } from '../../shared/gm'
 import { readScreen } from '../helpers/gm-screen'
+import { createFrom } from './editor-ui'
 import { waitForHydration } from './helpers'
 
 // Bibliothèque de fiches (F1) : création, édition, lien et rétrolien par
@@ -20,7 +22,8 @@ export async function verifyLibrary(page: Page, client: ConvexHttpClient) {
   ).toBeVisible()
 
   async function create(kind: string, title: string) {
-    await page.getByLabel('Type de la nouvelle fiche').selectOption(kind)
+    const label = gmSheetKindLabels[gmSheetKindOf(kind) ?? 'npc']
+    await createFrom(page, 'Nouvelle fiche', `${label}…`)
     await page
       .getByRole('textbox', { name: 'Créer une fiche', exact: true })
       .fill(title)

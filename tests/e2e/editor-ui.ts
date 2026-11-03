@@ -237,3 +237,31 @@ export async function setAutoSave(page: Page, enabled: boolean) {
     timing('setAutoSave', started)
   }
 }
+
+/** Menu ⋯ d'une ligne de liste (fichier, fiche, variable, stock…). */
+export async function rowAction(page: Page, label: string, item: string) {
+  await menuAction(
+    page,
+    page.getByRole('button', { name: `Actions de ${label}`, exact: true }),
+    item
+  )
+}
+
+/** Bouton ＋ d'une page (« Nouveau », « Nouvelle fiche »…), puis son choix. */
+export async function createFrom(page: Page, button: string, choice?: string) {
+  await page.getByRole('button', { name: button, exact: true }).click()
+  if (choice) await follow(page, [choice])
+  await expect(page.getByRole('dialog')).toBeVisible()
+}
+
+/** Panneau de ressources du projet (⚙) : fichiers ou widgets personnalisés. */
+export async function projectResource(
+  page: Page,
+  item: 'Fichiers du projet…' | 'Widgets personnalisés…'
+) {
+  await menuAction(
+    page,
+    page.getByRole('button', { name: 'Ressources du projet', exact: true }),
+    item
+  )
+}

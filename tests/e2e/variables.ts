@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
+import { createFrom } from './editor-ui'
 import { waitForHydration } from './helpers'
 
 // Variables et formules (F2) : création, recalcul en direct, refus de cycle.
@@ -18,6 +19,8 @@ export async function verifyVariables(page: Page, client: ConvexHttpClient) {
   ).toBeVisible()
   const form = page.getByRole('form', { name: 'Nouvelle variable' })
   async function create(name: string, type: string, input: string) {
+    // Le formulaire vit dans un dialogue refermé après chaque création.
+    if (!(await form.isVisible())) await createFrom(page, 'Nouvelle variable')
     await form.getByLabel('Nom de la variable').fill(name)
     await form.getByLabel('Type').selectOption(type)
     // exact : le libellé « Type » englobe la liste, dont l'option « Formule ».

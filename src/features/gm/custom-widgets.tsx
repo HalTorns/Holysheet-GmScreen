@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 
 import { CustomFrame } from './custom-frame'
+import { RowAction, RowActions } from './page-actions'
 
 const empty = {
   name: '',
@@ -54,50 +55,75 @@ export function CustomWidgets({
       className="panel my-4 grid gap-3 p-4"
     >
       <h2>Widgets personnalisés</h2>
-      <Button onClick={() => setEditing('new')}>
-        Créer un widget personnalisé
-      </Button>
-      <Button onClick={() => setTrash(!trash)}>
-        {trash
-          ? 'Bibliothèque des widgets'
-          : 'Corbeille des widgets personnalisés'}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={() => setEditing('new')}>
+          Créer un widget personnalisé
+        </Button>
+        <div role="group" aria-label="Vue des widgets" className="flex gap-1">
+          {(
+            [
+              [false, 'Bibliothèque des widgets'],
+              [true, 'Corbeille des widgets personnalisés'],
+            ] as const
+          ).map(([value, label]) => (
+            <Button
+              key={label}
+              size="sm"
+              variant={trash === value ? 'secondary' : 'ghost'}
+              aria-pressed={trash === value}
+              onClick={() => setTrash(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      </div>
       {rows.results.map((row) => (
-        <div key={row._id}>
-          <span>{row.name}</span>
-          {!trash && (
-            <Button onClick={() => setEditing(row)}>Modifier {row.name}</Button>
-          )}
+        <div key={row._id} className="flex items-center gap-2">
+          <span className="min-w-0 flex-1 truncate">{row.name}</span>
           {!trash && onChoose && (
-            <Button onClick={() => void perform(() => onChoose(row._id))}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void perform(() => onChoose(row._id))}
+            >
               Placer {row.name}
             </Button>
           )}
-          <Button
-            onClick={() =>
-              void perform(() =>
-                setTrashed({
-                  id: row._id,
-                  expectedVersion: row.version,
-                  trashed: !trash,
-                })
-              )
-            }
-          >
-            {trash ? 'Restaurer' : 'Corbeille'} {row.name}
-          </Button>
-          {trash && (
-            <Button
-              onClick={() => {
-                if (window.confirm('Purger définitivement cette définition ?'))
-                  void perform(() =>
-                    purge({ id: row._id, expectedVersion: row.version })
-                  )
-              }}
+          <RowActions label={row.name}>
+            {!trash && (
+              <RowAction onClick={() => setEditing(row)}>
+                Modifier {row.name}
+              </RowAction>
+            )}
+            <RowAction
+              onClick={() =>
+                void perform(() =>
+                  setTrashed({
+                    id: row._id,
+                    expectedVersion: row.version,
+                    trashed: !trash,
+                  })
+                )
+              }
             >
-              Purger {row.name}
-            </Button>
-          )}
+              {trash ? 'Restaurer' : 'Corbeille'} {row.name}
+            </RowAction>
+            {trash && (
+              <RowAction
+                onClick={() => {
+                  if (
+                    window.confirm('Purger définitivement cette définition ?')
+                  )
+                    void perform(() =>
+                      purge({ id: row._id, expectedVersion: row.version })
+                    )
+                }}
+              >
+                Purger {row.name}
+              </RowAction>
+            )}
+          </RowActions>
         </div>
       ))}
       {rows.status === 'CanLoadMore' && (

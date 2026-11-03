@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 import { useRetained } from '@/hooks/use-retained'
 
+import { CreateMenu, ProjectNav, RowAction, RowActions } from './page-actions'
 import { TitleForm } from './title-form'
 
 export function Library({ projectId }: { projectId: string }) {
@@ -23,7 +24,6 @@ export function Library({ projectId }: { projectId: string }) {
 function LibraryContent({ project }: { project: Doc<'gmProjects'> }) {
   const projectId = project._id
   const [kind, setKind] = useState<GmSheetKind | ''>('')
-  const [newKind, setNewKind] = useState<GmSheetKind>('npc')
   const [trashed, setTrashed] = useState(false)
   const [search, setSearch] = useState('')
   const createSheet = useMutation(api.gmSheets.createSheet)
@@ -36,43 +36,37 @@ function LibraryContent({ project }: { project: Doc<'gmProjects'> }) {
       >
         ← {project.title}
       </Link>
-      <div className="page-heading mt-5">
-        <div>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="mr-auto min-w-0">
           <p className="eyebrow">BIBLIOTHÈQUE</p>
           <h1>Fiches du projet</h1>
-          <p>
-            PNJ, monstres, lieux, objets, règles… réutilisables et reliés entre
-            eux.
-          </p>
         </div>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
-        <aside className="grid content-start gap-6">
-          <section className="panel grid gap-4 p-5">
-            <label htmlFor="new-sheet-kind">Type de la nouvelle fiche</label>
-            <select
-              id="new-sheet-kind"
-              className="rounded border bg-background p-2"
-              value={newKind}
-              onChange={(event) =>
-                setNewKind(gmSheetKindOf(event.target.value) ?? 'npc')
-              }
-            >
-              {gmSheetKinds.map((value) => (
-                <option key={value} value={value}>
-                  {gmSheetKindLabels[value]}
-                </option>
-              ))}
-            </select>
+        <CreateMenu
+          label="Nouvelle fiche"
+          choices={gmSheetKinds.map((value) => ({
+            value,
+            label: `${gmSheetKindLabels[value]}…`,
+            title: `Nouvelle fiche · ${gmSheetKindLabels[value]}`,
+          }))}
+          render={(choice, close) => (
             <TitleForm
               label="Créer une fiche"
-              onCreate={(title) =>
-                createSheet({ projectId, kind: newKind, title })
-              }
+              onCreate={async (title) => {
+                await createSheet({ projectId, kind: choice, title })
+                close()
+              }}
             />
-          </section>
-          <section className="panel grid gap-3 p-5">
-            <label htmlFor="sheet-search">Rechercher une fiche</label>
+          )}
+        />
+      </div>
+      <ProjectNav projectId={projectId} />
+      <div className="grid gap-4">
+        <div
+          role="search"
+          className="flex flex-wrap items-end gap-3 rounded-xl border border-border p-3"
+        >
+          <label className="grid min-w-48 flex-1 gap-1 text-sm">
+            Rechercher une fiche
             <input
               id="sheet-search"
               type="search"
@@ -81,9 +75,12 @@ function LibraryContent({ project }: { project: Doc<'gmProjects'> }) {
               maxLength={100}
               onChange={(event) => setSearch(event.target.value)}
             />
-            <label htmlFor="sheet-filter">Filtrer par type</label>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Filtrer par type
             <select
               id="sheet-filter"
+              aria-label="Filtrer par type"
               className="rounded border bg-background p-2"
               value={kind}
               disabled={trashed}
@@ -98,15 +95,16 @@ function LibraryContent({ project }: { project: Doc<'gmProjects'> }) {
                 </option>
               ))}
             </select>
-            <Button
-              variant="outline"
-              aria-pressed={trashed}
-              onClick={() => setTrashed(!trashed)}
-            >
-              {trashed ? 'Revenir aux fiches' : 'Voir la corbeille'}
-            </Button>
-          </section>
-        </aside>
+          </label>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={trashed}
+            onClick={() => setTrashed(!trashed)}
+          >
+            {trashed ? 'Revenir aux fiches' : 'Voir la corbeille'}
+          </Button>
+        </div>
         <section aria-label="Fiches" className="grid content-start gap-3">
           {search.trim() && !trashed ? (
             <SearchResults projectId={projectId} text={search} />
@@ -223,25 +221,33 @@ function TrashedSheet({ sheet }: { sheet: Doc<'gmSheets'> }) {
     <div className="panel grid gap-2 p-4">
       <span className="eyebrow">{gmSheetKindLabels[sheet.kind]}</span>
       <span className="font-semibold">{sheet.title}</span>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          onClick={() => void run(() => restore({ id: sheet._id }))}
-        >
-          Restaurer « {sheet.title} »
-        </Button>
-        {confirming ? (
-          <Button
-            variant="destructive"
-            onClick={() => void run(() => erase({ id: sheet._id }))}
-          >
-            Confirmer l’effacement définitif
-          </Button>
-        ) : (
-          <Button variant="ghost" onClick={() => setConfirming(true)}>
-            Effacer définitivement
-          </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        {confirming && (
+          <>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => void run(() => erase({ id: sheet._id }))}
+            >
+              Confirmer l’effacement définitif
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirming(false)}
+            >
+              Conserver la fiche
+            </Button>
+          </>
         )}
+        <RowActions label={sheet.title}>
+          <RowAction onClick={() => void run(() => restore({ id: sheet._id }))}>
+            Restaurer « {sheet.title} »
+          </RowAction>
+          <RowAction onClick={() => setConfirming(true)}>
+            Effacer définitivement
+          </RowAction>
+        </RowActions>
       </div>
       {error && (
         <p className="field-error" role="alert">

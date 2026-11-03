@@ -13,6 +13,7 @@ export function SidePanel({
   side = 'right',
   onClose,
   footer,
+  keepMounted = false,
   children,
 }: {
   open: boolean
@@ -20,6 +21,8 @@ export function SidePanel({
   side?: 'left' | 'right'
   onClose: () => void
   footer?: ReactNode
+  /** Garde le contenu monté (et ses brouillons) quand le panneau est fermé. */
+  keepMounted?: boolean
   children: ReactNode
 }) {
   const ref = useRef<HTMLElement>(null)
@@ -45,18 +48,22 @@ export function SidePanel({
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open])
-  if (!open) return null
+  if (!open && !keepMounted) return null
   return (
     <aside
+      hidden={!open}
       ref={ref}
       tabIndex={-1}
       role="dialog"
       aria-modal="false"
       aria-label={title}
-      data-side-panel={side}
+      data-side-panel={open ? side : undefined}
       className={cn(
         'fixed inset-x-0 bottom-0 z-40 flex max-h-[70dvh] flex-col rounded-t-xl border border-border bg-background shadow-xl outline-none md:inset-y-0 md:max-h-none md:w-96 md:rounded-none',
-        side === 'right' ? 'md:right-0 md:left-auto' : 'md:right-auto md:left-0'
+        side === 'right'
+          ? 'md:right-0 md:left-auto'
+          : 'md:right-auto md:left-0',
+        !open && 'hidden'
       )}
     >
       <header className="flex items-center justify-between gap-2 border-b border-border p-3">

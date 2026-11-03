@@ -333,6 +333,8 @@ function ScreenWorkspace({
         open={drawer === 'custom' && mode === 'edit'}
         side="left"
         title="Widgets personnalisés"
+        // L'éditeur de définition garde son brouillon quand on referme.
+        keepMounted
         onClose={() => setDrawer(null)}
       >
         <CustomWidgets

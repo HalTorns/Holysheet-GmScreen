@@ -5,11 +5,13 @@ import { Link } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
 import type { FunctionReturnType } from 'convex/server'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 
 import { DraftGuard } from '@/components/draft-guard'
 import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 
+import { RowAction, RowActions } from './page-actions'
 import { useEditorDraft } from './use-editor-draft'
 
 type Stock = FunctionReturnType<typeof api.merchants.getStock>
@@ -268,7 +270,6 @@ export function MerchantStock({
             <tr>
               <th>Objet</th>
               <th>Quantité et prix</th>
-              <th>Ordre</th>
             </tr>
           </thead>
           <tbody>
@@ -288,27 +289,28 @@ export function MerchantStock({
                   </p>
                 </td>
                 <td>
-                  <StockEditor row={row} disabled={blocked} />
-                </td>
-                <td>
-                  {[-1, 1].map((offset) => (
-                    <Button
-                      key={offset}
-                      disabled={
-                        blocked ||
-                        index + offset < 0 ||
-                        index + offset >= rows.length
-                      }
-                      onClick={() => {
-                        const ids = rows.map((entry) => entry._id)
-                        ids.splice(index, 1)
-                        ids.splice(index + offset, 0, row._id)
-                        void perform(() => reorder({ merchantId, ids }))
-                      }}
-                    >
-                      {offset < 0 ? 'Monter' : 'Descendre'} {row.item.title}
-                    </Button>
-                  ))}
+                  <StockEditor
+                    row={row}
+                    disabled={blocked}
+                    order={[-1, 1].map((offset) => (
+                      <RowAction
+                        key={offset}
+                        disabled={
+                          blocked ||
+                          index + offset < 0 ||
+                          index + offset >= rows.length
+                        }
+                        onClick={() => {
+                          const ids = rows.map((entry) => entry._id)
+                          ids.splice(index, 1)
+                          ids.splice(index + offset, 0, row._id)
+                          void perform(() => reorder({ merchantId, ids }))
+                        }}
+                      >
+                        {offset < 0 ? 'Monter' : 'Descendre'} {row.item.title}
+                      </RowAction>
+                    ))}
+                  />
                 </td>
               </tr>
             ))}
@@ -331,7 +333,16 @@ function StockStatus({ row }: { row: Row }) {
     </span>
   )
 }
-function StockEditor({ row, disabled }: { row: Row; disabled: boolean }) {
+function StockEditor({
+  row,
+  disabled,
+  order,
+}: {
+  row: Row
+  disabled: boolean
+  /** Monter/Descendre, regroupés avec Retirer dans le menu ⋯ de la ligne. */
+  order: ReactNode
+}) {
   const update = useMutation(api.merchants.updateStock)
   const remove = useMutation(api.merchants.removeStock)
   const [error, setError] = useState<string | null>(null)
@@ -414,20 +425,23 @@ function StockEditor({ row, disabled }: { row: Row; disabled: boolean }) {
         </label>
         <DraftActions editor={editor} />
       </fieldset>
-      <Button
-        disabled={disabled || editor.pending || removing}
-        onClick={async () => {
-          setRemoving(true)
-          try {
-            await remove({ id: row._id })
-          } catch (error_) {
-            setError(operationErrorMessage(error_))
-            setRemoving(false)
-          }
-        }}
-      >
-        Retirer {row.item.title}
-      </Button>
+      <RowActions label={row.item.title}>
+        {order}
+        <RowAction
+          disabled={disabled || editor.pending || removing}
+          onClick={async () => {
+            setRemoving(true)
+            try {
+              await remove({ id: row._id })
+            } catch (error_) {
+              setError(operationErrorMessage(error_))
+              setRemoving(false)
+            }
+          }}
+        >
+          Retirer {row.item.title}
+        </RowAction>
+      </RowActions>
       {error && <p role="alert">{error}</p>}
     </div>
   )

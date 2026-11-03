@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { convexErrorCode, operationErrorMessage } from '@/features/auth/errors'
 import { useRetained } from '@/hooks/use-retained'
 
+import { CreateMenu, ProjectNav, RowAction, RowActions } from './page-actions'
 import { reconcileDraft } from './sheet-draft'
 import { definitionFrom } from './variable-input'
 
@@ -70,18 +71,31 @@ function VariablesContent({ project }: { project: Doc<'gmProjects'> }) {
       >
         ← {project.title}
       </Link>
-      <div className="page-heading mt-5">
-        <div>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="mr-auto min-w-0">
           <p className="eyebrow">VARIABLES</p>
           <h1>Variables du projet</h1>
-          <p>
+          <p className="text-sm text-muted-foreground">
             Valeurs partagées et formules recalculées automatiquement, par
             exemple <code>bonus = force * 2 + 1</code>.
           </p>
         </div>
+        <CreateMenu
+          label="Nouvelle variable"
+          choices={[
+            {
+              value: 'variable',
+              label: 'Variable…',
+              title: 'Nouvelle variable',
+            },
+          ]}
+          render={(_, close) => (
+            <CreateVariable projectId={project._id} onCreated={close} />
+          )}
+        />
       </div>
-      <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
-        <CreateVariable projectId={project._id} />
+      <ProjectNav projectId={project._id} />
+      <div className="grid gap-6">
         <section aria-label="Variables" className="panel overflow-x-auto p-5">
           {rows === undefined ? (
             <p role="status">Chargement des variables…</p>
@@ -97,7 +111,9 @@ function VariablesContent({ project }: { project: Doc<'gmProjects'> }) {
                   <th scope="col">Type</th>
                   <th scope="col">Valeur ou formule</th>
                   <th scope="col">Résultat</th>
-                  <th scope="col">Actions</th>
+                  <th scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -113,7 +129,13 @@ function VariablesContent({ project }: { project: Doc<'gmProjects'> }) {
   )
 }
 
-function CreateVariable({ projectId }: { projectId: Id<'gmProjects'> }) {
+function CreateVariable({
+  projectId,
+  onCreated,
+}: {
+  projectId: Id<'gmProjects'>
+  onCreated: () => void
+}) {
   const create = useMutation(api.gmVariables.createVariable)
   const [name, setName] = useState('')
   const [label, setLabel] = useState('')
@@ -123,7 +145,7 @@ function CreateVariable({ projectId }: { projectId: Id<'gmProjects'> }) {
   const [pending, setPending] = useState(false)
   return (
     <form
-      className="panel grid content-start gap-3 p-5"
+      className="grid content-start gap-3"
       aria-label="Nouvelle variable"
       onSubmit={(event) => {
         event.preventDefault()
@@ -144,6 +166,7 @@ function CreateVariable({ projectId }: { projectId: Id<'gmProjects'> }) {
             setName('')
             setLabel('')
             setInput(type === 'number' ? '0' : '')
+            onCreated()
             return undefined
           })
           .catch((error_: unknown) => setError(variableError(error_)))
@@ -387,37 +410,53 @@ function VariableRow({ row }: { row: Row }) {
       <td className="py-2 pr-3" aria-label={`Résultat de ${variable.name}`}>
         {formatComputed(computed)}
       </td>
-      <td className="flex flex-wrap gap-1 py-2">
-        <Button
-          variant="outline"
-          disabled={!dirty || saving || conflict}
-          onClick={() => void save()}
-          aria-label={`Enregistrer ${variable.name}`}
-        >
-          Enregistrer
-        </Button>
+      <td className="flex flex-wrap items-center gap-1 py-2">
+        {(dirty || conflict) && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!dirty || saving || conflict}
+            title={conflict ? 'Cette variable a changé dans une autre vue' : ''}
+            onClick={() => void save()}
+            aria-label={`Enregistrer ${variable.name}`}
+          >
+            Enregistrer
+          </Button>
+        )}
         {conflict && (
-          <Button variant="outline" disabled={saving} onClick={loadSaved}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={saving}
+            onClick={loadSaved}
+          >
             Charger la version enregistrée
           </Button>
         )}
-        {confirming ? (
-          <Button
-            variant="destructive"
-            onClick={() => run(() => remove({ id: variable._id }))}
-            aria-label={`Confirmer la suppression de ${variable.name}`}
-          >
-            Confirmer
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            onClick={() => setConfirming(true)}
-            aria-label={`Supprimer ${variable.name}`}
-          >
-            Supprimer
-          </Button>
+        {confirming && (
+          <>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => run(() => remove({ id: variable._id }))}
+              aria-label={`Confirmer la suppression de ${variable.name}`}
+            >
+              Confirmer
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirming(false)}
+            >
+              Annuler
+            </Button>
+          </>
         )}
+        <RowActions label={variable.name}>
+          <RowAction onClick={() => setConfirming(true)}>
+            Supprimer {variable.name}
+          </RowAction>
+        </RowActions>
       </td>
     </tr>
   )

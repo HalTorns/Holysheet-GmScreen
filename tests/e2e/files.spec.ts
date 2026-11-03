@@ -6,7 +6,7 @@ import { api } from '../../convex/_generated/api'
 import { backendUrl, backendSiteUrl } from '../../scripts/local-config.mjs'
 import { FILE_PDF_BYTES } from '../../shared/files'
 import { fileStorageIds } from './backend-operator'
-import { screenMenu } from './editor-ui'
+import { projectResource, rowAction, screenMenu } from './editor-ui'
 import { uploadFixture } from './files-fixtures'
 import {
   createEmail,
@@ -33,13 +33,14 @@ test('fichiers privés : MIME réel, image/PDF sous CSP, collage et cycle de cor
     })
     await page.goto(`/app/projects/${projectId}`)
     await waitForHydration(page)
+    await projectResource(page, 'Fichiers du projet…')
     const input = page.getByLabel('Importer un fichier', { exact: true })
     for (const name of ['pixel.png', 'two-pages.pdf'] as const) {
       await input.setInputFiles(
         new URL(`../fixtures/files/${name}`, import.meta.url).pathname
       )
       await expect(
-        page.getByRole('button', { name: `Corbeille ${name}`, exact: true })
+        page.getByRole('button', { name: `Actions de ${name}`, exact: true })
       ).toBeVisible()
       await expect(input).toBeEnabled()
     }
@@ -151,38 +152,30 @@ test('fichiers privés : MIME réel, image/PDF sous CSP, collage et cycle de cor
     page.on('dialog', (dialog) => {
       void dialog.accept()
     })
-    await page
-      .getByRole('button', { name: 'Corbeille pixel.png', exact: true })
-      .click()
+    await rowAction(page, 'pixel.png', 'Corbeille pixel.png')
     await expect(
       page.getByText('Fichier indisponible', { exact: true })
     ).toBeVisible()
     await page
       .getByRole('button', { name: 'Corbeille des fichiers', exact: true })
       .click()
-    await page
-      .getByRole('button', { name: 'Restaurer pixel.png', exact: true })
-      .click()
+    await rowAction(page, 'pixel.png', 'Restaurer pixel.png')
     await expect(
       page.getByRole('img', { name: 'pixel.png', exact: true })
     ).toBeVisible()
     await page
       .getByRole('button', { name: 'Fichiers actifs', exact: true })
       .click()
-    await page
-      .getByRole('button', { name: 'Corbeille pixel.png', exact: true })
-      .click()
+    await rowAction(page, 'pixel.png', 'Corbeille pixel.png')
     await expect(
       page.getByText('Fichier indisponible', { exact: true })
     ).toBeVisible()
     await page
       .getByRole('button', { name: 'Corbeille des fichiers', exact: true })
       .click()
-    await page
-      .getByRole('button', { name: 'Purger pixel.png', exact: true })
-      .click()
+    await rowAction(page, 'pixel.png', 'Purger pixel.png')
     await expect(
-      page.getByRole('button', { name: 'Purger pixel.png', exact: true })
+      page.getByRole('button', { name: 'Actions de pixel.png', exact: true })
     ).toHaveCount(0)
     expect(await page.evaluate(() => 'polyglotExecuted' in window)).toBe(false)
     // Real HTTP transport supplies Content-Length; reject before storage.

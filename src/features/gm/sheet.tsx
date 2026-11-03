@@ -18,6 +18,7 @@ import { convexErrorCode, operationErrorMessage } from '@/features/auth/errors'
 import { useRetained } from '@/hooks/use-retained'
 
 import { ItemProfile, MerchantStock } from './merchant-stock'
+import { RowAction, RowActions } from './page-actions'
 import { reconcileDraft } from './sheet-draft'
 
 type SheetView = NonNullable<FunctionReturnType<typeof api.gmSheets.getSheet>>
@@ -124,8 +125,8 @@ function SheetContent({ view }: { view: SheetView }) {
       >
         ← Bibliothèque
       </Link>
-      <div className="page-heading mt-5">
-        <div>
+      <div className="mt-5 flex flex-wrap items-start gap-3">
+        <div className="mr-auto min-w-0">
           <p className="eyebrow">{gmSheetKindLabels[sheet.kind]}</p>
           <h1>{sheet.title}</h1>
           {deleted && (
@@ -135,6 +136,24 @@ function SheetContent({ view }: { view: SheetView }) {
             </p>
           )}
         </div>
+        <RowActions label={sheet.title} disabled={deleted}>
+          <RowAction
+            onClick={() =>
+              void trash({ id: sheet._id })
+                .then(() =>
+                  navigate({
+                    to: '/app/projects/$projectId/library',
+                    params: { projectId: sheet.projectId },
+                  })
+                )
+                .catch((error_: unknown) =>
+                  setError(operationErrorMessage(error_))
+                )
+            }
+          >
+            Mettre à la corbeille
+          </RowAction>
+        </RowActions>
       </div>
       {sheet.kind === 'item' && (
         <ItemProfile sheetId={sheet._id} disabled={deleted} />
@@ -298,25 +317,6 @@ function SheetContent({ view }: { view: SheetView }) {
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={deleted || saving || !dirty}>
               {saving ? 'Enregistrement…' : 'Enregistrer la fiche'}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={deleted}
-              onClick={() =>
-                void trash({ id: sheet._id })
-                  .then(() =>
-                    navigate({
-                      to: '/app/projects/$projectId/library',
-                      params: { projectId: sheet.projectId },
-                    })
-                  )
-                  .catch((error_: unknown) =>
-                    setError(operationErrorMessage(error_))
-                  )
-              }
-            >
-              Mettre à la corbeille
             </Button>
           </div>
         </form>

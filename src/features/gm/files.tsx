@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 
 import { useFileUpload } from './file-upload'
+import { RowAction, RowActions } from './page-actions'
 
 export function Files({
   projectId,
@@ -80,67 +81,82 @@ export function Files({
           }}
         />
       </label>
-      <Button onClick={() => setTrash(!trash)}>
-        {trash ? 'Fichiers actifs' : 'Corbeille des fichiers'}
-      </Button>
+      <div className="flex gap-1" role="group" aria-label="Vue des fichiers">
+        {(
+          [
+            [false, 'Fichiers actifs'],
+            [true, 'Corbeille des fichiers'],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            key={label}
+            size="sm"
+            variant={trash === value ? 'secondary' : 'ghost'}
+            aria-pressed={trash === value}
+            onClick={() => setTrash(value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
       {files.results.map((file) => (
         <div
           key={file._id}
-          className="flex flex-wrap items-center gap-3"
+          className="flex flex-wrap items-center gap-2"
           data-file-name={file.name}
         >
-          <span>
+          <span className="min-w-0 flex-1 truncate">
             {file.name} · {file.mimeType} · {file.size} octets
           </span>
-          <Button
-            disabled={pending}
-            onClick={() => {
-              const name = window.prompt('Nom du fichier', file.name)
-              if (name) void perform(() => rename({ id: file._id, name }))
-            }}
-          >
-            Renommer {file.name}
-          </Button>
           {!trash && onChoose && (
             <Button
+              size="sm"
+              variant="outline"
               disabled={pending}
               onClick={() => void perform(() => onChoose(file))}
             >
               Placer {file.name}
             </Button>
           )}
-          {trash ? (
-            <>
-              <Button
-                disabled={pending}
-                onClick={() =>
-                  void perform(() => setTrashed({ id: file._id, trash: false }))
-                }
-              >
-                Restaurer {file.name}
-              </Button>
-              <Button
-                disabled={pending}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Supprimer définitivement « ${file.name} » et son contenu ?`
-                    )
-                  )
-                    void perform(() => purge({ id: file._id }))
-                }}
-              >
-                Purger {file.name}
-              </Button>
-            </>
-          ) : (
-            <Button
-              disabled={pending}
-              onClick={() => void perform(() => trashFile(file))}
+          <RowActions label={file.name} disabled={pending}>
+            <RowAction
+              onClick={() => {
+                const name = window.prompt('Nom du fichier', file.name)
+                if (name) void perform(() => rename({ id: file._id, name }))
+              }}
             >
-              Corbeille {file.name}
-            </Button>
-          )}
+              Renommer {file.name}
+            </RowAction>
+            {trash ? (
+              <>
+                <RowAction
+                  onClick={() =>
+                    void perform(() =>
+                      setTrashed({ id: file._id, trash: false })
+                    )
+                  }
+                >
+                  Restaurer {file.name}
+                </RowAction>
+                <RowAction
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Supprimer définitivement « ${file.name} » et son contenu ?`
+                      )
+                    )
+                      void perform(() => purge({ id: file._id }))
+                  }}
+                >
+                  Purger {file.name}
+                </RowAction>
+              </>
+            ) : (
+              <RowAction onClick={() => void perform(() => trashFile(file))}>
+                Corbeille {file.name}
+              </RowAction>
+            )}
+          </RowActions>
         </div>
       ))}
       {files.status === 'CanLoadMore' && (

@@ -5,7 +5,9 @@ import { api } from '../../convex/_generated/api'
 import { readScreen } from '../helpers/gm-screen'
 import {
   addMenu,
+  createFrom,
   inspect,
+  projectResource,
   screenMenu,
   setMode,
   widgetAction,
@@ -169,6 +171,79 @@ test('3a: dense controls live in menus, modes separate play from reading, mobile
     const box = await panel.boundingBox()
     expect(box?.y ?? 0).toBeGreaterThan(200)
     expect(Math.round(box?.width ?? 0)).toBe(375)
+  } finally {
+    await deleteAccountWithClient(client)
+  }
+})
+
+test('3a-2: project page keeps creation and resources in menus, panels keep drafts', async ({
+  page,
+}) => {
+  await signInWithEmail(page, createEmail())
+  const client = await getAuthenticatedClient(page.context())
+  try {
+    const projectId = await client.mutation(api.gm.createProject, {
+      title: 'Ergonomie 3a-2',
+    })
+    await page.goto(`/app/projects/${projectId}`)
+    await waitForHydration(page)
+    // Retour, 3 onglets, ＋, ⚙ et « Racine » ; listes exclues.
+    const controls = await page.locator('main').evaluate((main) => {
+      const list = main.querySelector('[aria-label="Contenu du dossier"]')
+      return [
+        ...main.querySelectorAll<HTMLElement>(
+          'button, select, input, textarea, a[href]'
+        ),
+      ].filter((element) => {
+        if (list?.contains(element)) return false
+        const box = element.getBoundingClientRect()
+        return box.width > 0 && box.height > 0
+      }).length
+    })
+    expect(controls).toBeLessThanOrEqual(8)
+    await expect(page.getByRole('textbox')).toHaveCount(0)
+
+    await createFrom(page, 'Nouveau', 'Screen…')
+    await page.getByRole('textbox', { name: 'Créer un Screen' }).fill('Menus')
+    await page.getByRole('button', { name: 'Créer un Screen' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Menus →' })).toBeVisible()
+
+    // Un brouillon de définition survit à la fermeture du panneau.
+    await projectResource(page, 'Widgets personnalisés…')
+    await page
+      .getByRole('button', { name: 'Créer un widget personnalisé' })
+      .click()
+    await page
+      .getByLabel('Nom du widget personnalisé', { exact: true })
+      .fill('Brouillon 3a-2')
+    await page.keyboard.press('Escape')
+    await expect(
+      page.getByLabel('Nom du widget personnalisé', { exact: true })
+    ).toBeHidden()
+    await projectResource(page, 'Widgets personnalisés…')
+    await expect(
+      page.getByLabel('Nom du widget personnalisé', { exact: true })
+    ).toHaveValue('Brouillon 3a-2')
+    await page
+      .getByRole('button', { name: 'Fermer widgets personnalisés' })
+      .click()
+    await projectResource(page, 'Widgets personnalisés…')
+    await expect(
+      page.getByLabel('Nom du widget personnalisé', { exact: true })
+    ).toHaveValue('Brouillon 3a-2')
+
+    // Les onglets mènent aux autres pages du projet, sans formulaire ouvert.
+    await page
+      .getByRole('navigation', { name: 'Sections du projet' })
+      .getByRole('link', { name: 'Variables' })
+      .click()
+    await expect(
+      page.getByRole('heading', { name: 'Variables du projet' })
+    ).toBeVisible()
+    await expect(
+      page.getByRole('form', { name: 'Nouvelle variable' })
+    ).toHaveCount(0)
   } finally {
     await deleteAccountWithClient(client)
   }

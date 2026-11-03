@@ -100,4 +100,11 @@ L’éditeur de Screen n’affiche plus par défaut que l’essentiel :
 
 Le mode Jeu est nouveau : on utilise les widgets sans les déplacer ni les configurer. Le mode Lecture reste une consultation sans écriture.
 
-Aucune modification Convex. Voir [l’ADR](decisions/editor-ux.md) pour les écarts au [plan revu](PLAN-UX3a.md). L’identité visuelle (3b) et les autres pages (3a-2) restent à faire.
+Aucune modification Convex. Voir [l’ADR](decisions/editor-ux.md) pour les écarts au [plan revu](PLAN-UX3a.md). Les pages du projet suivent la même grammaire (3a-2) :
+
+- onglets Screens · Fiches · Variables ;
+- **＋** pour créer, dans un dialogue ;
+- **⚙ Ressources** pour les fichiers et les widgets personnalisés, ouverts en panneaux latéraux ;
+- **⋯** sur chaque ligne.
+
+L’identité visuelle (3b) reste à faire.

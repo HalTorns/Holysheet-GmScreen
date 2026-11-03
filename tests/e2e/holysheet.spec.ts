@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 import { api } from '../../convex/_generated/api'
 import { gmTables } from '../../shared/gm'
 import { verifyLocalRestore } from './backup'
-import { addMenu, setAutoSave } from './editor-ui'
+import { addMenu, createFrom, setAutoSave } from './editor-ui'
 import { uploadFixture } from './files-fixtures'
 import {
   completeProfile,
@@ -97,6 +97,7 @@ test('password registration, project, folder and Screen survive reload, synchron
       .getByRole('button', { name: 'Créer un projet', exact: true })
       .click()
     await page.getByRole('link', { name: /Campagne des brumes/ }).click()
+    await createFrom(page, 'Nouveau', 'Dossier…')
     await page
       .getByRole('textbox', { name: 'Créer un dossier', exact: true })
       .fill('Session 1')
@@ -106,6 +107,7 @@ test('password registration, project, folder and Screen survive reload, synchron
     await page
       .getByRole('button', { name: 'Dossier · Session 1', exact: true })
       .click()
+    await createFrom(page, 'Nouveau', 'Screen…')
     await page
       .getByLabel('Format initial du Screen')
       .selectOption('a4-landscape')

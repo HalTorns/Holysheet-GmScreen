@@ -74,3 +74,21 @@ Demande de l’utilisateur du 3 novembre 2026 : l’éditeur affichait chaque ac
 - **E2E** :
   - `tests/e2e/editor-ux.spec.ts` couvre la densité, Jeu, Lecture sans mutation, la récupération hors cadre, Suppr, le menu au clavier et le mobile 375 px ;
   - les parcours existants passent par les helpers `tests/e2e/editor-ui.ts`, avec les mêmes libellés et des rôles `menuitem`.
+
+## Pages du projet (chantier 3a-2)
+
+Même grammaire hors du Screen, voir [PLAN-UX3a2](../PLAN-UX3a2.md) :
+
+- **Onglets** : la barre `ProjectNav` (Screens · Fiches · Variables) est commune aux trois pages du projet.
+- **＋ crée** :
+  - page projet : Dossier… et Screen… ;
+  - bibliothèque : un type de fiche ;
+  - variables : nouvelle variable.
+
+  Chaque création passe par un dialogue, sans formulaire ouvert en permanence.
+
+- **⚙ Ressources du projet** : Fichiers et Widgets personnalisés s’ouvrent dans des panneaux latéraux. Le panneau des widgets personnalisés reste monté une fois fermé (`keepMounted`), sur le projet comme sur le Screen : un brouillon de définition n’est jamais perdu en le refermant (revue UX3A2-01).
+- **⋯ sur chaque ligne** (`RowActions`) : fichiers, définitions, fiches en corbeille, variables, lignes de stock et fiche ouverte. L’action principale reste visible, par exemple Placer. Les libellés des anciens boutons sont conservés.
+- **Variables** : Enregistrer n’apparaît que sur une ligne modifiée ou en conflit. Les confirmations (Supprimer, Effacer définitivement) restent des boutons visibles une fois demandées.
+
+Écart : la densité de la page projet et la conservation du brouillon sont prouvées en E2E (`editor-ux.spec.ts`) plutôt qu’en test navigateur isolé, car elles dépendent du routeur et des listes réelles.

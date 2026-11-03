@@ -7,7 +7,7 @@ import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import { addMenu, setMode } from './editor-ui'
+import { addMenu, projectResource, setMode } from './editor-ui'
 import {
   createEmail,
   deleteAccountWithClient,
@@ -81,6 +81,7 @@ test('F8: TS editor, preview, state persistence, read-only and static print', as
   try {
     await page.goto(`/app/projects/${projectId}`)
     await waitForHydration(page)
+    await projectResource(page, 'Widgets personnalisés…')
     await page
       .getByRole('button', {
         name: 'Créer un widget personnalisé',
@@ -118,7 +119,10 @@ test('F8: TS editor, preview, state persistence, read-only and static print', as
       .getByRole('button', { name: 'Enregistrer la définition', exact: true })
       .press('Enter')
     await expect(
-      page.getByRole('button', { name: 'Modifier Compteur TS F8', exact: true })
+      page.getByRole('button', {
+        name: 'Actions de Compteur TS F8',
+        exact: true,
+      })
     ).toBeVisible()
     await openScreen(page, screenId)
     await addMenu(page, 'Widget personnalisé…')
