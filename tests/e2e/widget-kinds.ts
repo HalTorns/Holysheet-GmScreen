@@ -5,6 +5,18 @@ import type { ConvexHttpClient } from 'convex/browser'
 import { api } from '../../convex/_generated/api'
 import { readScreen } from '../helpers/gm-screen'
 import { resetResourceWriteBudget } from './backend-operator'
+import {
+  addMenu,
+  closeInspector,
+  inspect,
+  screenMenu,
+  selectWidgets,
+  selectionBar,
+  setAutoSave,
+  setMode,
+  setScreenOption,
+  widgetAction,
+} from './editor-ui'
 import { waitForHydration } from './helpers'
 
 export async function verifyWidgetKinds(
@@ -25,53 +37,56 @@ export async function verifyWidgetKinds(
   })
   await page.goto(`/app/screens/${screenId}`)
   await waitForHydration(page)
-  await page
-    .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-    .uncheck()
+  const manualSave = () => setAutoSave(page, false)
+  await manualSave()
+  const families: Record<string, [string, string]> = {
+    checklist: ['Texte et listes', 'Checklist'],
+    table: ['Texte et listes', 'Tableau'],
+    sheet: ['Texte et listes', 'Fiche'],
+    counter: ['Outils de partie', 'Compteur'],
+    dice: ['Outils de partie', 'Dés'],
+    clock: ['Outils de partie', 'Horloge'],
+    initiative: ['Outils de partie', 'Initiative'],
+  }
   async function add(kind: string) {
-    await page.getByLabel('Type de widget', { exact: true }).selectOption(kind)
-    await page
-      .getByRole('button', { name: 'Ajouter un widget', exact: true })
-      .click()
+    const path = families[kind]
+    if (!path) throw new Error(`Unknown widget kind ${kind}`)
+    await addMenu(page, ...path)
   }
   await add('checklist')
   const checklist = page.getByRole('region', {
     name: 'Widget checklist 1',
     exact: true,
   })
-  await checklist
+  let panel = await inspect(page, 1)
+  await panel
     .getByRole('button', { name: 'Ajouter un élément', exact: true })
     .click()
-  await checklist
+  await panel
     .getByRole('button', { name: 'Ajouter un élément', exact: true })
     .click()
-  await checklist
+  await panel
     .getByRole('button', { name: 'Enregistrer le widget', exact: true })
     .click()
   await expect(
-    checklist.getByRole('button', {
-      name: 'Enregistrer le widget',
-      exact: true,
-    })
-  ).toBeDisabled()
+    panel.getByRole('button', { name: 'Enregistrer le widget', exact: true })
+  ).toHaveCount(0)
   await checklist
     .getByRole('checkbox', { name: 'Élément 1', exact: true })
     .check()
   await expect(
-    checklist.getByRole('button', { name: 'Monter Élément 2', exact: true })
+    panel.getByRole('button', { name: 'Monter Élément 2', exact: true })
   ).toBeEnabled()
-  await checklist
+  await panel
     .getByRole('button', { name: 'Monter Élément 2', exact: true })
     .click()
-  await checklist
+  await panel
     .getByRole('button', { name: 'Enregistrer le widget', exact: true })
     .click()
   await expect(
-    checklist.getByRole('button', {
-      name: 'Enregistrer le widget',
-      exact: true,
-    })
-  ).toBeDisabled()
+    panel.getByRole('button', { name: 'Enregistrer le widget', exact: true })
+  ).toHaveCount(0)
+  await closeInspector(page)
   await expect
     .poll(async () => {
       const widgets = await client.query(api.gmWidgets.listScreenWidgets, {
@@ -88,29 +103,24 @@ export async function verifyWidgetKinds(
     .toBe(true)
   await page.reload()
   await waitForHydration(page)
-  // Après rechargement, un clic avant l'hydratation est perdu (AUD-08) :
-  // on réessaie jusqu'à ce que la case réagisse réellement.
-  const autosaveAfterReload = page.getByRole('checkbox', {
-    name: 'Sauvegarde automatique',
-    exact: true,
-  })
-  await expect(async () => {
-    await autosaveAfterReload.uncheck({ timeout: 2000 })
-    await expect(autosaveAfterReload).not.toBeChecked()
-  }).toPass({ timeout: 20_000 })
+  await manualSave()
   await expect(
     checklist.getByRole('checkbox', { name: 'Élément 1', exact: true })
   ).toBeChecked()
+  panel = await inspect(page, 1)
   await expect(
-    checklist.getByRole('textbox', { name: 'Libellé 1', exact: true })
+    panel.getByRole('textbox', { name: 'Libellé 1', exact: true })
   ).toHaveValue('Élément 2')
+  await closeInspector(page)
   await add('counter')
   await add('dice')
   const dice = page.getByRole('region', { name: 'Widget dice 3', exact: true })
-  await dice.getByLabel('Expression de dés', { exact: true }).fill('2d6+1')
-  await dice
+  panel = await inspect(page, 3)
+  await panel.getByLabel('Expression de dés', { exact: true }).fill('2d6+1')
+  await panel
     .getByRole('button', { name: 'Enregistrer le widget', exact: true })
     .click()
+  await closeInspector(page)
   await expect(
     dice.getByRole('button', { name: 'Lancer', exact: true })
   ).toBeEnabled()
@@ -128,20 +138,13 @@ export async function verifyWidgetKinds(
   expect(total).toBe(first + second + 1)
   await page.reload()
   await waitForHydration(page)
-  // Après rechargement, un clic avant l'hydratation est perdu (AUD-08) :
-  // on réessaie jusqu'à ce que la case réagisse réellement.
-  const autosave = page.getByRole('checkbox', {
-    name: 'Sauvegarde automatique',
-    exact: true,
-  })
-  await expect(async () => {
-    await autosave.uncheck({ timeout: 2000 })
-    await expect(autosave).not.toBeChecked()
-  }).toPass({ timeout: 20_000 })
-  await expect(
-    dice.getByLabel('Expression de dés', { exact: true })
-  ).toHaveValue('2d6+1')
+  await manualSave()
   await expect(result).toBeEmpty()
+  panel = await inspect(page, 3)
+  await expect(
+    panel.getByLabel('Expression de dés', { exact: true })
+  ).toHaveValue('2d6+1')
+  await closeInspector(page)
 
   const counter = page.getByRole('region', {
     name: 'Widget counter 2',
@@ -155,16 +158,18 @@ export async function verifyWidgetKinds(
   )?.variable
   if (!force || force.type !== 'number')
     throw new Error('Missing number variable')
-  await counter
+  panel = await inspect(page, 2)
+  await panel
     .getByLabel('Variable nombre', { exact: true })
     .selectOption(force._id)
   page.once('dialog', (dialog) => dialog.accept())
-  await counter
+  await panel
     .getByRole('button', { name: 'Lier la variable', exact: true })
     .click()
-  await counter
+  await panel
     .getByRole('button', { name: 'Enregistrer le widget', exact: true })
     .click()
+  await closeInspector(page)
   await expect(
     counter.getByRole('button', { name: 'Augmenter', exact: true })
   ).toBeEnabled()
@@ -185,52 +190,45 @@ export async function verifyWidgetKinds(
   await expect(
     other.getByLabel('Résultat de force', { exact: true })
   ).toHaveText(String(force.value + 1))
-  await page
-    .getByRole('button', { name: 'Verrouiller la disposition', exact: true })
-    .click()
+  await setScreenOption(page, 'Verrouiller la disposition', true)
+  panel = await inspect(page, 3)
   await expect(
-    dice.getByLabel('Expression de dés', { exact: true })
+    panel.getByLabel('Expression de dés', { exact: true })
   ).toBeDisabled()
+  await closeInspector(page)
   await expect(
     counter.getByRole('button', { name: 'Augmenter', exact: true })
   ).toBeEnabled()
   await expect(
     checklist.getByRole('checkbox', { name: 'Élément 1', exact: true })
   ).toBeEnabled()
-  await page.getByRole('button', { name: 'Lecture seule', exact: true }).click()
+  await setMode(page, 'Lecture')
   await expect(
     dice.getByRole('button', { name: 'Lancer', exact: true })
   ).toHaveCount(0)
-  await page
-    .getByRole('button', { name: 'Reprendre l’édition', exact: true })
-    .click()
-  await page
-    .getByRole('button', { name: 'Déverrouiller la disposition', exact: true })
-    .click()
-  await page
-    .getByRole('button', { name: 'Ajouter une note', exact: true })
-    .click()
+  await setMode(page, 'Jeu')
+  await expect(
+    dice.getByRole('button', { name: 'Lancer', exact: true })
+  ).toBeEnabled()
+  await expect(
+    page.getByRole('button', { name: 'Configurer le widget 3', exact: true })
+  ).toHaveCount(0)
+  await setMode(page, 'Édition')
+  await setScreenOption(page, 'Verrouiller la disposition', false)
+  await addMenu(page, 'Note')
   await page
     .getByRole('textbox', { name: 'Contenu de la note', exact: true })
     .fill('Note pour restauration F3b')
   await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
   await expect(
     page.getByRole('button', { name: 'Enregistrer', exact: true })
-  ).toBeDisabled()
-  await page
-    .getByRole('combobox', { name: 'Note sélectionnée', exact: true })
-    .selectOption({ label: 'Note 1' })
-  await page.getByRole('button', { name: 'Dupliquer', exact: true }).click()
+  ).toHaveCount(0)
+  await widgetAction(page, 1, 'Dupliquer')
   await expect(
     page.getByRole('region', { name: 'Widget checklist 5', exact: true })
   ).toBeVisible()
-  await page
-    .getByRole('combobox', { name: 'Note sélectionnée', exact: true })
-    .selectOption({ label: 'Note 5' })
-  await page
-    .getByRole('button', { name: 'Mettre à la corbeille', exact: true })
-    .click()
-  await page.getByRole('button', { name: 'Corbeille', exact: true }).click()
+  await widgetAction(page, 5, 'Mettre à la corbeille')
+  await screenMenu(page, 'Corbeille du Screen…')
   const trash = page.getByRole('dialog')
   await trash
     .getByRole('button', { name: 'Restaurer cette note', exact: true })
@@ -239,16 +237,10 @@ export async function verifyWidgetKinds(
   await expect(
     page.getByRole('region', { name: 'Widget checklist 5', exact: true })
   ).toBeVisible()
-  await page
-    .getByText('Sélection, groupes et alignement', { exact: true })
+  await selectWidgets(page, 1, 4)
+  await selectionBar(page)
+    .getByRole('button', { name: 'Grouper', exact: true })
     .click()
-  await page
-    .getByRole('checkbox', { name: 'Sélectionner la note 1', exact: true })
-    .check()
-  await page
-    .getByRole('checkbox', { name: 'Sélectionner la note 4', exact: true })
-    .check()
-  await page.getByRole('button', { name: 'Grouper', exact: true }).click()
   await page
     .getByRole('button', { name: 'Enregistrer la disposition', exact: true })
     .click()
@@ -275,15 +267,17 @@ export async function verifyWidgetKinds(
     exact: true,
   })
   await expect(sheetWidget).toContainText('Choisir une fiche')
-  await sheetWidget
+  panel = await inspect(page, 6)
+  await panel
     .getByLabel('Rechercher une fiche', { exact: true })
     .fill('Aubergiste')
-  await sheetWidget
+  await panel
     .getByRole('button', { name: 'Afficher « Aubergiste »', exact: true })
     .click()
-  await sheetWidget
+  await panel
     .getByRole('button', { name: 'Enregistrer le widget', exact: true })
     .click()
+  await closeInspector(page)
   await expect(sheetWidget).toContainText('Sait tout sur tout le monde')
   const sheetUrl = await sheetWidget
     .getByRole('link', { name: 'Ouvrir la fiche', exact: true })
@@ -301,14 +295,12 @@ export async function verifyWidgetKinds(
     other.getByRole('button', { name: 'Enregistrer la fiche', exact: true })
   ).toBeDisabled()
   await expect(sheetWidget).toContainText('Connaît le passage secret')
-  await page.getByRole('button', { name: 'Lecture seule', exact: true }).click()
+  await setMode(page, 'Lecture')
   await expect(sheetWidget).toContainText('Connaît le passage secret')
   await expect(
     sheetWidget.getByRole('link', { name: 'Ouvrir la fiche', exact: true })
   ).toBeVisible()
-  await page
-    .getByRole('button', { name: 'Reprendre l’édition', exact: true })
-    .click()
+  await setMode(page, 'Édition')
   resetResourceWriteBudget(data.screen.ownerId)
   await add('table')
   const table = page.getByRole('region', {
@@ -344,27 +336,27 @@ export async function verifyWidgetKinds(
     .click()
   await expect(
     table.getByRole('button', { name: 'Enregistrer le widget', exact: true })
-  ).toBeDisabled()
+  ).toHaveCount(0)
   await page.reload()
   await waitForHydration(page)
   await expect(table.getByLabel('Cellule 2, 3', { exact: true })).toHaveValue(
     'Modifié'
   )
-  await page
-    .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-    .uncheck()
+  await manualSave()
   await add('clock')
   const clock = page.getByRole('region', {
     name: 'Widget horloge 8',
     exact: true,
   })
-  await clock
+  panel = await inspect(page, 8)
+  await panel
     .getByLabel('Mode de l’horloge', { exact: true })
     .selectOption('timer')
-  await clock.getByLabel('Durée en secondes', { exact: true }).fill('30')
-  await clock
+  await panel.getByLabel('Durée en secondes', { exact: true }).fill('30')
+  await panel
     .getByRole('button', { name: 'Enregistrer le widget', exact: true })
     .click()
+  await closeInspector(page)
   await expect(
     clock.getByRole('button', { name: 'Démarrer', exact: true })
   ).toBeEnabled()
@@ -406,9 +398,7 @@ export async function verifyWidgetKinds(
       return displayed === restored && Date.now() - frozenAt >= 1200
     })
     .toBe(true)
-  await page
-    .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-    .uncheck()
+  await manualSave()
   await add('initiative')
   const initiative = page.getByRole('region', {
     name: 'Widget initiative 9',
@@ -426,7 +416,7 @@ export async function verifyWidgetKinds(
       name: 'Enregistrer le widget',
       exact: true,
     })
-  ).toBeDisabled()
+  ).toHaveCount(0)
   await other.goto(page.url())
   await waitForHydration(other)
   const remote = other.getByRole('region', {

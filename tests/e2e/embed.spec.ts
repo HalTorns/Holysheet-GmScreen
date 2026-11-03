@@ -2,6 +2,13 @@ import { expect, test } from '@playwright/test'
 
 import { api } from '../../convex/_generated/api'
 import {
+  addMenu,
+  closeInspector,
+  inspect,
+  setAutoSave,
+  setMode,
+} from './editor-ui'
+import {
   createEmail,
   deleteAccountWithClient,
   getAuthenticatedClient,
@@ -45,16 +52,8 @@ test('embed: menu, canonical persistence, HTTPS frame, denied frame fallback and
     expect(response?.headers()['content-security-policy']).toMatch(
       /(?:^|;\s*)frame-src https: https?:\/\/[^;]+\/sandbox\/host(?:;|$)/
     )
-    await page
-      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-      .uncheck()
-    await page
-      .getByLabel('Type de widget', { exact: true })
-      .selectOption('embed')
-    // Keyboard activation is reliable even when placed widgets overlap.
-    await page
-      .getByRole('button', { name: 'Ajouter un widget', exact: true })
-      .press('Enter')
+    await setAutoSave(page, false)
+    await addMenu(page, 'Médias et liens', 'Lien web')
     const widget = page.getByRole('region', {
       name: 'Widget embed 1',
       exact: true,
@@ -63,19 +62,20 @@ test('embed: menu, canonical persistence, HTTPS frame, denied frame fallback and
       widget.getByText('Configurer le lien', { exact: true }).last()
     ).toBeVisible()
     await expect(widget.locator('a, iframe')).toHaveCount(0)
-    await widget
+    let panel = await inspect(page, 1)
+    await panel
       .getByLabel('Titre du widget', { exact: true })
       .fill('Référence F7b')
-    await widget.getByLabel('URL du lien', { exact: true }).fill(allowedUrl)
-    await widget
+    await panel.getByLabel('URL du lien', { exact: true }).fill(allowedUrl)
+    await panel
       .getByLabel('Mode du lien', { exact: true })
       .selectOption('frame')
-    const save = widget.getByRole('button', {
+    let save = panel.getByRole('button', {
       name: 'Enregistrer le widget',
       exact: true,
     })
     await save.press('Enter')
-    await expect(save).toBeDisabled()
+    await expect(save).toHaveCount(0)
     await expect(
       widget
         .frameLocator('iframe')
@@ -83,9 +83,10 @@ test('embed: menu, canonical persistence, HTTPS frame, denied frame fallback and
     ).toBeVisible()
     await page.reload()
     await waitForHydration(page)
-    await expect(widget.getByLabel('URL du lien', { exact: true })).toHaveValue(
-      allowedUrl
-    )
+    await expect(
+      (await inspect(page, 1)).getByLabel('URL du lien', { exact: true })
+    ).toHaveValue(allowedUrl)
+    await closeInspector(page)
     await expect(
       widget
         .frameLocator('iframe')
@@ -111,10 +112,13 @@ test('embed: menu, canonical persistence, HTTPS frame, denied frame fallback and
     await expect(fallback).toHaveAttribute('href', allowedUrl)
     await expect(fallback).toHaveAttribute('target', '_blank')
     await expect(fallback).toHaveAttribute('rel', 'noopener noreferrer')
-    await page
-      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-      .uncheck()
-    await widget.getByLabel('URL du lien', { exact: true }).fill(deniedUrl)
+    await setAutoSave(page, false)
+    panel = await inspect(page, 1)
+    await panel.getByLabel('URL du lien', { exact: true }).fill(deniedUrl)
+    save = panel.getByRole('button', {
+      name: 'Enregistrer le widget',
+      exact: true,
+    })
     // Wait for the browser's load (also emitted for blocked frames) before
     // asserting absence. A response alone precedes the embedding decision.
     const deniedLoad = widget.locator('iframe').evaluate(
@@ -141,12 +145,10 @@ test('embed: menu, canonical persistence, HTTPS frame, denied frame fallback and
         exact: true,
       })
     ).toBeVisible()
-    await page
-      .getByRole('button', { name: 'Lecture seule', exact: true })
-      .press('Enter')
+    await setMode(page, 'Lecture')
     await expect(
-      page.getByRole('button', { name: 'Reprendre l’édition', exact: true })
-    ).toBeVisible()
+      page.getByRole('radio', { name: 'Lecture', exact: true })
+    ).toHaveAttribute('aria-checked', 'true')
     await expect(fallback).toBeVisible()
     await page.emulateMedia({ media: 'print' })
     await expect(widget.locator('iframe')).not.toBeVisible()

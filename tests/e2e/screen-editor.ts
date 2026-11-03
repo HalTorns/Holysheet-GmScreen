@@ -4,6 +4,16 @@ import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
 import { readScreen } from '../helpers/gm-screen'
+import {
+  addMenu,
+  closeInspector,
+  inspect,
+  screenMenu,
+  selectProfile,
+  setMode,
+  setScreenOption,
+  widgetAction,
+} from './editor-ui'
 import { waitForHydration } from './helpers'
 
 async function drag(page: Page, handle: Locator, dx: number, dy: number) {
@@ -45,11 +55,7 @@ export async function verifyScreenEditor(
     if (!result) throw new Error('Missing profile')
     return result
   }
-  const autoSave = page.getByRole('checkbox', {
-    name: 'Sauvegarde automatique',
-    exact: true,
-  })
-  await autoSave.check()
+  await setScreenOption(page, 'Sauvegarde automatique', true)
   await drag(
     page,
     page.getByRole('button', { name: 'Déplacer la note 1', exact: true }),
@@ -60,8 +66,12 @@ export async function verifyScreenEditor(
     .poll(async () => (await profile(bureau._id)).placements[0]?.x)
     .toBe(initial.x + 80)
   await expect(
-    secondPage.getByRole('spinbutton', { name: 'Position X', exact: true })
+    (await inspect(secondPage, 1, 'Position')).getByRole('spinbutton', {
+      name: 'Position X',
+      exact: true,
+    })
   ).toHaveValue(String(initial.x + 80))
+  await closeInspector(secondPage)
   await page
     .getByRole('combobox', { name: 'Zoom du Screen' })
     .selectOption('50')
@@ -83,9 +93,7 @@ export async function verifyScreenEditor(
   await expect
     .poll(async () => (await profile(bureau._id)).placements[0]?.x)
     .toBe(initial.x + 81)
-  await page
-    .getByRole('button', { name: 'Nouveau profil', exact: true })
-    .click()
+  await screenMenu(page, 'Profil de disposition', 'Nouveau profil…')
   await page
     .getByLabel('Nom du nouveau profil', { exact: true })
     .fill('Portable')
@@ -97,12 +105,13 @@ export async function verifyScreenEditor(
     (item) => item.name === 'Portable'
   )
   if (!portable) throw new Error('Missing new profile')
-  await expect(
-    page.getByRole('combobox', { name: 'Profil de disposition' })
-  ).toHaveValue(portable._id)
-  await page
+  await expect(page.getByText('· Portable', { exact: false })).toBeVisible()
+  await (
+    await inspect(page, 1, 'Position')
+  )
     .getByRole('spinbutton', { name: 'Position X', exact: true })
     .fill('480')
+  await closeInspector(page)
   await expect
     .poll(async () => (await profile(portable._id)).placements[0]?.x)
     .toBe(480)
@@ -137,11 +146,7 @@ export async function verifyScreenEditor(
   })
   const prior = revisions.page[0]
   if (!prior) throw new Error('Missing persistent layout history')
-  await page
-    .getByRole('group', { name: 'Éditeur de disposition', exact: true })
-    .getByRole('button', { name: 'Historique du profil', exact: true })
-    .first()
-    .click()
+  await screenMenu(page, 'Historique de la disposition…')
   await page
     .getByRole('dialog')
     .getByRole('button', {
@@ -156,9 +161,7 @@ export async function verifyScreenEditor(
     .getByRole('dialog')
     .getByRole('button', { name: 'Fermer', exact: true })
     .click()
-  await page
-    .getByRole('button', { name: 'Verrouiller la disposition', exact: true })
-    .click()
+  await setScreenOption(page, 'Verrouiller la disposition', true)
   await expect(
     page.getByRole('button', { name: 'Déplacer la note 1', exact: true })
   ).toBeDisabled()
@@ -176,28 +179,24 @@ export async function verifyScreenEditor(
   await expect(
     page.getByRole('button', { name: 'Déplacer la note 1', exact: true })
   ).toBeDisabled()
-  await page
-    .getByRole('combobox', { name: 'Profil de disposition' })
-    .selectOption(portable._id)
+  await selectProfile(page, 'Portable')
   await expect(
-    page.getByRole('spinbutton', { name: 'Position X', exact: true })
+    (await inspect(page, 1, 'Position')).getByRole('spinbutton', {
+      name: 'Position X',
+      exact: true,
+    })
   ).toHaveValue(String(initial.x + 81))
+  await closeInspector(page)
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveValue('Contenu modifiable en mode verrouillé')
-  await page.getByRole('button', { name: 'Lecture seule', exact: true }).click()
+  await setMode(page, 'Lecture')
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(0)
-  await page
-    .getByRole('button', { name: 'Reprendre l’édition', exact: true })
-    .click()
-  await page
-    .getByRole('button', { name: 'Déverrouiller la disposition', exact: true })
-    .click()
-  await page
-    .getByRole('button', { name: 'Configurer le profil', exact: true })
-    .click()
+  await setMode(page, 'Édition')
+  await setScreenOption(page, 'Verrouiller la disposition', false)
+  await screenMenu(page, 'Profil de disposition', 'Configurer le profil…')
   await page.getByLabel('Largeur du profil (px)', { exact: true }).fill('640')
   await page.getByLabel('Hauteur du profil (px)', { exact: true }).fill('480')
   await page
@@ -219,18 +218,17 @@ export async function verifyScreenEditor(
     .poll(async () => (await read()).notes[0]?.body)
     .toBe('Note modifiée sur mobile')
   await page.setViewportSize({ width: 1280, height: 720 })
-  await page
-    .getByRole('button', { name: 'Ajouter une note', exact: true })
-    .click()
+  await addMenu(page, 'Note')
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(2)
   const added = (await read()).notes.find((item) => item._id !== note._id)
   if (!added) throw new Error('Missing second widget')
-  await page
-    .getByRole('combobox', { name: 'Note sélectionnée' })
-    .selectOption(added._id)
-  await page.getByRole('button', { name: 'Arrière-plan', exact: true }).click()
+  const addedIndex =
+    (await profile(portable._id)).placements.findIndex(
+      (p) => p.widgetId === added._id
+    ) + 1
+  await widgetAction(page, addedIndex, 'Arrière-plan')
   await expect
     .poll(
       async () =>

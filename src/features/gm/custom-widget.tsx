@@ -9,6 +9,7 @@ import { operationErrorMessage } from '@/features/auth/errors'
 
 import { CustomFrame } from './custom-frame'
 import { createCustomStateWriter } from './custom-state-writer'
+import { WidgetConfig } from './widget-config'
 
 export function CustomWidget({
   widget,
@@ -105,52 +106,54 @@ export function CustomWidget({
         onState={receive}
       />
       {!readOnly && !printing && (
-        <fieldset disabled={locked}>
-          <legend>Réglages du widget</legend>
-          {Object.entries(settings).map(([key, value]) => (
-            <label key={key}>
-              {key}
-              <input
-                aria-label={`Réglage ${key}`}
-                value={
-                  typeof value === 'string' ? value : JSON.stringify(value)
+        <WidgetConfig>
+          <fieldset disabled={locked}>
+            <legend>Réglages du widget</legend>
+            {Object.entries(settings).map(([key, value]) => (
+              <label key={key}>
+                {key}
+                <input
+                  aria-label={`Réglage ${key}`}
+                  value={
+                    typeof value === 'string' ? value : JSON.stringify(value)
+                  }
+                  onChange={(event) =>
+                    setSettings({ ...settings, [key]: event.target.value })
+                  }
+                />
+              </label>
+            ))}
+            <Button
+              onClick={() => {
+                const key = window.prompt('Clé du réglage')
+                if (key && key.length <= 80)
+                  setSettings({ ...settings, [key]: '' })
+              }}
+            >
+              Ajouter un réglage
+            </Button>
+            <Button
+              onClick={() => {
+                const parsed = customSettings.safeParse(settings)
+                if (!parsed.success) {
+                  setError('Réglages invalides')
+                  return
                 }
-                onChange={(event) =>
-                  setSettings({ ...settings, [key]: event.target.value })
-                }
-              />
-            </label>
-          ))}
-          <Button
-            onClick={() => {
-              const key = window.prompt('Clé du réglage')
-              if (key && key.length <= 80)
-                setSettings({ ...settings, [key]: '' })
-            }}
-          >
-            Ajouter un réglage
-          </Button>
-          <Button
-            onClick={() => {
-              const parsed = customSettings.safeParse(settings)
-              if (!parsed.success) {
-                setError('Réglages invalides')
-                return
-              }
-              void update({
-                id,
-                expectedVersion: widget.version,
-                widget: {
-                  kind: 'custom',
-                  config: { ...widget.config, settings: parsed.data },
-                  state: widget.state,
-                },
-              }).catch((error_) => setError(operationErrorMessage(error_)))
-            }}
-          >
-            Enregistrer les réglages
-          </Button>
-        </fieldset>
+                void update({
+                  id,
+                  expectedVersion: widget.version,
+                  widget: {
+                    kind: 'custom',
+                    config: { ...widget.config, settings: parsed.data },
+                    state: widget.state,
+                  },
+                }).catch((error_) => setError(operationErrorMessage(error_)))
+              }}
+            >
+              Enregistrer les réglages
+            </Button>
+          </fieldset>
+        </WidgetConfig>
       )}
       {error && (
         <p role="alert">

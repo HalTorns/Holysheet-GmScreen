@@ -1,20 +1,46 @@
 import { api } from '@convex/_generated/api'
 import type { Doc, Id } from '@convex/_generated/dataModel'
 import type { Layout } from '@convex/lib/gmFormats'
-import { gmWidgetKinds, gmWidgetLabels } from '@shared/gm'
+import { gmWidgetLabels } from '@shared/gm'
 import { Link } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
-import { useCallback, useState } from 'react'
+import { Plus, Settings } from 'lucide-react'
+import { Fragment, useCallback, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Menu,
+  MenuCheckboxItem,
+  MenuContent,
+  MenuItem,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuSub,
+  MenuTrigger,
+} from '@/components/ui/menu'
+import { SidePanel } from '@/components/ui/side-panel'
 import { operationErrorMessage } from '@/features/auth/errors'
 import { useResilientQuery } from '@/hooks/use-resilient-query'
 
 import { CustomWidgets } from './custom-widgets'
 import { useFileUpload } from './file-upload'
 import { Files } from './files'
-import { LayoutEditor } from './layout-editor'
+import { LayoutEditor, shortcuts } from './layout-editor'
+import type { EditorDialog, ScreenMode } from './layout-editor'
 import { useScreenWidgets } from './use-screen-widgets'
+
+const widgetFamilies = [
+  ['Texte et listes', ['checklist', 'table', 'sheet']],
+  ['Outils de partie', ['counter', 'dice', 'clock', 'initiative']],
+  ['Médias et liens', ['image', 'pdf', 'embed']],
+] as const
 
 export function Screen({ screenId }: { screenId: string }) {
   const data = useResilientQuery(api.gm.getScreen, { id: screenId })
@@ -39,21 +65,13 @@ function ScreenWorkspace({
   const variables = useQuery(api.gmVariables.listVariables, {
     projectId: screen.projectId,
   })
-  const [widgetKind, setWidgetKind] = useState<
-    | 'checklist'
-    | 'counter'
-    | 'dice'
-    | 'sheet'
-    | 'table'
-    | 'clock'
-    | 'initiative'
-    | 'image'
-    | 'pdf'
-    | 'embed'
-  >('checklist')
   const setLocked = useMutation(api.gmEditor.setLayoutLocked)
   const [selected, setSelected] = useState<Id<'gmLayouts'> | null>(null)
-  const [readOnly, setReadOnly] = useState(false)
+  const [mode, setMode] = useState<ScreenMode>('edit')
+  const [grid, setGrid] = useState(false)
+  const [dialog, setDialog] = useState<EditorDialog | null>(null)
+  const [drawer, setDrawer] = useState<'files' | 'custom' | null>(null)
+  const [toolbar, setToolbar] = useState<HTMLElement | null>(null)
   const [autoSave, setAutoSave] = useState(true)
   const [dirty, setDirty] = useState(false)
   const [pending, setPending] = useState(false)
@@ -62,6 +80,7 @@ function ScreenWorkspace({
   const digital = layouts.filter((layout) => layout.kind === 'digital')
   const layout = digital.find((item) => item._id === selected) ?? digital[0]
   const locked = screen.layoutLocked ?? false
+  const adding = mode !== 'edit' || locked || dirty || pending
   async function perform(action: () => Promise<unknown>) {
     setPending(true)
     setError(null)
@@ -74,7 +93,7 @@ function ScreenWorkspace({
     }
   }
   async function importImage(file: File) {
-    if (readOnly || locked || pending || dirty || upload.pending) return
+    if (adding || upload.pending) return
     await perform(async () => {
       const result = await upload.upload(file)
       await placeFile({ screenId: screen._id, fileId: result.id })
@@ -117,139 +136,238 @@ function ScreenWorkspace({
       >
         ← Retour au projet
       </Link>
-      <div className="page-heading mt-5">
-        <div>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="mr-auto min-w-0">
           <p className="eyebrow">
-            SCREEN · {layout?.width} × {layout?.height} px
+            SCREEN · {layout?.width} × {layout?.height} px · {layout?.name}
           </p>
-          <h1>{screen.title}</h1>
-          <p>
-            {readOnly
-              ? 'Lecture seule'
-              : locked
-                ? 'Disposition verrouillée · contenus modifiables'
-                : 'Édition · déplacez et redimensionnez vos notes'}
-          </p>
+          <h1 className="truncate">{screen.title}</h1>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            disabled={dirty || pending}
-            onClick={() => setReadOnly(!readOnly)}
-          >
-            {readOnly ? 'Reprendre l’édition' : 'Lecture seule'}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={readOnly || dirty || pending}
-            onClick={() =>
-              void perform(() =>
-                setLocked({ screenId: screen._id, locked: !locked })
-              )
-            }
-          >
-            {locked
-              ? 'Déverrouiller la disposition'
-              : 'Verrouiller la disposition'}
-          </Button>
-          <Button
-            disabled={readOnly || locked || dirty || pending}
-            onClick={() =>
-              void perform(() => addNote({ screenId: screen._id }))
-            }
-          >
-            {pending ? 'Patientez…' : 'Ajouter une note'}
-          </Button>
-        </div>
-        <label>
-          Type de widget
-          <select
-            aria-label="Type de widget"
-            value={widgetKind}
-            disabled={readOnly || locked || dirty || pending}
-            onChange={(event) => {
-              const kind = gmWidgetKinds.find(
-                (entry) => entry === event.target.value
-              )
-              if (kind && kind !== 'note' && kind !== 'custom')
-                setWidgetKind(kind)
-            }}
-          >
-            {gmWidgetKinds
-              .filter((kind) => kind !== 'note' && kind !== 'custom')
-              .map((kind) => (
-                <option key={kind} value={kind}>
-                  {gmWidgetLabels[kind]}
-                </option>
-              ))}
-          </select>
-        </label>
-        <Button
-          disabled={readOnly || locked || dirty || pending}
-          onClick={() =>
-            void perform(() =>
-              addWidget({ screenId: screen._id, kind: widgetKind })
-            )
-          }
+        <div
+          role="radiogroup"
+          aria-label="Mode du Screen"
+          className="flex rounded-lg border border-border p-0.5"
         >
-          Ajouter un widget
-        </Button>
-      </div>
-      <Files
-        projectId={screen.projectId}
-        onChoose={
-          readOnly || locked || dirty || pending
-            ? undefined
-            : (file) => placeFile({ screenId: screen._id, fileId: file._id })
-        }
-      />
-      <CustomWidgets
-        projectId={screen.projectId}
-        onChoose={
-          readOnly || locked || dirty || pending
-            ? undefined
-            : (definitionId) =>
-                placeCustom({ screenId: screen._id, definitionId })
-        }
-      />
-      {upload.pending && <p role="status">Envoi en cours…</p>}
-      {upload.error && <p role="alert">{upload.error}</p>}
-      <div className="mb-4 flex flex-wrap items-end gap-4 rounded-xl border bg-background p-3">
-        <label className="grid gap-1 text-sm">
-          Profil de disposition
-          <select
-            aria-label="Profil de disposition"
-            className="rounded border bg-background p-2"
-            value={layout?._id ?? ''}
-            disabled={dirty || pending}
-            onChange={(event) =>
-              setSelected(
-                digital.find((item) => item._id === event.target.value)?._id ??
-                  null
-              )
-            }
-          >
-            {digital.map((profile) => (
-              <option key={profile._id} value={profile._id}>
-                {profile.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={autoSave}
-            onChange={(event) => setAutoSave(event.target.checked)}
-          />
-          Sauvegarde automatique
-        </label>
-        {dirty && (
-          <p role="status" className="text-xs text-muted-foreground">
-            Enregistrez les brouillons avant de changer de profil ou de mode.
-          </p>
+          {(
+            [
+              ['edit', 'Édition', 'Disposer et configurer les widgets'],
+              ['play', 'Jeu', 'Utiliser les widgets sans les déplacer'],
+              ['read', 'Lecture', 'Consulter sans rien modifier'],
+            ] as const
+          ).map(([value, label, hint]) => (
+            <Button
+              key={value}
+              role="radio"
+              size="sm"
+              variant={mode === value ? 'secondary' : 'ghost'}
+              aria-checked={mode === value}
+              title={hint}
+              disabled={dirty || pending}
+              onClick={() => setMode(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+        {locked && (
+          <span className="rounded-full border border-border px-2 py-0.5 text-xs">
+            Disposition verrouillée
+          </span>
+        )}
+        {mode === 'edit' && (
+          <>
+            <Menu>
+              <MenuTrigger
+                render={<Button size="sm" title="Ajouter un widget" />}
+                disabled={adding}
+              >
+                <Plus />
+                Ajouter
+              </MenuTrigger>
+              <MenuContent>
+                <MenuItem
+                  onClick={() =>
+                    void perform(() => addNote({ screenId: screen._id }))
+                  }
+                >
+                  Note
+                </MenuItem>
+                {widgetFamilies.map(([family, kinds]) => (
+                  <MenuSub key={family} label={family}>
+                    {kinds.map((kind) => (
+                      <MenuItem
+                        key={kind}
+                        onClick={() =>
+                          void perform(() =>
+                            addWidget({ screenId: screen._id, kind })
+                          )
+                        }
+                      >
+                        {gmWidgetLabels[kind]}
+                      </MenuItem>
+                    ))}
+                  </MenuSub>
+                ))}
+                <MenuSeparator />
+                <MenuItem onClick={() => setDrawer('files')}>
+                  Image ou fichier…
+                </MenuItem>
+                <MenuItem onClick={() => setDrawer('custom')}>
+                  Widget personnalisé…
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+            <div ref={setToolbar} className="contents" />
+            <Menu>
+              <MenuTrigger
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="outline"
+                    title="Réglages du Screen"
+                  />
+                }
+                aria-label="Réglages du Screen"
+              >
+                <Settings />
+              </MenuTrigger>
+              <MenuContent align="end">
+                <MenuSub
+                  label="Profil de disposition"
+                  disabled={dirty || pending}
+                >
+                  <MenuRadioGroup
+                    value={layout?._id ?? ''}
+                    onValueChange={(value: string) =>
+                      setSelected(
+                        digital.find((item) => item._id === value)?._id ?? null
+                      )
+                    }
+                  >
+                    {digital.map((profile) => (
+                      <MenuRadioItem key={profile._id} value={profile._id}>
+                        {profile.name}
+                      </MenuRadioItem>
+                    ))}
+                  </MenuRadioGroup>
+                  <MenuSeparator />
+                  <MenuItem
+                    disabled={locked}
+                    onClick={() => setDialog('settings')}
+                  >
+                    Configurer le profil…
+                  </MenuItem>
+                  <MenuItem
+                    disabled={locked}
+                    onClick={() => setDialog('profile')}
+                  >
+                    Nouveau profil…
+                  </MenuItem>
+                </MenuSub>
+                <MenuCheckboxItem
+                  checked={locked}
+                  disabled={dirty || pending}
+                  onCheckedChange={(value) =>
+                    void perform(() =>
+                      setLocked({ screenId: screen._id, locked: value })
+                    )
+                  }
+                >
+                  Verrouiller la disposition
+                </MenuCheckboxItem>
+                <MenuCheckboxItem
+                  checked={autoSave}
+                  onCheckedChange={setAutoSave}
+                >
+                  Sauvegarde automatique
+                </MenuCheckboxItem>
+                <MenuCheckboxItem checked={grid} onCheckedChange={setGrid}>
+                  Grille magnétique (8 px)
+                </MenuCheckboxItem>
+                <MenuSeparator />
+                <MenuItem onClick={() => setDialog('goto')}>
+                  Aller au widget…
+                </MenuItem>
+                <MenuItem onClick={() => setDialog('history')}>
+                  Historique de la disposition…
+                </MenuItem>
+                <MenuItem onClick={() => setDrawer('files')}>
+                  Fichiers du projet…
+                </MenuItem>
+                <MenuItem onClick={() => setDrawer('custom')}>
+                  Widgets personnalisés…
+                </MenuItem>
+                <MenuItem onClick={() => setDialog('trash')}>
+                  Corbeille du Screen…
+                </MenuItem>
+                <MenuSeparator />
+                <MenuItem shortcut="?" onClick={() => setDialog('shortcuts')}>
+                  Raccourcis clavier…
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          </>
         )}
       </div>
+      {dirty && (
+        <p role="status" className="mt-1 text-xs text-muted-foreground">
+          Enregistrez les brouillons avant de changer de profil ou de mode.
+        </p>
+      )}
+      <SidePanel
+        open={drawer === 'files' && mode === 'edit'}
+        side="left"
+        title="Fichiers du projet"
+        onClose={() => setDrawer(null)}
+      >
+        <Files
+          projectId={screen.projectId}
+          onChoose={
+            adding
+              ? undefined
+              : (file) => placeFile({ screenId: screen._id, fileId: file._id })
+          }
+        />
+      </SidePanel>
+      <SidePanel
+        open={drawer === 'custom' && mode === 'edit'}
+        side="left"
+        title="Widgets personnalisés"
+        onClose={() => setDrawer(null)}
+      >
+        <CustomWidgets
+          projectId={screen.projectId}
+          onChoose={
+            adding
+              ? undefined
+              : (definitionId) =>
+                  placeCustom({ screenId: screen._id, definitionId })
+          }
+        />
+      </SidePanel>
+      <Dialog
+        open={dialog === 'shortcuts'}
+        onOpenChange={(open) => setDialog(open ? 'shortcuts' : null)}
+      >
+        <DialogContent>
+          <DialogTitle>Raccourcis clavier</DialogTitle>
+          <DialogDescription>
+            Actifs en mode Édition, hors champs de saisie.
+          </DialogDescription>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            {shortcuts.map(([keys, action]) => (
+              <Fragment key={keys}>
+                <dt>
+                  <kbd>{keys}</kbd>
+                </dt>
+                <dd>{action}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        </DialogContent>
+      </Dialog>
+      {upload.pending && <p role="status">Envoi en cours…</p>}
+      {upload.error && <p role="alert">{upload.error}</p>}
       {error && (
         <p role="alert" className="field-error mb-3">
           {error}
@@ -261,9 +379,13 @@ function ScreenWorkspace({
           layout={layout}
           notes={notes}
           variables={variables?.map((entry) => entry.variable)}
-          readOnly={readOnly}
+          mode={mode}
           locked={locked}
           autoSave={autoSave}
+          grid={grid}
+          dialog={dialog}
+          toolbarSlot={toolbar}
+          onDialogChange={setDialog}
           onDirtyChange={reportDirty}
           onProfileCreated={setSelected}
         />

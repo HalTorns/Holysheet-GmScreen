@@ -88,3 +88,16 @@ Le widget `embed` propose un lien ou un cadre HTTPS isolé, un état initial « 
 ## F8 — Widgets personnalisés
 
 La bibliothèque « Widgets personnalisés » du projet permet de créer, éditer, prévisualiser, placer, mettre en corbeille, restaurer et purger des définitions HTML/CSS/JS ou TS. Sucrase retire les types dans le navigateur à la demande. Chaque instance garde des réglages plats et son état ; la duplication partage la définition. Le rendu et l’impression passent par un relais brut et un runner opaque sans accès applicatif ni réseau autorisé. Budgets de messages, suspension, watchdog et sauvegarde regroupée utilisent un quota indépendant des notes. Voir [l’ADR et ses limites navigateur/CPU](decisions/custom-widgets.md). Export, nettoyage et fixtures de restauration incluent la nouvelle collection. Les preuves E2E du serveur construit restent à exécuter en CI, sans Docker local.
+
+## Chantier 3a — architecture d’interaction de l’éditeur
+
+L’éditeur de Screen n’affiche plus par défaut que l’essentiel :
+
+- l’en-tête contient le retour, le mode (Édition, Jeu, Lecture), **＋ Ajouter**, Annuler, Refaire et l’état, et **⚙** pour les profils, le verrou, la sauvegarde automatique, la grille, Aller au widget, l’historique, les fichiers, les widgets personnalisés, la corbeille et les raccourcis ;
+- chaque widget n’affiche que son contenu d’usage ; sa configuration, son style et sa position passent dans un inspecteur latéral (⚙ du widget), ses autres actions dans ⋯ ou le clic droit ;
+- la sélection multiple se fait par Maj+clic, avec une barre flottante pour grouper, aligner, dupliquer, copier, styler ou mettre à la corbeille ;
+- des raccourcis clavier sont disponibles.
+
+Le mode Jeu est nouveau : on utilise les widgets sans les déplacer ni les configurer. Le mode Lecture reste une consultation sans écriture.
+
+Aucune modification Convex. Voir [l’ADR](decisions/editor-ux.md) pour les écarts au [plan revu](PLAN-UX3a.md). L’identité visuelle (3b) et les autres pages (3a-2) restent à faire.

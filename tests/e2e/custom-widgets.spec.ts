@@ -7,6 +7,7 @@ import type { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { addMenu, setMode } from './editor-ui'
 import {
   createEmail,
   deleteAccountWithClient,
@@ -111,9 +112,16 @@ test('F8: TS editor, preview, state persistence, read-only and static print', as
       page.getByRole('button', { name: 'Modifier Compteur TS F8', exact: true })
     ).toBeVisible()
     await openScreen(page, screenId)
+    await addMenu(page, 'Widget personnalisé…')
     await page
       .getByRole('button', { name: 'Placer Compteur TS F8', exact: true })
       .press('Enter')
+    await page
+      .getByRole('button', {
+        name: 'Fermer widgets personnalisés',
+        exact: true,
+      })
+      .click()
     let runner = await runnerFor(page, 'Compteur TS F8')
     await runner.getByRole('button', { name: 'Compter', exact: true }).click()
     await expect(runner.locator('#value')).toHaveText('1')
@@ -129,9 +137,7 @@ test('F8: TS editor, preview, state persistence, read-only and static print', as
     await waitForHydration(page)
     runner = await runnerFor(page, 'Compteur TS F8')
     await expect(runner.locator('#value')).toHaveText('1')
-    await page
-      .getByRole('button', { name: 'Lecture seule', exact: true })
-      .press('Enter')
+    await setMode(page, 'Lecture')
     await runner.getByRole('button', { name: 'Compter', exact: true }).click()
     await expect(runner.locator('#value')).toHaveText('2')
     await page.emulateMedia({ media: 'print' })
@@ -451,12 +457,10 @@ test('F8: sibling custom and F7b frames cannot forge init or update; flood and w
       .filter({
         has: page.getByRole('heading', { name: 'Boucle F8', exact: true }),
       })
-    await page
-      .getByRole('button', { name: 'Lecture seule', exact: true })
-      .press('Enter')
+    await setMode(page, 'Lecture')
     await expect(
-      page.getByRole('button', { name: 'Reprendre l’édition', exact: true })
-    ).toBeVisible()
+      page.getByRole('radio', { name: 'Lecture', exact: true })
+    ).toHaveAttribute('aria-checked', 'true')
     const suspended = await loopRegion
       .getByText('Widget suspendu, recharger', { exact: false })
       .count()

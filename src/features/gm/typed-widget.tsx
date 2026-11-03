@@ -22,6 +22,7 @@ import { NoteEditor } from './note-editor'
 import { RevisionHistory } from './revision-history'
 import { SessionWidget } from './session-widget'
 import { useEditorDraft } from './use-editor-draft'
+import { SaveControl, WidgetConfig, useConfigPlacement } from './widget-config'
 
 type Variables = Doc<'gmVariables'>[]
 type TypedWidget = Exclude<
@@ -200,6 +201,7 @@ function TypedWidgetEditor({
   const [linkTarget, setLinkTarget] = useState('')
   const [localValue, setLocalValue] = useState('')
   const [valueInput, setValueInput] = useState<string | null>(null)
+  const configHidden = useConfigPlacement() === 'hidden'
   const dirty = editor.dirty || editor.pending || pending
   useEffect(() => {
     onDirtyChange(widget._id, dirty)
@@ -287,38 +289,45 @@ function TypedWidgetEditor({
       aria-label={title}
     >
       <DraftGuard dirty={editor.dirty} />
-      <label>
-        Titre du widget
-        <input
-          aria-label="Titre du widget"
-          value={current.config.title}
-          maxLength={120}
-          disabled={locked || pending || readOnly}
-          onChange={(event) => editTitle(event.target.value)}
-        />
-      </label>
+      {configHidden && current.config.title && (
+        <h3 className="text-sm font-semibold">{current.config.title}</h3>
+      )}
+      <WidgetConfig>
+        <label>
+          Titre du widget
+          <input
+            aria-label="Titre du widget"
+            value={current.config.title}
+            maxLength={120}
+            disabled={locked || pending || readOnly}
+            onChange={(event) => editTitle(event.target.value)}
+          />
+        </label>
+      </WidgetConfig>
       {current.kind === 'sheet' && (
         <>
           <SheetPreview
             widget={widget.kind === 'sheet' ? widget : current}
             disabled={locked || readOnly}
           />
-          <CatchBoundary
-            getResetKey={() => current.config.sheetId ?? ''}
-            errorComponent={SheetSearchError}
-          >
-            <SheetSettings
-              widget={current}
-              disabled={locked || pending || readOnly || editor.pending}
-              onEdit={(value) => editor.edit(value)}
-            />
-          </CatchBoundary>
+          <WidgetConfig>
+            <CatchBoundary
+              getResetKey={() => current.config.sheetId ?? ''}
+              errorComponent={SheetSearchError}
+            >
+              <SheetSettings
+                widget={current}
+                disabled={locked || pending || readOnly || editor.pending}
+                onEdit={(value) => editor.edit(value)}
+              />
+            </CatchBoundary>
+          </WidgetConfig>
         </>
       )}
       {current.kind === 'checklist' && (
         <>
           <ul>
-            {current.config.items.map((item, index) => (
+            {current.config.items.map((item) => (
               <li key={item.id}>
                 <label>
                   <input
@@ -350,94 +359,102 @@ function TypedWidgetEditor({
                   />
                   {item.label}
                 </label>
-                <input
-                  id={`item-label-${widget._id}-${item.id}`}
-                  aria-label={`Libellé ${index + 1}`}
-                  value={item.label}
-                  maxLength={80}
-                  disabled={locked || pending}
-                  onChange={(event) =>
-                    editor.edit({
-                      ...current,
-                      config: {
-                        ...current.config,
-                        items: current.config.items.map((entry) =>
-                          entry.id === item.id
-                            ? { ...entry, label: event.target.value }
-                            : entry
-                        ),
-                      },
-                    })
-                  }
-                />
-                <Button
-                  disabled={locked || pending || index === 0}
-                  onClick={() => moveItem(item.id, -1)}
-                >
-                  Monter {item.label}
-                </Button>
-                <Button
-                  disabled={
-                    locked ||
-                    pending ||
-                    index === current.config.items.length - 1
-                  }
-                  onClick={() => moveItem(item.id, 1)}
-                >
-                  Descendre {item.label}
-                </Button>
-                <Button
-                  disabled={locked || pending}
-                  onClick={() => {
-                    editor.edit({
-                      ...current,
-                      config: {
-                        ...current.config,
-                        items: current.config.items.filter(
-                          (entry) => entry.id !== item.id
-                        ),
-                      },
-                      state: {
-                        checkedIds: current.state.checkedIds.filter(
-                          (id) => id !== item.id
-                        ),
-                      },
-                    })
-                    requestAnimationFrame(() =>
-                      document
-                        .querySelector<HTMLButtonElement>(
-                          `#add-item-${widget._id}`
-                        )
-                        ?.focus()
-                    )
-                  }}
-                >
-                  Supprimer {item.label}
-                </Button>
               </li>
             ))}
           </ul>
-          <Button
-            id={`add-item-${widget._id}`}
-            disabled={locked || pending || current.config.items.length >= 40}
-            onClick={() => {
-              const ids = new Set(current.config.items.map((item) => item.id))
-              let serial = 1
-              while (ids.has(`item-${serial}`)) serial++
-              editor.edit({
-                ...current,
-                config: {
-                  ...current.config,
-                  items: [
-                    ...current.config.items,
-                    { id: `item-${serial}`, label: `Élément ${serial}` },
-                  ],
-                },
-              })
-            }}
-          >
-            Ajouter un élément
-          </Button>
+          <WidgetConfig>
+            <ul aria-label="Éléments de la checklist">
+              {current.config.items.map((item, index) => (
+                <li key={item.id}>
+                  <input
+                    id={`item-label-${widget._id}-${item.id}`}
+                    aria-label={`Libellé ${index + 1}`}
+                    value={item.label}
+                    maxLength={80}
+                    disabled={locked || pending}
+                    onChange={(event) =>
+                      editor.edit({
+                        ...current,
+                        config: {
+                          ...current.config,
+                          items: current.config.items.map((entry) =>
+                            entry.id === item.id
+                              ? { ...entry, label: event.target.value }
+                              : entry
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <Button
+                    disabled={locked || pending || index === 0}
+                    onClick={() => moveItem(item.id, -1)}
+                  >
+                    Monter {item.label}
+                  </Button>
+                  <Button
+                    disabled={
+                      locked ||
+                      pending ||
+                      index === current.config.items.length - 1
+                    }
+                    onClick={() => moveItem(item.id, 1)}
+                  >
+                    Descendre {item.label}
+                  </Button>
+                  <Button
+                    disabled={locked || pending}
+                    onClick={() => {
+                      editor.edit({
+                        ...current,
+                        config: {
+                          ...current.config,
+                          items: current.config.items.filter(
+                            (entry) => entry.id !== item.id
+                          ),
+                        },
+                        state: {
+                          checkedIds: current.state.checkedIds.filter(
+                            (id) => id !== item.id
+                          ),
+                        },
+                      })
+                      requestAnimationFrame(() =>
+                        document
+                          .querySelector<HTMLButtonElement>(
+                            `#add-item-${widget._id}`
+                          )
+                          ?.focus()
+                      )
+                    }}
+                  >
+                    Supprimer {item.label}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            <Button
+              id={`add-item-${widget._id}`}
+              disabled={locked || pending || current.config.items.length >= 40}
+              onClick={() => {
+                const ids = new Set(current.config.items.map((item) => item.id))
+                let serial = 1
+                while (ids.has(`item-${serial}`)) serial++
+                editor.edit({
+                  ...current,
+                  config: {
+                    ...current.config,
+                    items: [
+                      ...current.config.items,
+                      { id: `item-${serial}`, label: `Élément ${serial}` },
+                    ],
+                  },
+                })
+              }}
+            >
+              Ajouter un élément
+            </Button>
+          </WidgetConfig>
         </>
       )}
       {current.kind === 'counter' && (
@@ -489,162 +506,169 @@ function TypedWidgetEditor({
           >
             Appliquer la valeur
           </Button>
-          <label>
-            Pas
-            <input
-              type="number"
-              value={current.config.source.step}
-              disabled={locked || pending}
-              onChange={(event) =>
-                editor.edit({
-                  ...current,
-                  config: {
-                    ...current.config,
-                    source: {
-                      ...current.config.source,
-                      step: event.target.valueAsNumber,
-                    },
-                  },
-                })
-              }
-            />
-          </label>
-          {current.config.source.type === 'local' &&
-            (['min', 'max'] as const).map((bound) => (
-              <label key={bound}>
-                {bound === 'min' ? 'Minimum' : 'Maximum'}
-                <input
-                  type="number"
-                  value={
-                    current.config.source.type === 'local'
-                      ? (current.config.source[bound] ?? '')
-                      : ''
-                  }
-                  disabled={locked || pending}
-                  onChange={(event) => {
-                    if (current.config.source.type !== 'local') return
-                    const updated = { ...current.config.source }
-                    if (event.target.value === '') {
-                      if (bound === 'min') delete updated.min
-                      else delete updated.max
-                    } else updated[bound] = event.target.valueAsNumber
-                    editor.edit({
-                      ...current,
-                      config: { ...current.config, source: updated },
-                    })
-                  }}
-                />
-              </label>
-            ))}
-          <label>
-            Variable nombre
-            <select
-              aria-label="Variable nombre"
-              value={linkTarget}
-              disabled={locked || pending}
-              onChange={(event) => setLinkTarget(event.target.value)}
-            >
-              <option value="">Choisir une variable</option>
-              {variables
-                ?.filter((variable) => variable.type === 'number')
-                .map((variable) => (
-                  <option key={variable._id} value={variable._id}>
-                    {variable.label || variable.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <Button
-            disabled={locked || pending || !linkTarget}
-            onClick={() => {
-              const variable = variables?.find(
-                (entry) => entry._id === linkTarget && entry.type === 'number'
-              )
-              if (
-                variable &&
-                window.confirm(
-                  'Remplacer la valeur autonome par la variable sélectionnée ?'
-                )
-              )
-                editor.edit({
-                  ...current,
-                  config: {
-                    ...current.config,
-                    source: {
-                      type: 'variable',
-                      variableId: variable._id,
-                      step: current.config.source.step,
-                    },
-                  },
-                  state: {},
-                })
-            }}
-          >
-            Lier la variable
-          </Button>
-          {current.config.source.type === 'variable' && (
-            <>
-              {!source && (
-                <label>
-                  Valeur locale de détachement
-                  <input
-                    type="number"
-                    value={localValue}
-                    onChange={(event) => setLocalValue(event.target.value)}
-                    disabled={locked || pending}
-                  />
-                </label>
-              )}
-              <Button
-                disabled={
-                  locked ||
-                  pending ||
-                  (!source &&
-                    (localValue.trim() === '' ||
-                      !Number.isFinite(Number(localValue))))
-                }
-                onClick={() =>
+          <WidgetConfig>
+            <label>
+              Pas
+              <input
+                type="number"
+                value={current.config.source.step}
+                disabled={locked || pending}
+                onChange={(event) =>
                   editor.edit({
                     ...current,
                     config: {
                       ...current.config,
                       source: {
-                        type: 'local',
+                        ...current.config.source,
+                        step: event.target.valueAsNumber,
+                      },
+                    },
+                  })
+                }
+              />
+            </label>
+            {current.config.source.type === 'local' &&
+              (['min', 'max'] as const).map((bound) => (
+                <label key={bound}>
+                  {bound === 'min' ? 'Minimum' : 'Maximum'}
+                  <input
+                    type="number"
+                    value={
+                      current.config.source.type === 'local'
+                        ? (current.config.source[bound] ?? '')
+                        : ''
+                    }
+                    disabled={locked || pending}
+                    onChange={(event) => {
+                      if (current.config.source.type !== 'local') return
+                      const updated = { ...current.config.source }
+                      if (event.target.value === '') {
+                        if (bound === 'min') delete updated.min
+                        else delete updated.max
+                      } else updated[bound] = event.target.valueAsNumber
+                      editor.edit({
+                        ...current,
+                        config: { ...current.config, source: updated },
+                      })
+                    }}
+                  />
+                </label>
+              ))}
+            <label>
+              Variable nombre
+              <select
+                aria-label="Variable nombre"
+                value={linkTarget}
+                disabled={locked || pending}
+                onChange={(event) => setLinkTarget(event.target.value)}
+              >
+                <option value="">Choisir une variable</option>
+                {variables
+                  ?.filter((variable) => variable.type === 'number')
+                  .map((variable) => (
+                    <option key={variable._id} value={variable._id}>
+                      {variable.label || variable.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <Button
+              disabled={locked || pending || !linkTarget}
+              onClick={() => {
+                const variable = variables?.find(
+                  (entry) => entry._id === linkTarget && entry.type === 'number'
+                )
+                if (
+                  variable &&
+                  window.confirm(
+                    'Remplacer la valeur autonome par la variable sélectionnée ?'
+                  )
+                )
+                  editor.edit({
+                    ...current,
+                    config: {
+                      ...current.config,
+                      source: {
+                        type: 'variable',
+                        variableId: variable._id,
                         step: current.config.source.step,
                       },
                     },
-                    state: { value: source?.value ?? Number(localValue) },
+                    state: {},
                   })
-                }
-              >
-                Détacher la variable
-              </Button>
-            </>
-          )}
-          <Link
-            to="/app/projects/$projectId/variables"
-            params={{ projectId: widget.projectId }}
-          >
-            Variables du projet
-          </Link>
+              }}
+            >
+              Lier la variable
+            </Button>
+            {current.config.source.type === 'variable' && (
+              <>
+                {!source && (
+                  <label>
+                    Valeur locale de détachement
+                    <input
+                      type="number"
+                      value={localValue}
+                      onChange={(event) => setLocalValue(event.target.value)}
+                      disabled={locked || pending}
+                    />
+                  </label>
+                )}
+                <Button
+                  disabled={
+                    locked ||
+                    pending ||
+                    (!source &&
+                      (localValue.trim() === '' ||
+                        !Number.isFinite(Number(localValue))))
+                  }
+                  onClick={() =>
+                    editor.edit({
+                      ...current,
+                      config: {
+                        ...current.config,
+                        source: {
+                          type: 'local',
+                          step: current.config.source.step,
+                        },
+                      },
+                      state: { value: source?.value ?? Number(localValue) },
+                    })
+                  }
+                >
+                  Détacher la variable
+                </Button>
+              </>
+            )}
+            <Link
+              to="/app/projects/$projectId/variables"
+              params={{ projectId: widget.projectId }}
+            >
+              Variables du projet
+            </Link>
+          </WidgetConfig>
         </>
       )}
       {current.kind === 'dice' && (
         <>
-          <label>
-            Expression de dés
-            <input
-              value={current.config.expression}
-              maxLength={40}
-              disabled={locked || pending}
-              onChange={(event) =>
-                editor.edit({
-                  ...current,
-                  config: { ...current.config, expression: event.target.value },
-                })
-              }
-            />
-          </label>
+          <WidgetConfig>
+            <label>
+              Expression de dés
+              <input
+                value={current.config.expression}
+                maxLength={40}
+                disabled={locked || pending}
+                onChange={(event) =>
+                  editor.edit({
+                    ...current,
+                    config: {
+                      ...current.config,
+                      expression: event.target.value,
+                    },
+                  })
+                }
+              />
+            </label>
+          </WidgetConfig>
           <Button
             disabled={
               blocked ||
@@ -670,10 +694,12 @@ function TypedWidgetEditor({
           {typeof globalThis.crypto?.getRandomValues !== 'function' && (
             <p role="alert">Source aléatoire indisponible.</p>
           )}
-          <p>
-            Dernier résultat en mémoire uniquement, perdu au rechargement et non
-            synchronisé.
-          </p>
+          <WidgetConfig>
+            <p className="text-xs text-muted-foreground">
+              Dernier résultat en mémoire uniquement, perdu au rechargement et
+              non synchronisé.
+            </p>
+          </WidgetConfig>
           <div aria-live="polite">
             {result && (
               <>
@@ -700,30 +726,33 @@ function TypedWidgetEditor({
             ? 'Échec de sauvegarde'
             : editor.status}
       </p>
-      <Button
-        disabled={
-          locked ||
-          readOnly ||
-          pending ||
-          !editor.dirty ||
-          editor.pending ||
-          editor.conflict
-        }
-        onClick={() => void editor.save()}
-      >
-        Enregistrer le widget
-      </Button>
-      <Button disabled={!editor.canUndo} onClick={() => void editor.undo()}>
-        Annuler la configuration
-      </Button>
-      <Button disabled={!editor.canRedo} onClick={() => void editor.redo()}>
-        Refaire la configuration
-      </Button>
-      <RevisionHistory
-        target={{ kind: 'note', id: widget._id }}
-        version={widget.version}
-        disabled={readOnly || dirty}
-      />
+      {configHidden && (
+        <SaveControl
+          editor={editor}
+          autoSave={autoSave}
+          disabled={locked || readOnly || pending}
+          label="Enregistrer le widget"
+        />
+      )}
+      <WidgetConfig>
+        <SaveControl
+          editor={editor}
+          autoSave={autoSave}
+          disabled={locked || readOnly || pending}
+          label="Enregistrer le widget"
+        />
+        <Button disabled={!editor.canUndo} onClick={() => void editor.undo()}>
+          Annuler la configuration
+        </Button>
+        <Button disabled={!editor.canRedo} onClick={() => void editor.redo()}>
+          Refaire la configuration
+        </Button>
+        <RevisionHistory
+          target={{ kind: 'note', id: widget._id }}
+          version={widget.version}
+          disabled={readOnly || dirty}
+        />
+      </WidgetConfig>
     </div>
   )
 }

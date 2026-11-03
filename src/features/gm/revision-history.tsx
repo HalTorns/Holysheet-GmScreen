@@ -20,25 +20,34 @@ export function RevisionHistory({
   target,
   version,
   disabled,
+  open: controlled,
+  onOpenChange,
 }: {
   target: Target
   version: number
   disabled: boolean
+  /** Piloté depuis un menu : aucun bouton déclencheur n'est rendu. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [own, setOwn] = useState(false)
+  const open = controlled ?? own
+  const setOpen = onOpenChange ?? setOwn
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        aria-label={`${open ? 'Fermer l’historique' : 'Historique'} ${
-          target.kind === 'note' ? 'de la note' : 'du profil'
-        }`}
-      >
-        {open ? 'Fermer l’historique' : 'Historique'}
-      </Button>
+      {controlled === undefined && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-label={`${open ? 'Fermer l’historique' : 'Historique'} ${
+            target.kind === 'note' ? 'de la note' : 'du profil'
+          }`}
+        >
+          {open ? 'Fermer l’historique' : 'Historique'}
+        </Button>
+      )}
       <DialogContent>
         <DialogTitle>
           Historique {target.kind === 'note' ? 'de la note' : 'du profil'}

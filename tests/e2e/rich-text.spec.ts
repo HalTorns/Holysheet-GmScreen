@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 
 import { api } from '../../convex/_generated/api'
+import { closeInspector, inspect, setAutoSave, setMode } from './editor-ui'
 import {
   completeProfile,
   createEmail,
@@ -89,9 +90,7 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
     })
     await page.goto(`/app/screens/${screenId}`)
     await waitForHydration(page)
-    await page
-      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-      .uncheck()
+    await setAutoSave(page, false)
     const field = page.getByRole('textbox', {
       name: 'Contenu de la note',
       exact: true,
@@ -154,16 +153,12 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
     await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
     await expect(
       page.getByRole('button', { name: 'Enregistrer', exact: true })
-    ).toBeDisabled()
+    ).toHaveCount(0)
     await page.reload()
     await waitForHydration(page)
-    await page
-      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-      .uncheck()
+    await setAutoSave(page, false)
     await expect(field).toHaveValue(/:::details/u)
-    await page
-      .getByRole('button', { name: 'Lecture seule', exact: true })
-      .click()
+    await setMode(page, 'Lecture')
     await expect(field).toHaveCount(0)
     await expect(
       page.locator('strong').filter({ hasText: 'Word' })
@@ -178,14 +173,10 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
     await page.locator('summary').filter({ hasText: 'Résumé' }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText('secret', { exact: true })).toBeVisible()
-    await page
-      .getByRole('button', { name: 'Reprendre l’édition', exact: true })
-      .click()
+    await setMode(page, 'Édition')
     await second.goto(page.url())
     await waitForHydration(second)
-    await second
-      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-      .uncheck()
+    await setAutoSave(second, false)
     await field.fill('brouillon local')
     await second
       .getByRole('textbox', { name: 'Contenu de la note', exact: true })
@@ -202,13 +193,16 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
       })
       .click()
     await expect(field).toHaveValue('**distant**')
-    await page
+    await (
+      await inspect(page, 1)
+    )
       .getByRole('button', { name: 'Historique de la note', exact: true })
       .click()
     await page
       .getByRole('button', { name: 'Restaurer la version 1', exact: true })
       .click()
     await page.getByRole('button', { name: 'Fermer', exact: true }).click()
+    await closeInspector(page)
     await expect(field).toHaveValue(literal)
     await expect(
       page.getByRole('button', { name: 'Activer le texte riche', exact: true })
@@ -307,7 +301,7 @@ async function measureScreenRendering(page: Page, count: number) {
       page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
     ).toHaveCount(count)
     const elapsed = await page
-      .getByRole('button', { name: 'Lecture seule', exact: true })
+      .getByRole('radio', { name: 'Lecture', exact: true })
       .evaluate(
         (button) =>
           new Promise<number>((resolve) => {
@@ -332,9 +326,7 @@ async function measureScreenRendering(page: Page, count: number) {
           })
       )
     trials.push(elapsed)
-    await page
-      .getByRole('button', { name: 'Reprendre l’édition', exact: true })
-      .click()
+    await setMode(page, 'Édition')
   }
   return { trials, median: [...trials].sort((a, b) => a - b)[2], count }
 }

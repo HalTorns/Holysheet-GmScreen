@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test'
 import { api } from '../../convex/_generated/api'
 import { gmTables } from '../../shared/gm'
 import { verifyLocalRestore } from './backup'
+import { addMenu, setAutoSave } from './editor-ui'
 import { uploadFixture } from './files-fixtures'
 import {
   completeProfile,
@@ -116,33 +117,25 @@ test('password registration, project, folder and Screen survive reload, synchron
     await page
       .getByRole('link', { name: 'Références de session →', exact: true })
       .click()
-    await page
-      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-      .uncheck()
-    await page
-      .getByRole('button', { name: 'Ajouter une note', exact: true })
-      .click()
+    await setAutoSave(page, false)
+    await addMenu(page, 'Note')
     await page
       .getByRole('textbox', { name: 'Contenu de la note' })
       .fill('Le marchand ferme au crépuscule.')
     await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
     await expect(
       page.getByRole('button', { name: 'Enregistrer', exact: true })
-    ).toBeDisabled()
+    ).toHaveCount(0)
     await expect(page.getByText('Enregistré', { exact: true })).toBeVisible()
     await page.reload()
     await waitForHydration(page)
-    await page
-      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-      .uncheck()
+    await setAutoSave(page, false)
     await expect(
       page.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Le marchand ferme au crépuscule.')
     await secondPage.goto(page.url())
     await waitForHydration(secondPage)
-    await secondPage
-      .getByRole('checkbox', { name: 'Sauvegarde automatique', exact: true })
-      .uncheck()
+    await setAutoSave(secondPage, false)
     await expect(
       secondPage.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Le marchand ferme au crépuscule.')

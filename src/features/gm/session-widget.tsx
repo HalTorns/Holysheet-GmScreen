@@ -14,6 +14,7 @@ import { InitiativeWidget } from './initiative-widget'
 import { RevisionHistory } from './revision-history'
 import { TableWidget } from './table-widget'
 import { useEditorDraft } from './use-editor-draft'
+import { SaveControl, WidgetConfig, useConfigPlacement } from './widget-config'
 
 type Session = Extract<Widget, { kind: 'table' | 'clock' | 'initiative' }>
 type Action = 'start' | 'pause' | 'reset' | { filled: number }
@@ -69,6 +70,7 @@ export function SessionWidget({
     autoSave,
     paused: readOnly,
   })
+  const placement = useConfigPlacement()
   const [optimistic, setOptimistic] = useState<{
     version: number
     value: Session
@@ -123,22 +125,36 @@ export function SessionWidget({
       editor.edit({ ...current, config: { ...current.config, title: value } })
     else editor.edit({ ...current, config: { title: value } })
   }
+  const save = (
+    <SaveControl
+      editor={editor}
+      autoSave={autoSave}
+      disabled={
+        blocked ||
+        (locked &&
+          JSON.stringify(current.config) !== JSON.stringify(widget.config))
+      }
+      label="Enregistrer le widget"
+    />
+  )
   return (
     <div className="flex h-full flex-col gap-2 overflow-auto">
       <DraftGuard dirty={dirty} />
-      {readOnly && current.kind !== 'table' && (
+      {(readOnly || placement === 'hidden') && current.kind !== 'table' && (
         <h3>{current.config.title || gmWidgetLabels[current.kind]}</h3>
       )}
       {!readOnly && (
-        <label>
-          Titre du widget
-          <input
-            value={current.config.title}
-            maxLength={120}
-            disabled={locked || blocked}
-            onChange={(event) => title(event.target.value)}
-          />
-        </label>
+        <WidgetConfig>
+          <label>
+            Titre du widget
+            <input
+              value={current.config.title}
+              maxLength={120}
+              disabled={locked || blocked}
+              onChange={(event) => title(event.target.value)}
+            />
+          </label>
+        </WidgetConfig>
       )}
       {current.kind === 'table' && (
         <TableWidget
@@ -220,29 +236,27 @@ export function SessionWidget({
             <p role="alert">{error || editor.error}</p>
           )}
           <p role="status">{pending ? 'Enregistrement…' : editor.status}</p>
-          <Button
-            disabled={
-              blocked ||
-              !editor.dirty ||
-              (locked &&
-                JSON.stringify(current.config) !==
-                  JSON.stringify(widget.config))
-            }
-            onClick={() => void editor.save()}
-          >
-            Enregistrer le widget
-          </Button>
-          <Button disabled={!editor.canUndo} onClick={() => void editor.undo()}>
-            Annuler la configuration
-          </Button>
-          <Button disabled={!editor.canRedo} onClick={() => void editor.redo()}>
-            Refaire la configuration
-          </Button>
-          <RevisionHistory
-            target={{ kind: 'note', id: widget._id }}
-            version={widget.version}
-            disabled={dirty}
-          />
+          {placement === 'hidden' && save}
+          <WidgetConfig>
+            {save}
+            <Button
+              disabled={!editor.canUndo}
+              onClick={() => void editor.undo()}
+            >
+              Annuler la configuration
+            </Button>
+            <Button
+              disabled={!editor.canRedo}
+              onClick={() => void editor.redo()}
+            >
+              Refaire la configuration
+            </Button>
+            <RevisionHistory
+              target={{ kind: 'note', id: widget._id }}
+              version={widget.version}
+              disabled={dirty}
+            />
+          </WidgetConfig>
         </>
       )}
     </div>

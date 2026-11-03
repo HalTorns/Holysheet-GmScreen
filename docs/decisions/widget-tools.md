@@ -8,7 +8,7 @@ Les styles et identifiants de groupe sont optionnels dans les placements existan
 
 ## Sélection et groupes
 
-Sélection par cases à cocher. Sans sélection cochée, les outils agissent sur la note active. Les groupes se déplacent par une translation commune, bornée aux coordonnées autorisées, au pointeur, au clavier et via X/Y. Chaque note garde son redimensionnement indépendant. L’alignement considère un groupe entier comme un bloc et préserve ses décalages internes. La distribution nécessite trois blocs et assez d’espace pour un espacement non négatif.
+Sélection par Maj/Ctrl + clic sur le canevas ou par le menu ⋯ du widget (les cases à cocher ont été retirées au chantier 3a, voir [l’ADR interaction](editor-ux.md)). Sans sélection, les outils agissent sur le widget visé. Les groupes se déplacent par une translation commune, bornée aux coordonnées autorisées, au pointeur, au clavier et via X/Y. Chaque note garde son redimensionnement indépendant. L’alignement considère un groupe entier comme un bloc et préserve ses décalages internes. La distribution nécessite trois blocs et assez d’espace pour un espacement non négatif.
 
 La duplication, la suppression et les styles portent sur les notes sélectionnées explicitement. Grouper fusionne les groupes concernés ; dégrouper détache leurs membres. Les copies sont des notes indépendantes, avec styles et géométries copiés dans les profils mais sans appartenance au groupe d’origine.
 

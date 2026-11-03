@@ -13,6 +13,7 @@ import { RevisionHistory } from './revision-history'
 import { NoteInput } from './rich-text/input'
 import { NoteRender } from './rich-text/render'
 import { useEditorDraft } from './use-editor-draft'
+import { SaveControl, WidgetConfig, useConfigPlacement } from './widget-config'
 
 function LoadedNoteEditor({
   note,
@@ -45,6 +46,7 @@ function LoadedNoteEditor({
     paused: readOnly,
   })
   const dirty = editor.dirty || editor.pending
+  const placement = useConfigPlacement()
   useEffect(() => {
     onDirtyChange(note._id, dirty)
   }, [note._id, dirty, onDirtyChange])
@@ -55,10 +57,18 @@ function LoadedNoteEditor({
     [note._id, onDirtyChange]
   )
   if (readOnly) return <NoteRender {...editor.value} />
+  const save = (
+    <SaveControl
+      editor={editor}
+      autoSave={autoSave}
+      disabled={readOnly}
+      label="Enregistrer"
+    />
+  )
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-auto">
       <DraftGuard dirty={editor.dirty} />
-      <label className="text-xs font-semibold" htmlFor={`note-${note._id}`}>
+      <label className="sr-only" htmlFor={`note-${note._id}`}>
         Note {index + 1}
       </label>
       <NoteInput
@@ -95,39 +105,34 @@ function LoadedNoteEditor({
         <span role="status" className="text-xs text-muted-foreground">
           {editor.status}
         </span>
-        <Button
-          size="sm"
-          disabled={
-            readOnly || !editor.dirty || editor.pending || editor.conflict
-          }
-          onClick={() => void editor.save()}
-        >
-          Enregistrer
-        </Button>
+        {placement !== 'panel' && save}
       </div>
-      <div className="flex flex-wrap gap-1">
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={!editor.canUndo}
-          onClick={() => void editor.undo()}
-        >
-          Annuler le texte
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={!editor.canRedo}
-          onClick={() => void editor.redo()}
-        >
-          Refaire le texte
-        </Button>
-        <RevisionHistory
-          target={{ kind: 'note', id: note._id }}
-          version={note.version}
-          disabled={readOnly || editor.dirty || editor.pending}
-        />
-      </div>
+      <WidgetConfig>
+        {placement === 'panel' && save}
+        <div className="flex flex-wrap gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!editor.canUndo}
+            onClick={() => void editor.undo()}
+          >
+            Annuler le texte
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!editor.canRedo}
+            onClick={() => void editor.redo()}
+          >
+            Refaire le texte
+          </Button>
+          <RevisionHistory
+            target={{ kind: 'note', id: note._id }}
+            version={note.version}
+            disabled={readOnly || editor.dirty || editor.pending}
+          />
+        </div>
+      </WidgetConfig>
     </div>
   )
 }

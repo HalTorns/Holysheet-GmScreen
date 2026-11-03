@@ -17,11 +17,15 @@ import {
 } from '@/components/ui/dialog'
 import { operationErrorMessage } from '@/features/auth/errors'
 
+export type LayoutDialog = 'settings' | 'profile'
+
 export function LayoutSettings({
   layout,
   disabled,
   onApply,
   onCreated,
+  dialog,
+  onDialogChange: setDialog,
 }: {
   layout: Layout
   disabled: boolean
@@ -30,62 +34,48 @@ export function LayoutSettings({
     version: number
   ) => void
   onCreated: (id: Id<'gmLayouts'>) => void
+  /** Dialogue ouvert depuis le menu ⚙ du Screen. */
+  dialog: LayoutDialog | null
+  onDialogChange: (dialog: LayoutDialog | null) => void
 }) {
-  const [dialog, setDialog] = useState<'settings' | 'profile' | null>(null)
   return (
-    <>
-      <Button
-        variant="outline"
-        disabled={disabled}
-        onClick={() => setDialog('settings')}
-      >
-        Configurer le profil
-      </Button>
-      <Button
-        variant="outline"
-        disabled={disabled}
-        onClick={() => setDialog('profile')}
-      >
-        Nouveau profil
-      </Button>
-      <Dialog
-        open={dialog !== null}
-        onOpenChange={(open) => {
-          if (!open) setDialog(null)
-        }}
-      >
-        <DialogContent>
-          <DialogTitle>
-            {dialog === 'profile'
-              ? 'Nouveau profil de disposition'
-              : 'Configurer le profil'}
-          </DialogTitle>
-          <DialogDescription>
-            {dialog === 'profile'
-              ? 'Copiez la disposition actuelle. Les contenus restent communs aux profils.'
-              : 'Dimensions en pixels. Réduire la surface ne repositionne pas les notes ; utilisez leurs coordonnées pour les ramener dans le cadre.'}
-          </DialogDescription>
-          {dialog === 'settings' && (
-            <SettingsForm
-              layout={layout}
-              onApply={(value, version) => {
-                onApply(value, version)
-                setDialog(null)
-              }}
-            />
-          )}
-          {dialog === 'profile' && (
-            <ProfileForm
-              sourceId={layout._id}
-              onCreated={(id) => {
-                onCreated(id)
-                setDialog(null)
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+    <Dialog
+      open={dialog !== null && !disabled}
+      onOpenChange={(open) => {
+        if (!open) setDialog(null)
+      }}
+    >
+      <DialogContent>
+        <DialogTitle>
+          {dialog === 'profile'
+            ? 'Nouveau profil de disposition'
+            : 'Configurer le profil'}
+        </DialogTitle>
+        <DialogDescription>
+          {dialog === 'profile'
+            ? 'Copiez la disposition actuelle. Les contenus restent communs aux profils.'
+            : 'Dimensions en pixels. Réduire la surface ne repositionne pas les notes ; utilisez leurs coordonnées pour les ramener dans le cadre.'}
+        </DialogDescription>
+        {dialog === 'settings' && (
+          <SettingsForm
+            layout={layout}
+            onApply={(value, version) => {
+              onApply(value, version)
+              setDialog(null)
+            }}
+          />
+        )}
+        {dialog === 'profile' && (
+          <ProfileForm
+            sourceId={layout._id}
+            onCreated={(id) => {
+              onCreated(id)
+              setDialog(null)
+            }}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -10,6 +10,7 @@ import { env } from '@/env'
 
 import { RevisionHistory } from './revision-history'
 import { useEditorDraft } from './use-editor-draft'
+import { SaveControl, WidgetConfig, useConfigPlacement } from './widget-config'
 
 type Embed = Extract<Widget, { kind: 'embed' }>
 const appOrigins = [
@@ -107,6 +108,15 @@ export function EmbedWidget({
   const current = editor.value
   const invalid = current.config.url !== '' && !parsedConfig(current.config)
   const disabled = locked || readOnly || editor.pending
+  const placement = useConfigPlacement()
+  const save = (
+    <SaveControl
+      editor={editor}
+      autoSave={autoSave}
+      disabled={disabled || invalid}
+      label="Enregistrer le widget"
+    />
+  )
   useEffect(() => {
     onDirtyChange(widget._id, editor.dirty || editor.pending)
   }, [widget._id, editor.dirty, editor.pending, onDirtyChange])
@@ -124,59 +134,61 @@ export function EmbedWidget({
         {!readOnly && (
           <>
             <DraftGuard dirty={editor.dirty} />
-            <label>
-              Titre du widget
-              <input
-                value={current.config.title}
-                maxLength={120}
-                disabled={disabled}
-                onChange={(event) =>
-                  editor.edit({
-                    ...current,
-                    config: { ...current.config, title: event.target.value },
-                  })
-                }
-              />
-            </label>
-            <label>
-              URL du lien
-              <input
-                value={current.config.url}
-                aria-invalid={invalid}
-                disabled={disabled}
-                onChange={(event) =>
-                  editor.edit({
-                    ...current,
-                    config: { ...current.config, url: event.target.value },
-                  })
-                }
-              />
-            </label>
-            <label>
-              Mode du lien
-              <select
-                aria-label="Mode du lien"
-                value={current.config.mode}
-                disabled={disabled}
-                onChange={(event) => {
-                  const mode = event.target.value
-                  if (mode === 'link' || mode === 'frame')
+            <WidgetConfig>
+              <label>
+                Titre du widget
+                <input
+                  value={current.config.title}
+                  maxLength={120}
+                  disabled={disabled}
+                  onChange={(event) =>
                     editor.edit({
                       ...current,
-                      config: { ...current.config, mode },
+                      config: { ...current.config, title: event.target.value },
                     })
-                }}
-              >
-                <option value="link">Lien</option>
-                <option value="frame">Cadre intégré</option>
-              </select>
-            </label>
-            {invalid && (
-              <p role="alert">
-                URL invalide : utilisez une adresse HTTPS publique, extérieure à
-                l&apos;application.
-              </p>
-            )}
+                  }
+                />
+              </label>
+              <label>
+                URL du lien
+                <input
+                  value={current.config.url}
+                  aria-invalid={invalid}
+                  disabled={disabled}
+                  onChange={(event) =>
+                    editor.edit({
+                      ...current,
+                      config: { ...current.config, url: event.target.value },
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Mode du lien
+                <select
+                  aria-label="Mode du lien"
+                  value={current.config.mode}
+                  disabled={disabled}
+                  onChange={(event) => {
+                    const mode = event.target.value
+                    if (mode === 'link' || mode === 'frame')
+                      editor.edit({
+                        ...current,
+                        config: { ...current.config, mode },
+                      })
+                  }}
+                >
+                  <option value="link">Lien</option>
+                  <option value="frame">Cadre intégré</option>
+                </select>
+              </label>
+              {invalid && (
+                <p role="alert">
+                  URL invalide : utilisez une adresse HTTPS publique, extérieure
+                  à l&apos;application.
+                </p>
+              )}
+            </WidgetConfig>
             {editor.conflict && (
               <div role="alert">
                 Ce widget a changé dans une autre vue. Votre brouillon est
@@ -191,17 +203,15 @@ export function EmbedWidget({
             )}
             {editor.error && <p role="alert">{editor.error}</p>}
             <p role="status">{editor.status}</p>
-            <Button
-              disabled={disabled || invalid || !editor.dirty || editor.conflict}
-              onClick={() => void editor.save()}
-            >
-              Enregistrer le widget
-            </Button>
-            <RevisionHistory
-              target={{ kind: 'note', id: widget._id }}
-              version={widget.version}
-              disabled={disabled || editor.dirty}
-            />
+            {placement === 'hidden' && save}
+            <WidgetConfig>
+              {save}
+              <RevisionHistory
+                target={{ kind: 'note', id: widget._id }}
+                version={widget.version}
+                disabled={disabled || editor.dirty}
+              />
+            </WidgetConfig>
           </>
         )}
       </div>

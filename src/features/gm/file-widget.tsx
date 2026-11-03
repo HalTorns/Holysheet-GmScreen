@@ -6,6 +6,8 @@ import { lazy, Suspense, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { operationErrorMessage } from '@/features/auth/errors'
 
+import { WidgetConfig } from './widget-config'
+
 const PdfView = lazy(() =>
   import('./pdf-view').then((module) => ({ default: module.PdfView }))
 )
@@ -122,7 +124,7 @@ export function FileWidget({
             />
           </div>
           {!readOnly && (
-            <>
+            <WidgetConfig>
               <label>
                 Zoom image
                 <input
@@ -185,7 +187,7 @@ export function FileWidget({
                   <option value="cover">Couvrir</option>
                 </select>
               </label>
-            </>
+            </WidgetConfig>
           )}
         </>
       ) : (

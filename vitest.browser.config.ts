@@ -15,7 +15,14 @@ export default defineConfig({
       'https://site.example.com'
     ),
   },
-  optimizeDeps: { include: ['convex/values', '@t3-oss/env-core'] },
+  optimizeDeps: {
+    include: [
+      'convex/values',
+      '@t3-oss/env-core',
+      '@base-ui/react/context-menu',
+      '@base-ui/react/menu',
+    ],
+  },
   resolve: sharedResolve,
   plugins: [...createUIPlugins()],
   test: {

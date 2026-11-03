@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 
+import { WidgetConfig } from './widget-config'
+
 type Session = Extract<Widget, { kind: 'table' | 'clock' | 'initiative' }>
 type Clock = Extract<Session, { kind: 'clock' }>
 type Action = 'start' | 'pause' | 'reset' | { filled: number }
@@ -92,7 +94,7 @@ export function ClockWidget({
         </>
       )}
       {!readOnly && (
-        <>
+        <WidgetConfig>
           <label>
             Mode de l’horloge
             <select
@@ -182,7 +184,7 @@ export function ClockWidget({
             Une vue qui n’a jamais piloté l’horloge utilise son heure système ;
             un décalage peut subsister.
           </p>
-        </>
+        </WidgetConfig>
       )}
     </>
   )

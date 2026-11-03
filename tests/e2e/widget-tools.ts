@@ -3,6 +3,13 @@ import type { Page } from '@playwright/test'
 import type { ConvexHttpClient } from 'convex/browser'
 
 import { readScreen } from '../helpers/gm-screen'
+import {
+  closeInspector,
+  screenMenu,
+  selectWidgets,
+  selectionBar,
+  widgetAction,
+} from './editor-ui'
 import { waitForHydration } from './helpers'
 
 export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
@@ -15,9 +22,21 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   const original = await read()
   const first = original.notes[0]
   if (!first) throw new Error('Missing note')
-  const selected = page.getByRole('combobox', { name: 'Note sélectionnée' })
-  await selected.selectOption(first._id)
-  await page.getByRole('button', { name: 'Dupliquer', exact: true }).click()
+  const digital = original.layouts.find((p) => p.name === 'Portable')
+  if (!digital) throw new Error('Missing profile')
+  const profile = async () => {
+    const layout = (await read()).layouts.find((p) => p._id === digital._id)
+    if (!layout) throw new Error('Missing profile')
+    return layout
+  }
+  async function position(widgetId: string) {
+    const index = (await profile()).placements.findIndex(
+      (p) => p.widgetId === widgetId
+    )
+    if (index === -1) throw new Error('Missing placement')
+    return index + 1
+  }
+  await widgetAction(page, await position(first._id), 'Dupliquer')
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(3)
@@ -37,23 +56,10 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   expect((await read()).notes.find((n) => n._id === first._id)?.body).toBe(
     first.body
   )
-  await page
-    .getByText('Sélection, groupes et alignement', { exact: true })
+  await selectWidgets(page, 1, 3)
+  await selectionBar(page)
+    .getByRole('button', { name: 'Grouper', exact: true })
     .click()
-  await page
-    .getByRole('checkbox', { name: 'Sélectionner la note 1', exact: true })
-    .check()
-  await page
-    .getByRole('checkbox', { name: 'Sélectionner la note 3', exact: true })
-    .check()
-  await page.getByRole('button', { name: 'Grouper', exact: true }).click()
-  const digital = original.layouts.find((p) => p.name === 'Portable')
-  if (!digital) throw new Error('Missing profile')
-  const profile = async () => {
-    const layout = (await read()).layouts.find((p) => p._id === digital._id)
-    if (!layout) throw new Error('Missing profile')
-    return layout
-  }
   await expect
     .poll(
       async () =>
@@ -81,8 +87,12 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   expect(
     (await profile()).placements.find((p) => p.widgetId === first._id)?.x
   ).toBe(firstPlacement.x + 1)
-  await page.getByText('Style des notes sélectionnées', { exact: true }).click()
+  await selectWidgets(page, 1, 3)
+  await selectionBar(page)
+    .getByRole('button', { name: 'Style…', exact: true })
+    .click()
   await page
+    .getByRole('dialog', { name: 'Inspecteur', exact: true })
     .getByRole('spinbutton', { name: 'Taille du texte', exact: true })
     .fill('20')
   await expect
@@ -108,23 +118,19 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
     (await read()).layouts.find((p) => p._id === bureau?._id)?.placements[0]
       ?.style
   ).toBeUndefined()
-  await page
+  await closeInspector(page)
+  await selectionBar(page)
     .getByRole('button', { name: 'Copier les widgets', exact: true })
     .click()
-  await page
-    .getByRole('button', { name: 'Coller les widgets', exact: true })
-    .click()
+  await widgetAction(page, 1, 'Coller les widgets')
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(5)
-  await selected.selectOption(copy._id)
-  await page
-    .getByRole('button', { name: 'Mettre à la corbeille', exact: true })
-    .click()
+  await widgetAction(page, await position(copy._id), 'Mettre à la corbeille')
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(4)
-  await page.getByRole('button', { name: 'Corbeille', exact: true }).click()
+  await screenMenu(page, 'Corbeille du Screen…')
   await expect(
     page
       .getByRole('dialog')
@@ -152,10 +158,7 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   })
   expect(restored?.groupId).toBeUndefined()
   // Leave a recoverable trash record in the real snapshot/restore fixture.
-  await selected.selectOption(copy._id)
-  await page
-    .getByRole('button', { name: 'Mettre à la corbeille', exact: true })
-    .click()
+  await widgetAction(page, await position(copy._id), 'Mettre à la corbeille')
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(4)
@@ -164,7 +167,7 @@ export async function verifyWidgetTools(page: Page, client: ConvexHttpClient) {
   await expect(
     page.getByRole('textbox', { name: 'Contenu de la note', exact: true })
   ).toHaveCount(4)
-  await page.getByRole('button', { name: 'Corbeille', exact: true }).click()
+  await screenMenu(page, 'Corbeille du Screen…')
   await expect(
     page
       .getByRole('dialog')
