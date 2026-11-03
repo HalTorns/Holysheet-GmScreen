@@ -160,8 +160,10 @@ test('rich notes activate literally, paste safely, synchronize, conflict and res
     await expect(field).toHaveValue(/:::details/u)
     await setMode(page, 'Lecture')
     await expect(field).toHaveCount(0)
+    // Selon la position du curseur au collage, le gras peut être imbriqué
+    // (<strong>…<strong>Word</strong></strong>) : viser le plus interne.
     await expect(
-      page.locator('strong').filter({ hasText: 'Word' })
+      page.locator('strong').filter({ hasText: 'Word' }).last()
     ).toBeVisible()
     await expect(
       page.locator('a[href^="javascript"], img[src*="evil"], iframe')
