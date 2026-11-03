@@ -103,20 +103,22 @@ export async function closeInspector(page: Page) {
   await expect(inspector(page)).toHaveCount(0)
 }
 
-/** Menu ⋯ du widget n. */
+/**
+ * Menu ⋯ du widget n, ouvert au clavier (Maj+F10 sur sa poignée) : fiable
+ * même quand des copies superposées recouvrent son bouton ⋯.
+ */
 export async function widgetAction(
   page: Page,
   index: number,
   ...path: string[]
 ) {
-  await menuAction(
-    page,
-    page.getByRole('button', {
-      name: `Actions du widget ${index}`,
-      exact: true,
-    }),
-    ...path
-  )
+  await page
+    .getByRole('button', { name: `Déplacer la note ${index}`, exact: true })
+    .press('Shift+F10')
+  await expect(
+    page.getByRole('menu', { name: `Actions du widget ${index}` })
+  ).toBeVisible()
+  await follow(page, path)
 }
 
 /** Ajoute le widget n à la sélection multiple (Maj + clic sur sa poignée). */
