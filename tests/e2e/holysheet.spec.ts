@@ -28,7 +28,8 @@ test('password registration, project, folder and Screen survive reload, synchron
   page,
   context,
 }) => {
-  test.setTimeout(300_000)
+  // Le parcours éditeur passe par les menus et l'inspecteur (chantier 3a).
+  test.setTimeout(480_000)
   logPageLifecycle(context)
   const email = createEmail()
   const password = `Synthetic-${randomUUID()}`
@@ -172,12 +173,17 @@ test('password registration, project, folder and Screen survive reload, synchron
       page.getByRole('textbox', { name: 'Contenu de la note' })
     ).toHaveValue('Nouvelle version distante')
     const kindsScreenUrl = page.url()
+    console.log('[journey] verifyScreenEditor')
     await verifyScreenEditor(page, secondPage, client)
+    console.log('[journey] verifyWidgetTools')
     await verifyWidgetTools(page, client)
+    console.log('[journey] verifyLibrary')
     await verifyLibrary(page, client)
+    console.log('[journey] verifyVariables')
     await verifyVariables(page, client)
     await page.goto(kindsScreenUrl)
     await waitForHydration(page)
+    console.log('[journey] verifyWidgetKinds')
     await verifyWidgetKinds(page, secondPage, client)
     const restoreSource = await client.query(api.gm.getScreen, {
       id: kindsScreenUrl.split('/').at(-1) ?? '',
@@ -252,6 +258,7 @@ test('password registration, project, folder and Screen survive reload, synchron
       title: 'Marchand restauré',
     })
     await client.mutation(api.merchants.addStock, { merchantId, itemId })
+    console.log('[journey] verifyLocalRestore')
     const report = await verifyLocalRestore()
     expect(report.widgetRelations).toMatchObject({
       valid: true,
