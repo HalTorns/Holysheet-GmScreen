@@ -44,7 +44,12 @@ function MenuContent({
 
 function MenuShortcut({ children }: { children: ReactNode }) {
   return (
-    <kbd className="ml-auto pl-4 font-sans text-xs text-muted-foreground">
+    // Visuel seulement : le nom de l'élément reste son libellé, le raccourci
+    // est exposé par aria-keyshortcuts.
+    <kbd
+      aria-hidden="true"
+      className="ml-auto pl-4 font-sans text-xs text-muted-foreground"
+    >
       {children}
     </kbd>
   )
@@ -57,7 +62,11 @@ function MenuItem({
   ...props
 }: MenuPrimitive.Item.Props & { shortcut?: string }) {
   return (
-    <MenuPrimitive.Item className={cn(itemClass, className)} {...props}>
+    <MenuPrimitive.Item
+      className={cn(itemClass, className)}
+      aria-keyshortcuts={shortcut}
+      {...props}
+    >
       {children}
       {shortcut && <MenuShortcut>{shortcut}</MenuShortcut>}
     </MenuPrimitive.Item>

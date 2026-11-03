@@ -344,23 +344,30 @@ for (const [name, action] of Object.entries({
     // document. Each attempt therefore owns a fresh generation, never assumes
     // that the previous runner survives the browser's denial.
     for (const name of ['location', 'link', 'meta', 'data']) {
-      await openScreen(page, screenId)
-      const active = await runnerFor(page, 'Évasions F8')
-      await expect(active.locator('#result')).toContainText('RTCIceTransport')
-      const relay = active.parentFrame()
-      if (!relay) throw new Error('Missing relay')
-      const violation = relay.evaluate(
-        () =>
-          new Promise<string>((resolve) => {
-            document.addEventListener(
-              'securitypolicyviolation',
-              (event) => resolve(event.effectiveDirective),
-              { once: true }
-            )
-          })
-      )
-      await active.getByRole('button', { name, exact: true }).press('Enter')
-      expect(await violation).toBe('frame-src')
+      // The frame may also be recreated while mounting: each try resolves a
+      // fresh runner and waits a bounded time for the violation.
+      await expect(async () => {
+        await openScreen(page, screenId)
+        const active = await runnerFor(page, 'Évasions F8')
+        await expect(active.locator('#result')).toContainText('RTCIceTransport')
+        const relay = active.parentFrame()
+        if (!relay) throw new Error('Missing relay')
+        const violation = relay.evaluate(
+          () =>
+            new Promise<string>((resolve) => {
+              document.addEventListener(
+                'securitypolicyviolation',
+                (event) => resolve(event.effectiveDirective),
+                { once: true }
+              )
+              setTimeout(() => resolve('none'), 5000)
+            })
+        )
+        await active
+          .getByRole('button', { name, exact: true })
+          .press('Enter', { timeout: 3000 })
+        expect(await violation).toBe('frame-src')
+      }).toPass({ timeout: 60_000 })
       await expect(
         page.getByText('Widget suspendu, recharger', { exact: false })
       ).toBeVisible()
