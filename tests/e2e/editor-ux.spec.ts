@@ -238,6 +238,13 @@ test('3a-2: project page keeps creation and resources in menus, panels keep draf
       .getByRole('navigation', { name: 'Sections du projet' })
       .getByRole('link', { name: 'Variables' })
       .click()
+    // Le brouillon de définition, toujours monté, protège la navigation.
+    await expect(
+      page.getByRole('dialog', { name: 'Quitter sans enregistrer ?' })
+    ).toBeVisible()
+    await page
+      .getByRole('button', { name: 'Quitter sans enregistrer', exact: true })
+      .click()
     await expect(
       page.getByRole('heading', { name: 'Variables du projet' })
     ).toBeVisible()
