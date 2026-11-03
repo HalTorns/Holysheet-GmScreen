@@ -53,6 +53,7 @@ export async function verifyWidgetKinds(
     if (!path) throw new Error(`Unknown widget kind ${kind}`)
     await addMenu(page, ...path)
   }
+  console.log('[kinds] checklist', new Date().toISOString())
   await add('checklist')
   const checklist = page.getByRole('region', {
     name: 'Widget checklist 1',
@@ -112,6 +113,7 @@ export async function verifyWidgetKinds(
     panel.getByRole('textbox', { name: 'Libellé 1', exact: true })
   ).toHaveValue('Élément 2')
   await closeInspector(page)
+  console.log('[kinds] counter', new Date().toISOString())
   await add('counter')
   await add('dice')
   const dice = page.getByRole('region', { name: 'Widget dice 3', exact: true })
@@ -190,6 +192,7 @@ export async function verifyWidgetKinds(
   await expect(
     other.getByLabel('Résultat de force', { exact: true })
   ).toHaveText(String(force.value + 1))
+  console.log('[kinds] lock', new Date().toISOString())
   await setScreenOption(page, 'Verrouiller la disposition', true)
   panel = await inspect(page, 3)
   await expect(
@@ -223,6 +226,7 @@ export async function verifyWidgetKinds(
   await expect(
     page.getByRole('button', { name: 'Enregistrer', exact: true })
   ).toHaveCount(0)
+  console.log('[kinds] duplicate', new Date().toISOString())
   await widgetAction(page, 1, 'Dupliquer')
   await expect(
     page.getByRole('region', { name: 'Widget checklist 5', exact: true })
@@ -237,6 +241,7 @@ export async function verifyWidgetKinds(
   await expect(
     page.getByRole('region', { name: 'Widget checklist 5', exact: true })
   ).toBeVisible()
+  console.log('[kinds] group', new Date().toISOString())
   await selectWidgets(page, 1, 4)
   await selectionBar(page)
     .getByRole('button', { name: 'Grouper', exact: true })
@@ -261,6 +266,7 @@ export async function verifyWidgetKinds(
     })
     .toBe(true)
   // F1 runs before this scenario, in the same project. Keep earlier widget indices stable.
+  console.log('[kinds] sheet', new Date().toISOString())
   await add('sheet')
   const sheetWidget = page.getByRole('region', {
     name: 'Widget fiche 6',
@@ -302,6 +308,7 @@ export async function verifyWidgetKinds(
   ).toBeVisible()
   await setMode(page, 'Édition')
   resetResourceWriteBudget(data.screen.ownerId)
+  console.log('[kinds] table', new Date().toISOString())
   await add('table')
   const table = page.getByRole('region', {
     name: 'Widget tableau 7',
@@ -343,6 +350,7 @@ export async function verifyWidgetKinds(
     'Modifié'
   )
   await manualSave()
+  console.log('[kinds] clock', new Date().toISOString())
   await add('clock')
   const clock = page.getByRole('region', {
     name: 'Widget horloge 8',
@@ -399,6 +407,7 @@ export async function verifyWidgetKinds(
     })
     .toBe(true)
   await manualSave()
+  console.log('[kinds] initiative', new Date().toISOString())
   await add('initiative')
   const initiative = page.getByRole('region', {
     name: 'Widget initiative 9',

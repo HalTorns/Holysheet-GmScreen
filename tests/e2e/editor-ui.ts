@@ -5,24 +5,35 @@ import type { Locator, Page } from '@playwright/test'
 // le menu ⋯ de chaque widget et l'inspecteur. Les éléments gardent le libellé
 // des anciens boutons ; seul le rôle change (menuitem, menuitemcheckbox).
 
+// Diagnostic CI : durée des étapes lentes de l'interface.
+function timing(label: string, started: number) {
+  const elapsed = Date.now() - started
+  if (elapsed > 2000) console.log(`[ui] ${label} ${elapsed} ms`)
+}
+
 async function follow(page: Page, path: string[]) {
-  for (const name of path) {
-    const menu = page.getByRole('menu').last()
-    const item = menu
-      .getByRole('menuitem', { name, exact: true })
-      .or(menu.getByRole('menuitemradio', { name, exact: true }))
-      .or(menu.getByRole('menuitemcheckbox', { name, exact: true }))
-    try {
-      await expect(item).toBeVisible()
-    } catch (error) {
-      // Diagnostic CI : état réel des menus quand un élément manque.
-      console.log(
-        `[menu] ${name}: ${await page.getByRole('menu').count()} menu(s)\n`,
-        (await page.locator('body').ariaSnapshot()).slice(0, 6000)
-      )
-      throw error
+  const started = Date.now()
+  try {
+    for (const name of path) {
+      const menu = page.getByRole('menu').last()
+      const item = menu
+        .getByRole('menuitem', { name, exact: true })
+        .or(menu.getByRole('menuitemradio', { name, exact: true }))
+        .or(menu.getByRole('menuitemcheckbox', { name, exact: true }))
+      try {
+        await expect(item).toBeVisible()
+      } catch (error) {
+        // Diagnostic CI : état réel des menus quand un élément manque.
+        console.log(
+          `[menu] ${name}: ${await page.getByRole('menu').count()} menu(s)\n`,
+          (await page.locator('body').ariaSnapshot()).slice(0, 6000)
+        )
+        throw error
+      }
+      await item.click()
     }
-    await item.click()
+  } finally {
+    timing('follow', started)
   }
 }
 
@@ -37,15 +48,25 @@ function screenSettings(page: Page) {
 }
 
 export async function screenMenu(page: Page, ...path: string[]) {
-  await menuAction(page, screenSettings(page), ...path)
+  const started = Date.now()
+  try {
+    await menuAction(page, screenSettings(page), ...path)
+  } finally {
+    timing('screenMenu', started)
+  }
 }
 
 export async function addMenu(page: Page, ...path: string[]) {
-  await menuAction(
-    page,
-    page.getByRole('button', { name: 'Ajouter', exact: true }),
-    ...path
-  )
+  const started = Date.now()
+  try {
+    await menuAction(
+      page,
+      page.getByRole('button', { name: 'Ajouter', exact: true }),
+      ...path
+    )
+  } finally {
+    timing('addMenu', started)
+  }
 }
 
 /** Coche ou décoche une case du menu ⚙ (verrou, sauvegarde automatique…). */
@@ -54,26 +75,41 @@ export async function setScreenOption(
   name: string,
   checked: boolean
 ) {
-  await screenSettings(page).click()
-  const item = page.getByRole('menuitemcheckbox', { name, exact: true })
-  await expect(item).toBeVisible()
-  if ((await item.getAttribute('aria-checked')) !== String(checked))
-    await item.click()
-  await expect(item).toHaveAttribute('aria-checked', String(checked))
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('menu')).toHaveCount(0)
+  const started = Date.now()
+  try {
+    await screenSettings(page).click()
+    const item = page.getByRole('menuitemcheckbox', { name, exact: true })
+    await expect(item).toBeVisible()
+    if ((await item.getAttribute('aria-checked')) !== String(checked))
+      await item.click()
+    await expect(item).toHaveAttribute('aria-checked', String(checked))
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu')).toHaveCount(0)
+  } finally {
+    timing('setScreenOption', started)
+  }
 }
 
 export async function setMode(page: Page, mode: 'Édition' | 'Jeu' | 'Lecture') {
-  await page
-    .getByRole('radiogroup', { name: 'Mode du Screen', exact: true })
-    .getByRole('radio', { name: mode, exact: true })
-    .click()
+  const started = Date.now()
+  try {
+    await page
+      .getByRole('radiogroup', { name: 'Mode du Screen', exact: true })
+      .getByRole('radio', { name: mode, exact: true })
+      .click()
+  } finally {
+    timing('setMode', started)
+  }
 }
 
 export async function selectProfile(page: Page, name: string) {
-  await screenMenu(page, 'Profil de disposition', name)
-  await expect(page.getByText(`· ${name}`, { exact: false })).toBeVisible()
+  const started = Date.now()
+  try {
+    await screenMenu(page, 'Profil de disposition', name)
+    await expect(page.getByText(`· ${name}`, { exact: false })).toBeVisible()
+  } finally {
+    timing('selectProfile', started)
+  }
 }
 
 function inspector(page: Page) {
@@ -86,21 +122,34 @@ export async function inspect(
   index: number,
   tab: 'Contenu' | 'Style' | 'Position' = 'Contenu'
 ) {
-  await page
-    .getByRole('button', { name: `Configurer le widget ${index}`, exact: true })
-    .click()
-  const panel = inspector(page)
-  await expect(panel).toBeVisible()
-  if (tab !== 'Contenu')
-    await panel.getByRole('tab', { name: tab, exact: true }).click()
-  return panel
+  const started = Date.now()
+  try {
+    await page
+      .getByRole('button', {
+        name: `Configurer le widget ${index}`,
+        exact: true,
+      })
+      .click()
+    const panel = inspector(page)
+    await expect(panel).toBeVisible()
+    if (tab !== 'Contenu')
+      await panel.getByRole('tab', { name: tab, exact: true }).click()
+    return panel
+  } finally {
+    timing('inspect', started)
+  }
 }
 
 export async function closeInspector(page: Page) {
-  await page
-    .getByRole('button', { name: 'Fermer inspecteur', exact: true })
-    .click()
-  await expect(inspector(page)).toHaveCount(0)
+  const started = Date.now()
+  try {
+    await page
+      .getByRole('button', { name: 'Fermer inspecteur', exact: true })
+      .click()
+    await expect(inspector(page)).toHaveCount(0)
+  } finally {
+    timing('closeInspector', started)
+  }
 }
 
 /**
@@ -112,13 +161,18 @@ export async function widgetAction(
   index: number,
   ...path: string[]
 ) {
-  await page
-    .getByRole('button', { name: `Déplacer la note ${index}`, exact: true })
-    .press('Shift+F10')
-  await expect(
-    page.getByRole('menu', { name: `Actions du widget ${index}` })
-  ).toBeVisible()
-  await follow(page, path)
+  const started = Date.now()
+  try {
+    await page
+      .getByRole('button', { name: `Déplacer la note ${index}`, exact: true })
+      .press('Shift+F10')
+    await expect(
+      page.getByRole('menu', { name: `Actions du widget ${index}` })
+    ).toBeVisible()
+    await follow(page, path)
+  } finally {
+    timing('widgetAction', started)
+  }
 }
 
 /** Ajoute le widget n à la sélection multiple (Maj + clic sur sa poignée). */
@@ -137,20 +191,25 @@ export function selectionBar(page: Page) {
 
 /** Sélectionne exactement les widgets donnés (à partir de 1). */
 export async function selectWidgets(page: Page, ...indices: number[]) {
-  const [first, ...others] = indices
-  if (first === undefined) return
-  const handle = page.getByRole('button', {
-    name: `Déplacer la note ${first}`,
-    exact: true,
-  })
-  await handle.click()
-  await page.keyboard.press('Escape')
-  await handle.click()
-  for (const index of others) await addToSelection(page, index)
-  if (others.length)
-    await expect(
-      selectionBar(page).getByText(`${indices.length} sélectionnés`)
-    ).toBeVisible()
+  const started = Date.now()
+  try {
+    const [first, ...others] = indices
+    if (first === undefined) return
+    const handle = page.getByRole('button', {
+      name: `Déplacer la note ${first}`,
+      exact: true,
+    })
+    await handle.click()
+    await page.keyboard.press('Escape')
+    await handle.click()
+    for (const index of others) await addToSelection(page, index)
+    if (others.length)
+      await expect(
+        selectionBar(page).getByText(`${indices.length} sélectionnés`)
+      ).toBeVisible()
+  } finally {
+    timing('selectWidgets', started)
+  }
 }
 
 /**
@@ -158,7 +217,12 @@ export async function selectWidgets(page: Page, ...indices: number[]) {
  * l'hydratation est perdu (AUD-08) : on réessaie jusqu'à ce qu'il prenne.
  */
 export async function setAutoSave(page: Page, enabled: boolean) {
-  await expect(async () => {
-    await setScreenOption(page, 'Sauvegarde automatique', enabled)
-  }).toPass({ timeout: 20_000 })
+  const started = Date.now()
+  try {
+    await expect(async () => {
+      await setScreenOption(page, 'Sauvegarde automatique', enabled)
+    }).toPass({ timeout: 20_000 })
+  } finally {
+    timing('setAutoSave', started)
+  }
 }
