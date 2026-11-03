@@ -437,3 +437,23 @@ Builder : **Claude** pour 3a et pour les correctifs F8, l'utilisateur ayant dema
 - **Non couvert par une inspection Codex**, à la demande de l'utilisateur (quota) : les correctifs postérieurs à `69ccd6c` (`15eb8f0..6ff790d`). Ils sont couverts par `pnpm check` (321 tests unitaires et backend, 42 tests navigateur) et par la CI `41642332043` au **vert** (16/16 E2E, contrats auth et organisations, AUD-28 à 100/100 en 3,5 s).
 - **Fusion** : avance rapide de `main` jusqu'à `6ff790d`.
 - **Dette restante** : les copies collées se superposent exactement à l'original. Le décalage doit être fait côté serveur ; il est laissé hors du périmètre 3a, qui ne touche pas à Convex.
+
+### Chantier 3a-2 — menus des pages du projet, 3 novembre 2026
+
+Builder : **Claude**. Codex est limité à une revue et à une inspection courtes, à la demande de l'utilisateur, son quota hebdomadaire étant à 76 %.
+
+- **Revue du plan** `docs/PLAN-UX3a2.md`, round 1 (**Codex**) :
+  - constat UX3A2-01 (high), accepté : le panneau des widgets personnalisés démontait l'éditeur et perdait le brouillon de définition, défaut présent aussi sur le Screen depuis 3a ;
+  - correction : `SidePanel` accepte `keepMounted`, et le panneau reste monté masqué ;
+  - ce round a été **invalidé** par la garde d'empreinte, parce que le coordinateur éditait le checkout pendant la revue. Le constat a été retenu, mais il n'y a pas eu de second round (quota), donc **pas d'APPROVED formel du plan**.
+- **Build** :
+  - `ProjectNav` (onglets) ;
+  - `CreateMenu` : ＋, puis un dialogue ;
+  - `RowActions` : ⋯ ;
+  - page projet (⚙ Ressources, panneaux latéraux), fichiers, définitions, bibliothèque, variables (Enregistrer conditionnel), fiche (⋯ d'en-tête) et stock du marchand.
+- **Inspection** (**Codex**) : un premier essai a été invalidé, car lancé avant la fin du commit. Le deuxième a renvoyé REVISE (P2) : fermer le panneau Fichiers pendant un import perdait l'erreur. Le panneau reste désormais monté (`493482f`). La ré-inspection de ce correctif est **APPROVED**.
+- **CI** :
+  - un test 3a-2 qui naviguait avec un brouillon a été ajusté : la confirmation du garde est le comportement attendu ;
+  - un test texte riche fragile a été corrigé : selon la position du curseur au collage, le gras peut être imbriqué ;
+  - la CI `41657307128` est **verte** : 17/17 E2E, contrats auth et organisations, AUD-28 à 100/100.
+- **Fusion** : avance rapide de `main` jusqu'à `10f493e`. Aucune modification Convex.
