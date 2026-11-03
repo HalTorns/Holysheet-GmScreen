@@ -228,6 +228,8 @@ function DefinitionEditor({
         <label key={field}>
           {field === 'source' ? 'Code JS/TS' : field.toUpperCase()}
           <textarea
+            // Imbriquée dans son label, la zone ajouterait son contenu au nom.
+            aria-label={field === 'source' ? 'Code JS/TS' : field.toUpperCase()}
             className="min-h-32 w-full font-mono"
             value={draft[field]}
             onChange={(event) => {

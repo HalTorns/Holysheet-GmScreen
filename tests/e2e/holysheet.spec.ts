@@ -266,6 +266,7 @@ test('password registration, project, folder and Screen survive reload, synchron
         'checklist',
         'clock',
         'counter',
+        'custom',
         'dice',
         'image',
         'initiative',

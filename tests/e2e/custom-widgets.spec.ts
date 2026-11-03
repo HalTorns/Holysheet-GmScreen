@@ -375,7 +375,8 @@ test('F8: sibling custom and F7b frames cannot forge init or update; flood and w
     await page.route('https://attack.example.com/**', (route) =>
       route.fulfill({
         contentType: 'text/html',
-        body: `<script>${attackerCode}</script>`,
+        // Le script doit s'exécuter dans le corps : sans <body>, document.body est null.
+        body: `<!doctype html><html><body><script>${attackerCode}</script></body></html>`,
       })
     )
     await client.mutation(api.gmWidgets.addWidget, {
