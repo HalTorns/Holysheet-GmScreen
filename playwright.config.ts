@@ -27,7 +27,18 @@ export default defineConfig({
     screenshot: 'off',
     video: 'off',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        // Chrome desktop isole par défaut les iframes sandboxées dans leur
+        // propre processus ; le Chromium de test doit faire de même pour que
+        // la preuve F8 de boucle infinie porte sur ce comportement.
+        launchOptions: { args: ['--enable-features=IsolateSandboxedIframes'] },
+      },
+    },
+  ],
   webServer: {
     command: production ? 'pnpm start' : `pnpm dev --port ${port}`,
     env: { PORT: port, HOST: '127.0.0.1' },

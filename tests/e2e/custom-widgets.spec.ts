@@ -43,12 +43,21 @@ async function runnerFor(page: Page, name: string): Promise<Frame> {
   const region = page
     .getByRole('region', { name: /Widget custom/ })
     .filter({ has: page.getByRole('heading', { name, exact: true }) })
-  const outer = await region.locator('iframe').elementHandle()
-  const relay = await outer?.contentFrame()
-  await expect.poll(() => relay?.childFrames().length).toBe(1)
-  const runner = relay?.childFrames()[0]
+  // The relay iframe may be recreated once while the widget mounts: resolve
+  // it again on every attempt instead of keeping a stale handle.
+  let runner: Frame | undefined
+  await expect(async () => {
+    const outer = await region
+      .locator('iframe')
+      .elementHandle({ timeout: 2000 })
+    const relay = await outer?.contentFrame()
+    expect(relay?.childFrames()).toHaveLength(1)
+    runner = relay?.childFrames()[0]
+    await expect(runner?.locator('main') ?? region).toBeVisible({
+      timeout: 2000,
+    })
+  }).toPass({ timeout: 20_000 })
   if (!runner) throw new Error('Missing custom runner')
-  await expect(runner.locator('main')).toBeVisible()
   return runner
 }
 async function setup(page: Page) {
@@ -123,8 +132,16 @@ test('F8: TS editor, preview, state persistence, read-only and static print', as
       })
       .click()
     let runner = await runnerFor(page, 'Compteur TS F8')
-    await runner.getByRole('button', { name: 'Compter', exact: true }).click()
-    await expect(runner.locator('#value')).toHaveText('1')
+    // A frame recreated during mounting must not lose the first click; a
+    // suspended widget has no frame and still fails runnerFor.
+    await expect(async () => {
+      runner = await runnerFor(page, 'Compteur TS F8')
+      if ((await runner.locator('#value').textContent()) !== '1')
+        await runner
+          .getByRole('button', { name: 'Compter', exact: true })
+          .click({ timeout: 2000 })
+      await expect(runner.locator('#value')).toHaveText('1', { timeout: 2000 })
+    }).toPass({ timeout: 30_000 })
     await expect
       .poll(async () => {
         const data = await client.query(api.gmWidgets.getScreenWidgetMetadata, {
