@@ -184,6 +184,11 @@ test('actual sheet widget sells atomically, follows live stock, disables locked 
   await expect
     .element(screen.getByRole('button', { name: 'Vendre Corde', exact: true }))
     .toBeDisabled()
+  // Mode Jeu (chantier 3a) : la configuration est bloquée, pas la vente.
+  await screen.rerender(<WidgetContent {...base} note={widget} locked play />)
+  await expect
+    .element(screen.getByRole('button', { name: 'Vendre Potion', exact: true }))
+    .toBeEnabled()
   await screen.rerender(<WidgetContent {...base} note={widget} readOnly />)
   await expect
     .element(screen.getByLabelText('Stock Potion', { exact: true }))

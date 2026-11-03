@@ -45,6 +45,8 @@ type Props = {
   index: number
   readOnly: boolean
   locked: boolean
+  /** Mode Jeu sans verrou partagé : seul le contenu d'usage est actif. */
+  play?: boolean
   autoSave: boolean
   onDirtyChange: (id: string, dirty: boolean) => void
 }
@@ -140,6 +142,7 @@ function TypedWidgetEditor({
   variables,
   readOnly,
   locked,
+  play = false,
   autoSave,
   onDirtyChange,
 }: Props & { widget: TypedWidget }) {
@@ -308,7 +311,9 @@ function TypedWidgetEditor({
         <>
           <SheetPreview
             widget={widget.kind === 'sheet' ? widget : current}
-            disabled={locked || readOnly}
+            // Le stock est un contenu d'usage : actif en Jeu, mais pas sous le
+            // verrou partagé (plan F7).
+            disabled={readOnly || (locked && !play)}
           />
           <WidgetConfig>
             <CatchBoundary

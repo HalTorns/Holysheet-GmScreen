@@ -657,6 +657,7 @@ export function LayoutEditor({
                           note={note}
                           variables={variables}
                           locked={locked || mode === 'play'}
+                          play={mode === 'play' && !locked}
                           index={index}
                           readOnly={readOnly || toolsPending}
                           autoSave={autoSave}
