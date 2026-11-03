@@ -87,7 +87,7 @@ Même grammaire hors du Screen, voir [PLAN-UX3a2](../PLAN-UX3a2.md) :
 
   Chaque création passe par un dialogue, sans formulaire ouvert en permanence.
 
-- **⚙ Ressources du projet** : Fichiers et Widgets personnalisés s’ouvrent dans des panneaux latéraux. Le panneau des widgets personnalisés reste monté une fois fermé (`keepMounted`), sur le projet comme sur le Screen : un brouillon de définition n’est jamais perdu en le refermant (revue UX3A2-01).
+- **⚙ Ressources du projet** : Fichiers et Widgets personnalisés s’ouvrent dans des panneaux latéraux. Le panneau des widgets personnalisés reste monté une fois fermé (`keepMounted`), sur le projet comme sur le Screen : un brouillon de définition n’est jamais perdu en le refermant (revue UX3A2-01). Le panneau Fichiers reste monté de la même façon, pour qu’un import en cours garde son statut et son erreur (inspection 3a-2).
 - **⋯ sur chaque ligne** (`RowActions`) : fichiers, définitions, fiches en corbeille, variables, lignes de stock et fiche ouverte. L’action principale reste visible, par exemple Placer. Les libellés des anciens boutons sont conservés.
 - **Variables** : Enregistrer n’apparaît que sur une ligne modifiée ou en conflit. Les confirmations (Supprimer, Effacer définitivement) restent des boutons visibles une fois demandées.
 

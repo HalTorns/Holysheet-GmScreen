@@ -318,6 +318,8 @@ function ScreenWorkspace({
         open={drawer === 'files' && mode === 'edit'}
         side="left"
         title="Fichiers du projet"
+        // Un import en cours garde son statut et son erreur une fois refermé.
+        keepMounted
         onClose={() => setDrawer(null)}
       >
         <Files
