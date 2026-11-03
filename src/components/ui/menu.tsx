@@ -92,6 +92,8 @@ function MenuRadioItem({
   return (
     <MenuPrimitive.RadioItem
       className={cn(itemClass, 'relative pl-7', className)}
+      // Choisir une option (un profil…) referme le menu.
+      closeOnClick
       {...props}
     >
       <MenuPrimitive.RadioItemIndicator className="absolute left-2">

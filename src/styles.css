@@ -693,6 +693,17 @@
   }
 }
 
+/* Un panneau latéral ouvert (inspecteur, fichiers) ne recouvre ni l'en-tête
+   ni le Screen : le contenu se décale de sa largeur. */
+@media (min-width: 768px) {
+  body:has([data-side-panel='right']) :is(.app-header, #main-content) {
+    padding-right: calc(24rem + 1rem);
+  }
+  body:has([data-side-panel='left']) :is(.app-header, #main-content) {
+    padding-left: calc(24rem + 1rem);
+  }
+}
+
 @media (max-width: 1000px) {
   .hero {
     gap: 35px;

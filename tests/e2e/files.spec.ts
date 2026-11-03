@@ -6,6 +6,7 @@ import { api } from '../../convex/_generated/api'
 import { backendUrl, backendSiteUrl } from '../../scripts/local-config.mjs'
 import { FILE_PDF_BYTES } from '../../shared/files'
 import { fileStorageIds } from './backend-operator'
+import { screenMenu } from './editor-ui'
 import { uploadFixture } from './files-fixtures'
 import {
   createEmail,
@@ -142,6 +143,8 @@ test('fichiers privés : MIME réel, image/PDF sous CSP, collage et cycle de cor
     await expect(
       page.getByRole('img', { name: 'clipboard.png', exact: true })
     ).toBeVisible()
+    // Les fichiers du projet sont dans un tiroir ouvert depuis ⚙ (chantier 3a).
+    await screenMenu(page, 'Fichiers du projet…')
     await expect(
       page.getByText('clipboard.png · image/png', { exact: false })
     ).toBeVisible()

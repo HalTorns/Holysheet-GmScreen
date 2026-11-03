@@ -53,7 +53,7 @@ export function SidePanel({
       role="dialog"
       aria-modal="false"
       aria-label={title}
-      data-side={side}
+      data-side-panel={side}
       className={cn(
         'fixed inset-x-0 bottom-0 z-40 flex max-h-[70dvh] flex-col rounded-t-xl border border-border bg-background shadow-xl outline-none md:inset-y-0 md:max-h-none md:w-96 md:rounded-none',
         side === 'right' ? 'md:right-0 md:left-auto' : 'md:right-auto md:left-0'
