@@ -11,7 +11,7 @@ import {
 import { moveWidgets } from '@shared/gm-geometry'
 import { useMutation } from 'convex/react'
 import { Ellipsis, Redo2, Settings2, Undo2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -24,9 +24,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuTrigger,
   Menu,
   MenuCheckboxItem,
   MenuContent,
@@ -865,6 +862,29 @@ function WidgetFrame({
 }) {
   const widgetStyle = placement.style ?? defaultWidgetStyle
   const name = widgetName(note, index)
+  // Le clic droit ouvre le menu ⋯ du widget. Le même arbre est rendu dans
+  // tous les modes : changer de mode ne remonte pas les widgets.
+  const section = useRef<HTMLElement>(null)
+  const openMenu = useRef(() => {
+    onSelect(false)
+    onMenuOpenChange(true)
+  })
+  useEffect(() => {
+    openMenu.current = () => {
+      onSelect(false)
+      onMenuOpenChange(true)
+    }
+  })
+  useEffect(() => {
+    const element = section.current
+    if (!editing || !element) return undefined
+    function onContext(event: MouseEvent) {
+      event.preventDefault()
+      openMenu.current()
+    }
+    element.addEventListener('contextmenu', onContext)
+    return () => element.removeEventListener('contextmenu', onContext)
+  }, [editing])
   const frame = (
     <section
       data-widget-id={note._id}
@@ -872,6 +892,7 @@ function WidgetFrame({
       className={`group absolute flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm ${
         editing && (active || chosen) ? 'ring-2 ring-primary' : ''
       }`}
+      ref={section}
       onPointerDownCapture={(event) => {
         if (
           editing &&
@@ -987,16 +1008,10 @@ function WidgetFrame({
       )}
     </section>
   )
-  if (!editing) return frame
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger render={frame} />
-      <ContextMenuContent>{actions}</ContextMenuContent>
-    </ContextMenu>
-  )
+  return frame
 }
 
-/** Contenu commun du menu ⋯ et du menu contextuel d'un widget. */
+/** Menu ⋯ d'un widget, ouvert aussi par clic droit ou Maj+F10. */
 function WidgetActions({
   id,
   tools,

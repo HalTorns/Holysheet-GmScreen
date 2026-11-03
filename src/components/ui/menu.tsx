@@ -1,4 +1,3 @@
-import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react/context-menu'
 import { Menu as MenuPrimitive } from '@base-ui/react/menu'
 import { Check, ChevronRight } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
@@ -138,32 +137,7 @@ function MenuSub({
   )
 }
 
-const ContextMenu = ContextMenuPrimitive.Root
-const ContextMenuTrigger = ContextMenuPrimitive.Trigger
-
-function ContextMenuContent({
-  className,
-  children,
-  ...props
-}: ContextMenuPrimitive.Popup.Props) {
-  return (
-    <ContextMenuPrimitive.Portal>
-      <ContextMenuPrimitive.Positioner className="z-50 outline-none">
-        <ContextMenuPrimitive.Popup
-          className={cn(popupClass, className)}
-          {...props}
-        >
-          {children}
-        </ContextMenuPrimitive.Popup>
-      </ContextMenuPrimitive.Positioner>
-    </ContextMenuPrimitive.Portal>
-  )
-}
-
 export {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuTrigger,
   Menu,
   MenuCheckboxItem,
   MenuContent,

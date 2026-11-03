@@ -207,6 +207,21 @@ test('Shift+F10 opens the widget menu, whose trash action writes the widget', as
   )
 })
 
+test('the ⋯ button and a right click both open the widget menu', async () => {
+  const screen = await render(<Editor />)
+  await screen.getByRole('button', { name: 'Actions du widget 1' }).click()
+  await expect
+    .element(screen.getByRole('menuitem', { name: 'Dupliquer' }))
+    .toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await screen
+    .getByRole('region', { name: 'Widget dice 2' })
+    .click({ button: 'right' })
+  await expect
+    .element(screen.getByRole('menuitem', { name: 'Mettre à la corbeille' }))
+    .toBeVisible()
+})
+
 test('a widget outside the frame is reachable through Aller au widget', async () => {
   const screen = await render(<Editor outside />)
   await screen.getByRole('button', { name: 'Ouvrir Aller au widget' }).click()

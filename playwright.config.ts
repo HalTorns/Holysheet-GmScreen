@@ -32,6 +32,8 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        // Nouveau mode headless : le même navigateur que Chrome desktop.
+        channel: 'chromium',
         // Chrome desktop isole par défaut les iframes sandboxées dans leur
         // propre processus ; le Chromium de test doit faire de même pour que
         // la preuve F8 de boucle infinie porte sur ce comportement.

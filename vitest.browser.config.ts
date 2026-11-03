@@ -16,12 +16,7 @@ export default defineConfig({
     ),
   },
   optimizeDeps: {
-    include: [
-      'convex/values',
-      '@t3-oss/env-core',
-      '@base-ui/react/context-menu',
-      '@base-ui/react/menu',
-    ],
+    include: ['convex/values', '@t3-oss/env-core', '@base-ui/react/menu'],
   },
   resolve: sharedResolve,
   plugins: [...createUIPlugins()],
