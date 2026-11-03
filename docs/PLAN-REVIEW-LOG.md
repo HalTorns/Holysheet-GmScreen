@@ -413,3 +413,27 @@ Demande utilisateur : réduire la densité de boutons de l'éditeur de Screen gr
   - UX3A-03 : aucune relance visible après l'échec d'une sauvegarde automatique. Ajout de « Réessayer l'enregistrement ».
 - Round 2 : REVISE, UX3A-04 : Enregistrer ne doit pas être actif en conflit, puisque le hook et le serveur refusent les versions périmées. En conflit, le bouton est désactivé avec une explication, et « Charger la version enregistrée » reste affiché.
 - Round 3 : **APPROVED** sur `docs/PLAN-UX3a.md` (SHA256 `4f06ade3266ba4c19b4d40333d543716142cf3e1a45e18991915821e25e930bd`). Le build n'est pas lancé et attend l'accord de l'utilisateur. Prérequis : la fusion de F8. Le formatage oxfmt appliqué au commit (alignement des tableaux, sans changement de contenu) donne pour le fichier versionné le SHA256 `6f132d20f80940c170e2aa912ea2f5cd00f630710d215ab5008ae1c9c2c4d14c`.
+
+### F8 et chantier 3a — build, inspection et CI, 3 novembre 2026
+
+Builder : **Claude** pour 3a et pour les correctifs F8, l'utilisateur ayant demandé de ménager le quota hebdomadaire de Codex.
+
+- **Inspection Codex** (session neuve) du diff 3a `aef8f22..e31df3b` : REVISE, UX3A-01 (P2). En mode Jeu, les ventes du marchand étaient bloquées, car le mode réutilisait le verrou. Corrigé en `69ccd6c` par un drapeau `play` ; les ventes restent désactivées sous le verrou partagé (plan F7) et en Lecture. Ré-inspection de ce seul correctif : **APPROVED**.
+- **F8, défauts révélés par ses premières E2E réelles** (jamais exécutées jusque-là) :
+  - le validateur de retour de `customWidgets.list` refusait `splitCursor` et `pageStatus`, ce qui provoquait une Server Error sur chaque Screen et chaque page projet ;
+  - les zones de code imbriquées dans leur label ajoutaient leur contenu au nom accessible ;
+  - la page d'attaque simulée n'avait pas de `<body>` ;
+  - la restauration n'attendait pas le kind `custom` ;
+  - les tests gardaient des références à des cadres recréés au montage.
+- **Environnement de test** :
+  - Chromium complet (nouveau headless) avec `IsolateSandboxedIframes`, la condition documentée de la preuve de boucle infinie : elle passe désormais ;
+  - options anti-throttling, pour que l'onglet de fond ne fasse plus coûter environ 2 s à chaque action.
+- **3a, défauts révélés par la CI et corrigés** :
+  - le menu ⋯, imbriqué dans un ContextMenu Base UI, ne s'ouvrait pas. Il est remplacé par un clic droit qui ouvre ⋯, et l'arbre reste stable entre les modes (plus de remontage des widgets) ;
+  - l'inspecteur recouvrait l'en-tête : le contenu est maintenant décalé ;
+  - le menu radio des profils ne se refermait pas ;
+  - une course entre menus ⋯ ;
+  - le raccourci affiché était inclus dans le nom accessible : il est passé en `aria-keyshortcuts`.
+- **Non couvert par une inspection Codex**, à la demande de l'utilisateur (quota) : les correctifs postérieurs à `69ccd6c` (`15eb8f0..6ff790d`). Ils sont couverts par `pnpm check` (321 tests unitaires et backend, 42 tests navigateur) et par la CI `41642332043` au **vert** (16/16 E2E, contrats auth et organisations, AUD-28 à 100/100 en 3,5 s).
+- **Fusion** : avance rapide de `main` jusqu'à `6ff790d`.
+- **Dette restante** : les copies collées se superposent exactement à l'original. Le décalage doit être fait côté serveur ; il est laissé hors du périmètre 3a, qui ne touche pas à Convex.
