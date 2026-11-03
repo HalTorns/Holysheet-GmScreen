@@ -37,7 +37,17 @@ export default defineConfig({
         // Chrome desktop isole par défaut les iframes sandboxées dans leur
         // propre processus ; le Chromium de test doit faire de même pour que
         // la preuve F8 de boucle infinie porte sur ce comportement.
-        launchOptions: { args: ['--enable-features=IsolateSandboxedIframes'] },
+        // Le parcours principal pilote deux onglets : sans ces options, le
+        // nouveau headless ralentit fortement l'onglet en arrière-plan
+        // (requestAnimationFrame), donc chaque action Playwright.
+        launchOptions: {
+          args: [
+            '--enable-features=IsolateSandboxedIframes',
+            '--disable-renderer-backgrounding',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+          ],
+        },
       },
     },
   ],

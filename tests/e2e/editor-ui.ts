@@ -14,6 +14,7 @@ function timing(label: string, started: number) {
 async function follow(page: Page, path: string[]) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     for (const name of path) {
       const menu = page.getByRole('menu').last()
       const item = menu
@@ -50,6 +51,7 @@ function screenSettings(page: Page) {
 export async function screenMenu(page: Page, ...path: string[]) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await menuAction(page, screenSettings(page), ...path)
   } finally {
     timing('screenMenu', started)
@@ -59,6 +61,7 @@ export async function screenMenu(page: Page, ...path: string[]) {
 export async function addMenu(page: Page, ...path: string[]) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await menuAction(
       page,
       page.getByRole('button', { name: 'Ajouter', exact: true }),
@@ -77,6 +80,7 @@ export async function setScreenOption(
 ) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await screenSettings(page).click()
     const item = page.getByRole('menuitemcheckbox', { name, exact: true })
     await expect(item).toBeVisible()
@@ -93,6 +97,7 @@ export async function setScreenOption(
 export async function setMode(page: Page, mode: 'Édition' | 'Jeu' | 'Lecture') {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await page
       .getByRole('radiogroup', { name: 'Mode du Screen', exact: true })
       .getByRole('radio', { name: mode, exact: true })
@@ -105,6 +110,7 @@ export async function setMode(page: Page, mode: 'Édition' | 'Jeu' | 'Lecture') 
 export async function selectProfile(page: Page, name: string) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await screenMenu(page, 'Profil de disposition', name)
     await expect(page.getByText(`· ${name}`, { exact: false })).toBeVisible()
   } finally {
@@ -124,6 +130,7 @@ export async function inspect(
 ) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await page
       .getByRole('button', {
         name: `Configurer le widget ${index}`,
@@ -143,6 +150,7 @@ export async function inspect(
 export async function closeInspector(page: Page) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await page
       .getByRole('button', { name: 'Fermer inspecteur', exact: true })
       .click()
@@ -163,6 +171,7 @@ export async function widgetAction(
 ) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await page
       .getByRole('button', { name: `Déplacer la note ${index}`, exact: true })
       .press('Shift+F10')
@@ -193,6 +202,7 @@ export function selectionBar(page: Page) {
 export async function selectWidgets(page: Page, ...indices: number[]) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     const [first, ...others] = indices
     if (first === undefined) return
     const handle = page.getByRole('button', {
@@ -219,6 +229,7 @@ export async function selectWidgets(page: Page, ...indices: number[]) {
 export async function setAutoSave(page: Page, enabled: boolean) {
   const started = Date.now()
   try {
+    await page.bringToFront()
     await expect(async () => {
       await setScreenOption(page, 'Sauvegarde automatique', enabled)
     }).toPass({ timeout: 20_000 })
