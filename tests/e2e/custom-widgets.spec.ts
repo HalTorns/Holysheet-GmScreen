@@ -158,8 +158,13 @@ test('F8: TS editor, preview, state persistence, read-only and static print', as
     await runner.getByRole('button', { name: 'Compter', exact: true }).click()
     await expect(runner.locator('#value')).toHaveText('2')
     await page.emulateMedia({ media: 'print' })
-    runner = await runnerFor(page, 'Compteur TS F8')
-    await expect(runner.locator('#value')).toHaveText('Imprimé')
+    // The print rendering remounts the frame in static mode.
+    await expect(async () => {
+      runner = await runnerFor(page, 'Compteur TS F8')
+      await expect(runner.locator('#value')).toHaveText('Imprimé', {
+        timeout: 2000,
+      })
+    }).toPass({ timeout: 30_000 })
     const data = await client.query(api.gmWidgets.getScreenWidgetMetadata, {
       screenId,
     })

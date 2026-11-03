@@ -12,7 +12,16 @@ async function follow(page: Page, path: string[]) {
       .getByRole('menuitem', { name, exact: true })
       .or(menu.getByRole('menuitemradio', { name, exact: true }))
       .or(menu.getByRole('menuitemcheckbox', { name, exact: true }))
-    await expect(item).toBeVisible()
+    try {
+      await expect(item).toBeVisible()
+    } catch (error) {
+      // Diagnostic CI : état réel des menus quand un élément manque.
+      console.log(
+        `[menu] ${name}: ${await page.getByRole('menu').count()} menu(s)\n`,
+        (await page.locator('body').ariaSnapshot()).slice(0, 6000)
+      )
+      throw error
+    }
     await item.click()
   }
 }

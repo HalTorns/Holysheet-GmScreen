@@ -139,9 +139,15 @@ test('3a: dense controls live in menus, modes separate play from reading, mobile
     await page
       .getByRole('button', { name: 'Déplacer la note 1', exact: true })
       .press('Shift+F10')
-    await expect(
-      page.getByRole('menuitem', { name: 'Dupliquer', exact: true })
-    ).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Dupliquer', exact: true }))
+      .toBeVisible()
+      .catch(async (error: unknown) => {
+        console.log(
+          '[shift-f10]',
+          (await page.locator('body').ariaSnapshot()).slice(0, 6000)
+        )
+        throw error
+      })
     await page.keyboard.press('Escape')
     await widgetAction(page, 1, 'Configurer…')
     await expect(

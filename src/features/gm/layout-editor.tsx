@@ -626,7 +626,15 @@ export function LayoutEditor({
                       }
                       menuOpen={menuFor === note._id}
                       onMenuOpenChange={(open) =>
-                        setMenuFor(open ? note._id : null)
+                        // Un menu qui se ferme après l'ouverture d'un autre
+                        // ne doit pas refermer ce dernier.
+                        setMenuFor((previous) =>
+                          open
+                            ? note._id
+                            : previous === note._id
+                              ? null
+                              : previous
+                        )
                       }
                       onConfigure={() => {
                         setSelected(note._id)
