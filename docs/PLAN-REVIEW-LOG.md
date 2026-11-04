@@ -467,3 +467,17 @@ Direction choisie par l'utilisateur sur la planche d'identité : **B · Console*
   - UX3B-02 (high) : l'en-tête du widget héritait de la couleur de texte du contenu. Il a désormais ses propres couleurs sémantiques ;
   - UX3B-03 (medium) : le `Toaster` de Sonner serait resté clair. Il passe en `theme="dark"`.
 - **Round 2** (même session Codex, corrections seules) : **APPROVED**, aucun constat. Plan approuvé : SHA256 `6948b720…5169690548`, puis `eac2f1ab…3d058f9730` après formatage oxfmt seul.
+- **Build** (**Claude**) `64cbd31` :
+  - jetons sombres et polices servies par l'application ;
+  - focus givre de 2 px ;
+  - états des boutons, des champs, des menus et des widgets ;
+  - `SaveStatus` ;
+  - logo et favicon ;
+  - Sonner en sombre ;
+  - `resolveWidgetStyle`, qui convertit la palette en bloc.
+- **Inspection 1** (**Codex**, session neuve) : REVISE, deux constats acceptés :
+  - UX3B-F01 : le variant `outline` héritait du texte sombre d'un widget à palette claire conservée. Il fixe désormais `text-foreground` ;
+  - UX3B-F02 : le test de fusion de `patchStyle` n'exerçait pas le vrai parcours. Un test navigateur passe maintenant par l'inspecteur jusqu'à l'écriture des placements, et il échoue si la résolution est retirée (vérifié à la main). Correction `9ca88b7`.
+- **Inspection 2** (session neuve) : F01 et F02 sont corrigés. Nouveau constat UX3B-F03, accepté : dans une note claire, les états d'enregistrement et les erreurs étaient peu lisibles. Dans un widget, ils ont désormais leur propre surface sombre (`bf4c1c2`).
+- **Inspection 3** (session neuve) : **APPROVED**, aucun constat.
+- Aucune modification Convex : pas de `backend:deploy`.
