@@ -18,9 +18,12 @@ import {
 } from '../../src/components/ui/menu'
 import { LayoutEditor } from '../../src/features/gm/layout-editor'
 
+const { mutation } = vi.hoisted(() => ({
+  mutation: vi.fn().mockResolvedValue(1),
+}))
 vi.mock('convex/react', async (importOriginal) => ({
   ...(await importOriginal<typeof ConvexReact>()),
-  useMutation: () => vi.fn().mockResolvedValue(1),
+  useMutation: () => mutation,
 }))
 vi.mock('../../src/components/draft-guard', () => ({ DraftGuard: () => null }))
 vi.mock('../../src/features/gm/revision-history', () => ({
@@ -79,19 +82,8 @@ const layout = z
     })),
   })
 
-function css(element: Element, property: string) {
-  return getComputedStyle(element).getPropertyValue(property)
-}
-
-// Les couleurs sont animées (transition-colors) : on attend la valeur finale.
-async function expectRing(element: Element) {
-  await expect
-    .poll(() => [css(element, 'outline-width'), css(element, 'outline-color')])
-    .toEqual(['2px', ring])
-}
-
-test('old light widget palettes switch to the dark theme as a whole, chosen ones are kept', async () => {
-  const screen = await render(
+function Editor() {
+  return (
     <LayoutEditor
       layout={layout}
       notes={styles.map((_, index) => widget(`w${index}`))}
@@ -107,6 +99,21 @@ test('old light widget palettes switch to the dark theme as a whole, chosen ones
       onProfileCreated={() => undefined}
     />
   )
+}
+
+function css(element: Element, property: string) {
+  return getComputedStyle(element).getPropertyValue(property)
+}
+
+// Les couleurs sont animées (transition-colors) : on attend la valeur finale.
+async function expectRing(element: Element) {
+  await expect
+    .poll(() => [css(element, 'outline-width'), css(element, 'outline-color')])
+    .toEqual(['2px', ring])
+}
+
+test('old light widget palettes switch to the dark theme as a whole, chosen ones are kept', async () => {
+  const screen = await render(<Editor />)
   const frame = (index: number) =>
     screen.getByRole('region', { name: `Widget dice ${index}` }).element()
   expect(css(frame(1), 'background-color')).toBe('rgb(23, 27, 33)')
@@ -118,6 +125,52 @@ test('old light widget palettes switch to the dark theme as a whole, chosen ones
     .getByRole('button', { name: 'Déplacer la note 3' })
     .element()
   expect(css(handle, 'color')).toBe('rgb(232, 234, 237)')
+})
+
+test('editing an unrelated style field from the inspector converts old defaults and keeps a chosen palette', async () => {
+  mutation.mockClear()
+  const screen = await render(<Editor />)
+  for (const index of [1, 3]) {
+    await screen
+      .getByRole('button', { name: `Configurer le widget ${index}` })
+      .click()
+    await screen.getByRole('tab', { name: 'Style' }).click()
+    await screen.getByLabelText('Taille du texte').fill('20')
+  }
+  await screen
+    .getByRole('button', { name: 'Enregistrer la disposition' })
+    .click()
+  await expect.poll(() => mutation.mock.calls.length).toBeGreaterThan(0)
+  const calls: unknown[][] = mutation.mock.calls
+  const placements = calls
+    .flat()
+    .flatMap((args: unknown) =>
+      typeof args === 'object' && args !== null && 'placements' in args
+        ? [args.placements]
+        : []
+    )
+    .at(-1)
+  expect(placements).toEqual([
+    expect.objectContaining({
+      widgetId: 'w0',
+      style: { ...defaultWidgetStyle, fontSize: 20 },
+    }),
+    expect.objectContaining({ widgetId: 'w1', style: styles[1] }),
+    expect.objectContaining({
+      widgetId: 'w2',
+      style: { ...styles[2], fontSize: 20 },
+    }),
+  ])
+})
+
+test('outline buttons keep the theme text inside a widget with a kept light palette', async () => {
+  const screen = await render(
+    <div style={{ background: '#faf7f0', color: '#202a24' }}>
+      <Button variant="outline">Éditer</Button>
+    </div>
+  )
+  const button = screen.getByRole('button', { name: 'Éditer' }).element()
+  await expect.poll(() => css(button, 'color')).toBe('rgb(232, 234, 237)')
 })
 
 test('keyboard focus draws a 2 px frost outline on buttons, fields and menu items', async () => {

@@ -30,8 +30,8 @@ describe('resolveWidgetStyle', () => {
     expect(resolveWidgetStyle(cream)).toEqual(cream)
   })
 
-  it('une modification sans rapport conserve la palette mixte', () => {
-    // Fusion faite par patchStyle : style résolu, puis changements.
+  it('une fusion après résolution conserve la palette mixte', () => {
+    // Le parcours réel (inspecteur, patchStyle) est couvert en navigateur.
     const mixed = { ...legacy, color: '#222222' }
     expect({ ...resolveWidgetStyle(mixed), fontSize: 20 }).toEqual({
       ...mixed,
