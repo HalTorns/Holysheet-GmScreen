@@ -466,4 +466,4 @@ Direction choisie par l'utilisateur sur la planche d'identité : **B · Console*
   - UX3B-01 (high) : la conversion couleur par couleur des anciens styles de widgets aurait marié un texte personnalisé sombre au nouveau fond sombre. Désormais, la palette n'est convertie qu'en bloc, si les trois couleurs sont les anciens défauts ;
   - UX3B-02 (high) : l'en-tête du widget héritait de la couleur de texte du contenu. Il a désormais ses propres couleurs sémantiques ;
   - UX3B-03 (medium) : le `Toaster` de Sonner serait resté clair. Il passe en `theme="dark"`.
-- **Round 2** (même session Codex, corrections seules) : **APPROVED**, aucun constat. Plan approuvé : SHA256 `6948b720…5169690548`.
+- **Round 2** (même session Codex, corrections seules) : **APPROVED**, aucun constat. Plan approuvé : SHA256 `6948b720…5169690548`, puis `eac2f1ab…3d058f9730` après formatage oxfmt seul.
