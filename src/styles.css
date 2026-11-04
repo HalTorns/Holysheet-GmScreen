@@ -478,6 +478,14 @@
   .save-status[data-save-state='conflict']::before {
     content: '⇄ ' / '';
   }
+  /* Dans un widget, le contenu peut garder une palette claire choisie : les
+     états d'enregistrement et les erreurs gardent leur propre surface. */
+  [data-widget-id] :is(.save-status, .field-error) {
+    width: fit-content;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--card);
+  }
   .field-error {
     font-size: 12px;
     line-height: 1.5;

@@ -173,6 +173,29 @@ test('outline buttons keep the theme text inside a widget with a kept light pale
   await expect.poll(() => css(button, 'color')).toBe('rgb(232, 234, 237)')
 })
 
+test('save states and errors keep a dark surface inside a widget with a kept light palette', async () => {
+  const screen = await render(
+    <section
+      data-widget-id="w"
+      style={{ background: '#faf7f0', color: '#202a24' }}
+    >
+      <span role="status" className="save-status" data-save-state="error">
+        Échec de sauvegarde
+      </span>
+      <p role="alert" className="field-error">
+        Enregistrement refusé
+      </p>
+    </section>
+  )
+  for (const element of [
+    screen.getByRole('status').element(),
+    screen.getByRole('alert').element(),
+  ]) {
+    expect(css(element, 'background-color')).toBe('rgb(23, 27, 33)')
+    expect(css(element, 'color')).toBe('rgb(255, 143, 135)')
+  }
+})
+
 test('keyboard focus draws a 2 px frost outline on buttons, fields and menu items', async () => {
   const screen = await render(
     <>
