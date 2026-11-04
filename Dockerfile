@@ -1,5 +1,5 @@
 # Node 24 satisfies the project's runtime contract. Pin the multi-architecture image.
-FROM node:26.12.0-bookworm-slim@sha256:742a0fe7320e09e0321222b68165e6ac731d30470e7ea7f98f9bfc3a6e1034fe AS dependencies
+FROM node:26.13.0-bookworm-slim@sha256:bc0a2afd3b74ce12222fc8bab99271e66257f021078f5f4a5d687a77d280c1d9 AS dependencies
 WORKDIR /app
 RUN npm install --global pnpm@11.8.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -37,7 +37,7 @@ ENV VITE_SITE_URL=$VITE_SITE_URL \
     VITE_SPOTLIGHT_ENABLED=false
 RUN pnpm build
 
-FROM node:26.12.0-bookworm-slim@sha256:742a0fe7320e09e0321222b68165e6ac731d30470e7ea7f98f9bfc3a6e1034fe AS production
+FROM node:26.13.0-bookworm-slim@sha256:bc0a2afd3b74ce12222fc8bab99271e66257f021078f5f4a5d687a77d280c1d9 AS production
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 COPY --from=build --chown=node:node /app/.output ./.output
