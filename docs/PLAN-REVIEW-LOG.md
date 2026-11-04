@@ -457,3 +457,13 @@ Builder : **Claude**. Codex est limité à une revue et à une inspection courte
   - un test texte riche fragile a été corrigé : selon la position du curseur au collage, le gras peut être imbriqué ;
   - la CI `41657307128` est **verte** : 17/17 E2E, contrats auth et organisations, AUD-28 à 100/100.
 - **Fusion** : avance rapide de `main` jusqu'à `10f493e`. Aucune modification Convex.
+
+### Chantier 3b — identité visuelle « Console », 4 novembre 2026
+
+Direction choisie par l'utilisateur sur la planche d'identité : **B · Console**, sombre uniquement. Builder prévu : **Claude** (quota Codex), Codex en revue et en inspection.
+
+- **Revue du plan** `docs/PLAN-UX3b.md`, round 1 (**Codex**) : REVISE, trois constats acceptés :
+  - UX3B-01 (high) : la conversion couleur par couleur des anciens styles de widgets aurait marié un texte personnalisé sombre au nouveau fond sombre. Désormais, la palette n'est convertie qu'en bloc, si les trois couleurs sont les anciens défauts ;
+  - UX3B-02 (high) : l'en-tête du widget héritait de la couleur de texte du contenu. Il a désormais ses propres couleurs sémantiques ;
+  - UX3B-03 (medium) : le `Toaster` de Sonner serait resté clair. Il passe en `theme="dark"`.
+- **Round 2** (même session Codex, corrections seules) : **APPROVED**, aucun constat. Plan approuvé : SHA256 `6948b720…5169690548`.
