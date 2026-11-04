@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils'
 // mêmes éléments. Base UI fournit le focus, le clavier et les rôles ARIA.
 
 const popupClass =
-  'z-50 min-w-48 rounded-lg border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg outline-none'
+  'z-50 min-w-48 rounded-lg border border-border-strong bg-popover p-1 text-sm text-popover-foreground shadow-[0_12px_32px_rgb(0_0_0/0.5)] outline-none'
 const itemClass =
-  'flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted'
+  'flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 outline-none select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring data-[disabled]:pointer-events-none data-[disabled]:text-disabled-foreground data-[highlighted]:bg-border'
 
 const Menu = MenuPrimitive.Root
 const MenuTrigger = MenuPrimitive.Trigger
@@ -48,7 +48,7 @@ function MenuShortcut({ children }: { children: ReactNode }) {
     // est exposé par aria-keyshortcuts.
     <kbd
       aria-hidden="true"
-      className="ml-auto pl-4 font-sans text-xs text-muted-foreground"
+      className="ml-auto pl-4 font-mono text-xs text-muted-foreground"
     >
       {children}
     </kbd>
@@ -85,7 +85,7 @@ function MenuCheckboxItem({
       {...props}
     >
       <MenuPrimitive.CheckboxItemIndicator className="absolute left-2">
-        <Check className="size-4" />
+        <Check className="size-4 text-primary" />
       </MenuPrimitive.CheckboxItemIndicator>
       {children}
     </MenuPrimitive.CheckboxItem>
@@ -105,7 +105,7 @@ function MenuRadioItem({
       {...props}
     >
       <MenuPrimitive.RadioItemIndicator className="absolute left-2">
-        <Check className="size-4" />
+        <Check className="size-4 text-primary" />
       </MenuPrimitive.RadioItemIndicator>
       {children}
     </MenuPrimitive.RadioItem>

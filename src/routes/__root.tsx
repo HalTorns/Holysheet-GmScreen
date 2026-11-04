@@ -27,6 +27,8 @@ export const Route = createRootRouteWithContext<{
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'theme-color', content: '#0f1216' },
+      { name: 'color-scheme', content: 'dark' },
       { title: `${appConfig.name} · ${appConfig.tagline}` },
       {
         name: 'description',
@@ -71,7 +73,7 @@ function Root() {
           initialToken={context.token ?? null}
         >
           <Outlet />
-          <Toaster richColors position="bottom-right" />
+          <Toaster theme="dark" richColors position="bottom-right" />
         </AppAuthProvider>
         <Scripts />
       </body>

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // La configuration d'un widget reste rendue par le widget lui-même (donc avec
 // son brouillon), mais elle est téléportée dans l'onglet Contenu de
@@ -59,6 +60,36 @@ type Draft = {
  * avec un brouillon, ou relance après un échec. En conflit, il reste visible
  * mais désactivé : le serveur refuserait une version périmée.
  */
+export function SaveStatus({
+  editor,
+  prefix,
+  className,
+}: {
+  editor: Draft & { status: string }
+  prefix?: string
+  className?: string
+}) {
+  const state = editor.pending
+    ? 'pending'
+    : editor.conflict
+      ? 'conflict'
+      : editor.error
+        ? 'error'
+        : editor.dirty
+          ? 'dirty'
+          : 'saved'
+  return (
+    <span
+      role="status"
+      data-save-state={state}
+      className={cn('save-status', className)}
+    >
+      {prefix}
+      {editor.status}
+    </span>
+  )
+}
+
 export function SaveControl({
   editor,
   autoSave,

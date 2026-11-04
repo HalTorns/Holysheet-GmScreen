@@ -6,6 +6,7 @@ import {
   GM_MIN_WIDGET_HEIGHT,
   GM_MIN_WIDGET_WIDTH,
   defaultWidgetStyle,
+  resolveWidgetStyle,
   gmWidgetLabels,
 } from '@shared/gm'
 import { moveWidgets } from '@shared/gm-geometry'
@@ -38,7 +39,12 @@ import type { LayoutDialog } from './layout-settings'
 import { RevisionHistory } from './revision-history'
 import { WidgetContent } from './typed-widget'
 import { useEditorDraft } from './use-editor-draft'
-import { InspectorProvider, SaveControl, WidgetScope } from './widget-config'
+import {
+  InspectorProvider,
+  SaveControl,
+  SaveStatus,
+  WidgetScope,
+} from './widget-config'
 import {
   SelectionBar,
   StyleControls,
@@ -473,9 +479,7 @@ export function LayoutEditor({
         disabled={blocked || gesture !== null}
         label="Enregistrer la disposition"
       />
-      <span role="status" className="text-xs text-muted-foreground">
-        Disposition : {editor.status}
-      </span>
+      <SaveStatus editor={editor} prefix="Disposition : " />
     </div>
   )
 
@@ -499,7 +503,7 @@ export function LayoutEditor({
         {editor.conflict && (
           <div
             role="alert"
-            className="rounded border border-amber-500 p-3 text-sm"
+            className="rounded border border-warning bg-warning-surface p-3 text-sm text-warning"
           >
             <p>
               Ce profil a changé dans une autre vue. Votre disposition locale
@@ -573,7 +577,7 @@ export function LayoutEditor({
                   ...(grid && editing
                     ? {
                         backgroundImage:
-                          'radial-gradient(#a1a1aa 1px, transparent 1px)',
+                          'radial-gradient(var(--border) 1px, transparent 1px)',
                         backgroundSize: '8px 8px',
                       }
                     : {}),
@@ -744,7 +748,9 @@ export function LayoutEditor({
               <StyleControls
                 tools={tools}
                 ids={inspected.map((p) => p.widgetId)}
-                style={inspected[0]?.style ?? defaultWidgetStyle}
+                style={resolveWidgetStyle(
+                  inspected[0]?.style ?? defaultWidgetStyle
+                )}
               />
             </div>
           )}
@@ -868,7 +874,7 @@ function WidgetFrame({
   onHandleKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void
   onResizeKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void
 }) {
-  const widgetStyle = placement.style ?? defaultWidgetStyle
+  const widgetStyle = resolveWidgetStyle(placement.style ?? defaultWidgetStyle)
   const name = widgetName(note, index)
   // Le clic droit ouvre le menu ⋯ du widget. Le même arbre est rendu dans
   // tous les modes : changer de mode ne remonte pas les widgets.
@@ -898,7 +904,11 @@ function WidgetFrame({
       data-widget-id={note._id}
       aria-label={`Widget ${note.kind === 'sheet' ? 'fiche' : note.kind === 'table' ? 'tableau' : note.kind === 'clock' ? 'horloge' : note.kind} ${index + 1}`}
       className={`group absolute flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm ${
-        editing && (active || chosen) ? 'ring-2 ring-primary' : ''
+        editing && (active || chosen)
+          ? 'ring-2 ring-selection'
+          : editing
+            ? 'hover:outline-1 hover:outline-offset-1 hover:outline-ring hover:outline-dashed'
+            : ''
       }`}
       ref={section}
       onPointerDownCapture={(event) => {
@@ -924,7 +934,7 @@ function WidgetFrame({
       }}
     >
       {editing && (
-        <div className="flex shrink-0 items-center border-b bg-muted">
+        <div className="flex shrink-0 items-center border-b border-border bg-muted text-foreground">
           <button
             type="button"
             data-handle
@@ -985,10 +995,10 @@ function WidgetFrame({
           fontSize: widgetStyle.fontSize,
           fontFamily:
             widgetStyle.fontFamily === 'serif'
-              ? 'serif'
+              ? 'var(--font-serif)'
               : widgetStyle.fontFamily === 'mono'
-                ? 'monospace'
-                : 'sans-serif',
+                ? 'var(--font-mono)'
+                : 'var(--font-sans)',
         }}
       >
         {children}
@@ -997,7 +1007,7 @@ function WidgetFrame({
         <button
           type="button"
           data-handle
-          className={`absolute right-0 bottom-0 h-5 w-5 cursor-se-resize touch-none rounded-tl border bg-muted text-xs disabled:hidden ${
+          className={`absolute right-0 bottom-0 h-5 w-5 cursor-se-resize touch-none rounded-tl border border-border bg-muted text-xs text-foreground disabled:hidden ${
             active || chosen
               ? ''
               : 'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100'

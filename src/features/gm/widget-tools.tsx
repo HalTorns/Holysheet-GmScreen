@@ -1,7 +1,7 @@
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import type { Layout, Widget } from '@convex/lib/gmFormats'
-import { defaultWidgetStyle } from '@shared/gm'
+import { defaultWidgetStyle, resolveWidgetStyle } from '@shared/gm'
 import { arrangeWidgets, withoutGroup } from '@shared/gm-geometry'
 import { useMutation, usePaginatedQuery } from 'convex/react'
 import { ChevronDown, X } from 'lucide-react'
@@ -127,7 +127,13 @@ export function useWidgetTools({
     onChange(
       placements.map((p) =>
         wanted.has(p.widgetId)
-          ? { ...p, style: { ...(p.style ?? defaultWidgetStyle), ...changes } }
+          ? {
+              ...p,
+              style: {
+                ...resolveWidgetStyle(p.style ?? defaultWidgetStyle),
+                ...changes,
+              },
+            }
           : p
       )
     )

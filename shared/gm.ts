@@ -28,15 +28,43 @@ export const gmWidgetStyle = z.object({
   opacity: z.number().int().min(20).max(100),
 })
 export const defaultWidgetStyle = {
-  background: '#ffffff',
-  color: '#202a24',
-  borderColor: '#d6d9d4',
+  background: '#171b21',
+  color: '#e8eaed',
+  borderColor: '#2c333d',
   fontFamily: 'sans',
   fontSize: 14,
   borderWidth: 1,
   radius: 8,
   opacity: 100,
 } as const
+// Défauts du thème clair d'avant 3b, encore présents dans des placements
+// enregistrés : `patchStyle` recopiait la palette complète.
+const legacyWidgetColors = {
+  background: '#ffffff',
+  color: '#202a24',
+  borderColor: '#d6d9d4',
+} as const
+const legacyColorKeys = ['background', 'color', 'borderColor'] as const
+
+/**
+ * Remplace la palette claire d'origine par celle du thème sombre, en bloc :
+ * une palette dont une seule couleur a été choisie est conservée entière,
+ * pour ne pas marier un ancien choix à un nouveau défaut.
+ */
+export function resolveWidgetStyle<T extends GmWidgetStyleColors>(style: T): T {
+  const legacy = legacyColorKeys.every(
+    (key) => style[key].toLowerCase() === legacyWidgetColors[key]
+  )
+  return legacy
+    ? {
+        ...style,
+        background: defaultWidgetStyle.background,
+        color: defaultWidgetStyle.color,
+        borderColor: defaultWidgetStyle.borderColor,
+      }
+    : style
+}
+type GmWidgetStyleColors = Record<keyof typeof legacyWidgetColors, string>
 export const gmLayoutSize = z.object({
   name: gmTitle,
   width: z.number().int().min(320).max(GM_MAX_DIMENSION),

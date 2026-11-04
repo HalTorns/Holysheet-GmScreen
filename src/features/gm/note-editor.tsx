@@ -13,7 +13,12 @@ import { RevisionHistory } from './revision-history'
 import { NoteInput } from './rich-text/input'
 import { NoteRender } from './rich-text/render'
 import { useEditorDraft } from './use-editor-draft'
-import { SaveControl, WidgetConfig, useConfigPlacement } from './widget-config'
+import {
+  SaveControl,
+  SaveStatus,
+  WidgetConfig,
+  useConfigPlacement,
+} from './widget-config'
 
 function LoadedNoteEditor({
   note,
@@ -78,7 +83,10 @@ function LoadedNoteEditor({
         onEdit={(changed) => editor.edit(changed)}
       />
       {editor.conflict && (
-        <div className="text-xs" role="alert">
+        <div
+          className="rounded border border-warning bg-warning-surface p-1 text-xs text-warning"
+          role="alert"
+        >
           <p>
             Cette note a changé dans une autre vue. Votre brouillon est
             conservé.
@@ -102,9 +110,7 @@ function LoadedNoteEditor({
         </p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-1">
-        <span role="status" className="text-xs text-muted-foreground">
-          {editor.status}
-        </span>
+        <SaveStatus editor={editor} />
         {placement !== 'panel' && save}
       </div>
       <WidgetConfig>

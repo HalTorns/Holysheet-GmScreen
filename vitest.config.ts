@@ -16,6 +16,9 @@ export default defineConfig({
       'tests/unit/**/*.test.ts',
       'tests/scripts/**/*.test.ts',
     ],
+    // Le test de contraste lit les jetons de styles.css en ?raw ; sans cela,
+    // Vitest remplace les CSS par une chaîne vide.
+    css: { include: [/src\/styles\.css/] },
     environment: 'edge-runtime',
     server: { deps: { inline: ['convex-test'] } },
     restoreMocks: true,

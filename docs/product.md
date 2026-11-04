@@ -107,4 +107,4 @@ Aucune modification Convex. Voir [l’ADR](decisions/editor-ux.md) pour les éca
 - **⚙ Ressources** pour les fichiers et les widgets personnalisés, ouverts en panneaux latéraux ;
 - **⋯** sur chaque ligne.
 
-L’identité visuelle (3b) reste à faire.
+L’identité visuelle « Console » (3b) est appliquée : thème sombre unique, braise pour l’action, givre pour les liens et le focus, IBM Plex Sans, Inter Tight et JetBrains Mono servies par l’application, nouveau logo à trois volets. Les anciens styles de widgets restés aux défauts clairs passent au sombre sans migration ([ADR](decisions/visual-identity.md), [plan](PLAN-UX3b.md)).
